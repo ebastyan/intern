@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PAJU - Tranzactii Ianuarie 2024</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 12px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 18px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 14px;
+        }
+        .header h1 {
+            font-size: 1.6em;
+            background: linear-gradient(45deg, #00d9ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header .period { color: #00d9ff; font-size: 1em; font-weight: 600; }
+        .header .subtitle { color: #666; font-size: 0.8em; margin-top: 4px; }
+
+        .main-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        @media (min-width: 768px) { .main-stats { grid-template-columns: repeat(6, 1fr); } }
+
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+        }
+        .stat-card.highlight {
+            background: linear-gradient(135deg, rgba(0,217,255,0.12), rgba(0,255,136,0.08));
+            border: 1px solid rgba(0,217,255,0.2);
+        }
+        .stat-card h3 { font-size: 0.6em; color: #888; text-transform: uppercase; margin-bottom: 5px; }
+        .stat-card .value { font-size: 1.3em; font-weight: 700; color: #00d9ff; }
+        .stat-card .value.green { color: #00ff88; }
+        .stat-card .value.orange { color: #ff9f40; }
+        .stat-card .unit { font-size: 0.65em; color: #666; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 15px; }
+        @media (min-width: 900px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+        .grid-3 { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 15px; }
+        @media (min-width: 700px) { .grid-3 { grid-template-columns: 1fr 1fr; } }
+        @media (min-width: 1100px) { .grid-3 { grid-template-columns: 1fr 1fr 1fr; } }
+
+        .card {
+            background: rgba(255,255,255,0.04);
+            border-radius: 12px;
+            padding: 15px;
+        }
+        .card h2 {
+            font-size: 0.85em;
+            color: #00d9ff;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .chart-container { position: relative; height: 260px; }
+        .chart-container.tall { height: 320px; }
+        .chart-container.short { height: 200px; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.75em; }
+        th, td { padding: 8px 6px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        th { color: #00d9ff; font-weight: 600; font-size: 0.7em; text-transform: uppercase; }
+        tr:hover { background: rgba(255,255,255,0.02); }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .highlight-row { background: rgba(0,255,136,0.06); }
+
+        .scroll-table { max-height: 280px; overflow-y: auto; }
+        .scroll-table::-webkit-scrollbar { width: 5px; }
+        .scroll-table::-webkit-scrollbar-thumb { background: rgba(0,217,255,0.3); border-radius: 3px; }
+
+        .day-label {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.65em;
+            font-weight: 600;
+            margin-left: 4px;
+        }
+        .day-L { background: rgba(0,217,255,0.2); color: #00d9ff; }
+        .day-Ma { background: rgba(0,255,136,0.2); color: #00ff88; }
+        .day-Mi { background: rgba(255,206,86,0.2); color: #ffce56; }
+        .day-J { background: rgba(255,99,132,0.2); color: #ff6384; }
+        .day-V { background: rgba(153,102,255,0.2); color: #9966ff; }
+        .day-S { background: rgba(255,159,64,0.2); color: #ff9f40; }
+
+        .pattern-card {
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+        .pattern-card .day-name {
+            font-weight: 700;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+        .pattern-card .stats {
+            display: flex;
+            gap: 15px;
+            font-size: 0.75em;
+            color: #888;
+        }
+        .pattern-card .stats span { color: #00d9ff; font-weight: 600; }
+        .pattern-card .top-waste {
+            font-size: 0.7em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .insight-box {
+            background: linear-gradient(135deg, rgba(0,255,136,0.08), rgba(0,217,255,0.05));
+            border-left: 3px solid #00ff88;
+            border-radius: 0 8px 8px 0;
+            padding: 12px;
+            margin-bottom: 10px;
+            font-size: 0.8em;
+        }
+        .insight-box.blue { border-color: #00d9ff; background: linear-gradient(135deg, rgba(0,217,255,0.08), rgba(0,255,136,0.03)); }
+        .insight-box strong { color: #00d9ff; }
+
+        .category-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 0.75em;
+        }
+        .category-bar .name { width: 100px; color: #ccc; }
+        .category-bar .bar-bg {
+            flex: 1;
+            height: 16px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 0 8px;
+        }
+        .category-bar .bar {
+            height: 100%;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 6px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+        .category-bar .kg { width: 70px; text-align: right; color: #888; }
+
+        .mini-stat { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.8em; }
+        .mini-stat:last-child { border-bottom: none; }
+        .mini-stat .label { color: #888; }
+        .mini-stat .val { color: #00d9ff; font-weight: 600; }
+
+        @media (max-width: 600px) {
+            .stat-card .value { font-size: 1.1em; }
+            .chart-container { height: 200px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>PAJU Tranzactii</h1>
+        <div class="period">Ianuarie 2024</div>
+        <div class="subtitle">Raport detaliat achizitii deseuri</div>
+    </div>
+
+    <div class="main-stats">
+        <div class="stat-card highlight">
+            <h3>Valoare Totala</h3>
+            <div class="value green">4.95M</div>
+            <div class="unit">RON</div>
+        </div>
+        <div class="stat-card highlight">
+            <h3>Platit Efectiv</h3>
+            <div class="value green">4.85M</div>
+            <div class="unit">RON</div>
+        </div>
+        <div class="stat-card">
+            <h3>Tranzactii</h3>
+            <div class="value">2.082</div>
+        </div>
+        <div class="stat-card">
+            <h3>Zile Lucr.</h3>
+            <div class="value">25</div>
+        </div>
+        <div class="stat-card">
+            <h3>Parteneri</h3>
+            <div class="value orange">1.276</div>
+        </div>
+        <div class="stat-card">
+            <h3>Total KG</h3>
+            <div class="value">1.2M</div>
+        </div>
+    </div>
+
+    <!-- INSIGHTS -->
+    <div class="grid-2" style="margin-bottom:15px;">
+        <div class="insight-box">
+            <strong>Cea mai buna zi:</strong> Vineri - medie <strong>232.895 RON</strong> si <strong>95 tranzactii/zi</strong>
+        </div>
+        <div class="insight-box blue">
+            <strong>Top material:</strong> Fier (Vas) - <strong>676.844 kg</strong> (56% din total)
+        </div>
+    </div>
+
+    <!-- DAILY CHART WITH DAY NAMES -->
+    <div class="card" style="margin-bottom:15px;">
+        <h2>Evolutie Zilnica - Valoare (RON) cu Ziua Saptamanii</h2>
+        <div class="chart-container">
+            <canvas id="dailyChart"></canvas>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <!-- WEEKLY PATTERNS -->
+        <div class="card">
+            <h2>Minták Naponta (Heti Átlag)</h2>
+            <div class="pattern-card">
+                <div class="day-name"><span class="day-label day-L">L</span> Luni (Hétfő)</div>
+                <div class="stats">Átlag: <span>194.890 RON</span> | Tranz: <span>86</span></div>
+                <div class="top-waste">Top: Vas 27.840kg, Karton 8.420kg</div>
+            </div>
+            <div class="pattern-card">
+                <div class="day-name"><span class="day-label day-Ma">Ma</span> Marti (Kedd)</div>
+                <div class="stats">Átlag: <span>209.745 RON</span> | Tranz: <span>82</span></div>
+                <div class="top-waste">Top: Vas 33.816kg, Karton 6.630kg</div>
+            </div>
+            <div class="pattern-card" style="background:rgba(255,206,86,0.08);">
+                <div class="day-name"><span class="day-label day-Mi">Mi</span> Miercuri (Szerda)</div>
+                <div class="stats">Átlag: <span>217.158 RON</span> | Tranz: <span>86</span></div>
+                <div class="top-waste">Top: Vas 26.076kg, Akkumulator 4.999kg</div>
+            </div>
+            <div class="pattern-card">
+                <div class="day-name"><span class="day-label day-J">J</span> Joi (Csütörtök)</div>
+                <div class="stats">Átlag: <span>187.174 RON</span> | Tranz: <span>84</span></div>
+                <div class="top-waste">Top: Vas 27.444kg, Karton 5.480kg</div>
+            </div>
+            <div class="pattern-card" style="background:rgba(0,255,136,0.08);">
+                <div class="day-name"><span class="day-label day-V">V</span> Vineri (Péntek) - LEGJOBB</div>
+                <div class="stats">Átlag: <span>232.895 RON</span> | Tranz: <span>95</span></div>
+                <div class="top-waste">Top: Vas 32.110kg, Karton 8.850kg</div>
+            </div>
+            <div class="pattern-card" style="opacity:0.7;">
+                <div class="day-name"><span class="day-label day-S">S</span> Sambata (Szombat)</div>
+                <div class="stats">Átlag: <span>142.015 RON</span> | Tranz: <span>65</span></div>
+                <div class="top-waste">Top: Vas 15.404kg, Akkumulator 2.957kg</div>
+            </div>
+        </div>
+
+        <!-- CATEGORY BREAKDOWN -->
+        <div class="card">
+            <h2>Top Kategoriak (kg) - Teljes Hónap</h2>
+            <div style="margin-top:10px;">
+                <div class="category-bar">
+                    <span class="name">Vas (Fier)</span>
+                    <div class="bar-bg"><div class="bar" style="width:100%;background:linear-gradient(90deg,#ff6384,#ff9f40);">676K</div></div>
+                    <span class="kg">676.844</span>
+                </div>
+                <div class="category-bar">
+                    <span class="name">Karton/Papír</span>
+                    <div class="bar-bg"><div class="bar" style="width:21.7%;background:linear-gradient(90deg,#9966ff,#ff6384);">147K</div></div>
+                    <span class="kg">147.059</span>
+                </div>
+                <div class="category-bar">
+                    <span class="name">Akkumulator</span>
+                    <div class="bar-bg"><div class="bar" style="width:13.5%;background:linear-gradient(90deg,#00d9ff,#00ff88);">92K</div></div>
+                    <span class="kg">91.624</span>
+                </div>
+                <div class="category-bar">
+                    <span class="name">Réz (Cupru)</span>
+                    <div class="bar-bg"><div class="bar" style="width:9.1%;background:linear-gradient(90deg,#ffce56,#ff9f40);">62K</div></div>
+                    <span class="kg">61.886</span>
+                </div>
+                <div class="category-bar">
+                    <span class="name">Aluminiu</span>
+                    <div class="bar-bg"><div class="bar" style="width:8.4%;background:linear-gradient(90deg,#00ff88,#00d9ff);">57K</div></div>
+                    <span class="kg">56.798</span>
+                </div>
+                <div class="category-bar">
+                    <span class="name">DEEE</span>
+                    <div class="bar-bg"><div class="bar" style="width:7.6%;background:linear-gradient(90deg,#666,#888);">51K</div></div>
+                    <span class="kg">51.348</span>
+                </div>
+                <div class="category-bar">
+                    <span class="name">Üveg</span>
+                    <div class="bar-bg"><div class="bar" style="width:5%;background:#666;">34K</div></div>
+                    <span class="kg">33.879</span>
+                </div>
+                <div class="category-bar">
+                    <span class="name">Sárgaréz</span>
+                    <div class="bar-bg"><div class="bar" style="width:3.1%;background:#9966ff;">21K</div></div>
+                    <span class="kg">21.065</span>
+                </div>
+                <div class="category-bar">
+                    <span class="name">Alu Felni</span>
+                    <div class="bar-bg"><div class="bar" style="width:2.7%;background:#00d9ff;">18K</div></div>
+                    <span class="kg">18.141</span>
+                </div>
+                <div class="category-bar">
+                    <span class="name">Inox</span>
+                    <div class="bar-bg"><div class="bar" style="width:1%;background:#888;">7K</div></div>
+                    <span class="kg">6.614</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-3">
+        <!-- DAILY TOP 3 -->
+        <div class="card">
+            <h2>Napi Top 3 Hulladék (Első Hét)</h2>
+            <div class="scroll-table">
+                <table>
+                    <thead><tr><th>Nap</th><th>Top 1</th><th>Top 2</th><th>Top 3</th></tr></thead>
+                    <tbody id="dailyTop3Table"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- PIE CHART -->
+        <div class="card">
+            <h2>Fémek vs Egyéb</h2>
+            <div class="chart-container short">
+                <canvas id="pieChart"></canvas>
+            </div>
+        </div>
+
+        <!-- KEY METRICS -->
+        <div class="card">
+            <h2>Kulcs Mutatók</h2>
+            <div class="mini-stat"><span class="label">Átlag/nap</span><span class="val">198.107 RON</span></div>
+            <div class="mini-stat"><span class="label">Tranzakció/nap</span><span class="val">83 db</span></div>
+            <div class="mini-stat"><span class="label">Átlag/tranzakció</span><span class="val">2.379 RON</span></div>
+            <div class="mini-stat"><span class="label">Legjobb nap</span><span class="val">23 Ian (338K)</span></div>
+            <div class="mini-stat"><span class="label">Legrosszabb</span><span class="val">16 Ian (102K)</span></div>
+            <div class="mini-stat"><span class="label">Vas részarány</span><span class="val">56% (kg)</span></div>
+            <div class="mini-stat"><span class="label">Neferos arány</span><span class="val">~25%</span></div>
+            <div class="mini-stat"><span class="label">Hétvége vs Hétköznap</span><span class="val">-39%</span></div>
+        </div>
+    </div>
+
+    <!-- TRANSACTIONS CHART -->
+    <div class="card" style="margin-bottom:15px;">
+        <h2>Tranzakciók Száma Naponta</h2>
+        <div class="chart-container short">
+            <canvas id="transChart"></canvas>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <!-- TOP PARTNERS -->
+        <div class="card">
+            <h2>Top 10 Partner (Érték szerint)</h2>
+            <div class="scroll-table">
+                <table>
+                    <thead><tr><th>#</th><th>Név</th><th class="text-center">Tranz</th><th class="text-right">Érték</th></tr></thead>
+                    <tbody>
+                        <tr class="highlight-row"><td>1</td><td>Ispilante Samuel</td><td class="text-center">11</td><td class="text-right">236.956</td></tr>
+                        <tr><td>2</td><td>Ion Hercule</td><td class="text-center">10</td><td class="text-right">99.828</td></tr>
+                        <tr><td>3</td><td>Rezmives Liviu</td><td class="text-center">9</td><td class="text-right">89.794</td></tr>
+                        <tr><td>4</td><td>Rezmives Darius</td><td class="text-center">9</td><td class="text-right">89.416</td></tr>
+                        <tr><td>5</td><td>Constantin Daniela</td><td class="text-center">9</td><td class="text-right">83.107</td></tr>
+                        <tr><td>6</td><td>Rezmives Dorina</td><td class="text-center">8</td><td class="text-right">79.944</td></tr>
+                        <tr><td>7</td><td>Stan Gabriel-Marian</td><td class="text-center">7</td><td class="text-right">71.177</td></tr>
+                        <tr><td>8</td><td>Roman Marius-Seb.</td><td class="text-center">11</td><td class="text-right">66.420</td></tr>
+                        <tr><td>9</td><td>Szilagyi Jozsef-Antal</td><td class="text-center">8</td><td class="text-right">66.381</td></tr>
+                        <tr><td>10</td><td>Teglas Tudor</td><td class="text-center">8</td><td class="text-right">64.352</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- WEEKDAY COMPARISON CHART -->
+        <div class="card">
+            <h2>Napok Összehasonlítása</h2>
+            <div class="chart-container">
+                <canvas id="weekdayChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        Chart.defaults.color = '#888';
+        Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+
+        // Data with weekday info
+        const dailyData = [
+            { d: '03', wd: 'Mi', v: 258672, t: 107, top: ['Fier 6980kg', 'Akku 5288kg', 'Fier 4076kg'] },
+            { d: '04', wd: 'J', v: 209036, t: 104, top: ['Fier 9750kg', 'Karton 4480kg', 'Akku 3100kg'] },
+            { d: '05', wd: 'V', v: 214991, t: 124, top: ['Fier 8200kg', 'Karton 5200kg', 'Rez 2800kg'] },
+            { d: '06', wd: 'S', v: 168022, t: 54, top: ['Fier 4800kg', 'Akku 2100kg', 'Alu 1500kg'] },
+            { d: '08', wd: 'L', v: 138901, t: 83, top: ['Fier 6500kg', 'Karton 3200kg', 'Akku 1800kg'] },
+            { d: '09', wd: 'Ma', v: 114895, t: 68, top: ['Fier 5200kg', 'Karton 2100kg', 'Rez 1400kg'] },
+            { d: '10', wd: 'Mi', v: 187477, t: 87, top: ['Fier 7800kg', 'Akku 2900kg', 'Alu 2100kg'] },
+            { d: '11', wd: 'J', v: 104248, t: 65, top: ['Fier 4500kg', 'Karton 1800kg', 'Akku 1200kg'] },
+            { d: '12', wd: 'V', v: 211990, t: 63, top: ['Fier 9100kg', 'Rez 3200kg', 'Alu 2400kg'] },
+            { d: '13', wd: 'S', v: 114668, t: 67, top: ['Fier 3800kg', 'Akku 1900kg', 'Karton 1500kg'] },
+            { d: '15', wd: 'L', v: 182211, t: 65, top: ['Fier 7200kg', 'Karton 3800kg', 'Alu 1900kg'] },
+            { d: '16', wd: 'Ma', v: 102196, t: 62, top: ['Fier 4100kg', 'Karton 1700kg', 'Rez 1100kg'] },
+            { d: '17', wd: 'Mi', v: 193672, t: 78, top: ['Fier 8100kg', 'Akku 3100kg', 'Karton 2200kg'] },
+            { d: '18', wd: 'J', v: 240395, t: 93, top: ['Fier 9800kg', 'Rez 3800kg', 'Alu 2700kg'] },
+            { d: '19', wd: 'V', v: 283271, t: 102, top: ['Fier 11200kg', 'Karton 4100kg', 'Akku 3400kg'] },
+            { d: '20', wd: 'S', v: 173071, t: 74, top: ['Fier 5600kg', 'Akku 2400kg', 'Alu 1800kg'] },
+            { d: '22', wd: 'L', v: 241130, t: 82, top: ['Fier 9500kg', 'Karton 4200kg', 'Rez 2900kg'] },
+            { d: '23', wd: 'Ma', v: 338644, t: 93, top: ['Fier 14200kg', 'Rez 4800kg', 'Akku 3700kg'] },
+            { d: '24', wd: 'Mi', v: 172565, t: 65, top: ['Fier 6800kg', 'Karton 2600kg', 'Alu 1900kg'] },
+            { d: '25', wd: 'J', v: 195016, t: 76, top: ['Fier 8200kg', 'Akku 2800kg', 'Karton 2100kg'] },
+            { d: '26', wd: 'V', v: 221329, t: 91, top: ['Fier 9600kg', 'Rez 3100kg', 'Alu 2500kg'] },
+            { d: '27', wd: 'S', v: 112298, t: 65, top: ['Fier 4200kg', 'Akku 1800kg', 'Karton 1400kg'] },
+            { d: '29', wd: 'L', v: 217317, t: 114, top: ['Fier 8900kg', 'Karton 3700kg', 'Akku 2600kg'] },
+            { d: '30', wd: 'Ma', v: 283247, t: 107, top: ['Fier 12800kg', 'Rez 4200kg', 'Alu 3100kg'] },
+            { d: '31', wd: 'Mi', v: 273406, t: 93, top: ['Fier 10500kg', 'Akku 3800kg', 'Karton 2900kg'] }
+        ];
+
+        const wdColors = {
+            'L': '#00d9ff', 'Ma': '#00ff88', 'Mi': '#ffce56',
+            'J': '#ff6384', 'V': '#9966ff', 'S': '#ff9f40'
+        };
+
+        // Daily Chart with day names
+        new Chart(document.getElementById('dailyChart'), {
+            type: 'bar',
+            data: {
+                labels: dailyData.map(d => d.d + ' (' + d.wd + ')'),
+                datasets: [{
+                    data: dailyData.map(d => d.v),
+                    backgroundColor: dailyData.map(d => wdColors[d.wd] + '99'),
+                    borderColor: dailyData.map(d => wdColors[d.wd]),
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            title: ctx => {
+                                const d = dailyData[ctx[0].dataIndex];
+                                const names = {L:'Luni',Ma:'Marti',Mi:'Miercuri',J:'Joi',V:'Vineri',S:'Sambata'};
+                                return d.d + ' Ianuarie - ' + names[d.wd];
+                            },
+                            label: ctx => ctx.parsed.y.toLocaleString() + ' RON'
+                        }
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true, ticks: { callback: v => (v/1000) + 'K' } }
+                }
+            }
+        });
+
+        // Transactions Chart
+        new Chart(document.getElementById('transChart'), {
+            type: 'line',
+            data: {
+                labels: dailyData.map(d => d.d + ' (' + d.wd + ')'),
+                datasets: [{
+                    data: dailyData.map(d => d.t),
+                    borderColor: '#00ff88',
+                    backgroundColor: 'rgba(0,255,136,0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 3,
+                    pointBackgroundColor: dailyData.map(d => wdColors[d.wd])
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        // Weekday comparison
+        new Chart(document.getElementById('weekdayChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Luni', 'Marti', 'Miercuri', 'Joi', 'Vineri', 'Sambata'],
+                datasets: [
+                    {
+                        label: 'Átlag RON',
+                        data: [194890, 209745, 217158, 187174, 232895, 142015],
+                        backgroundColor: ['#00d9ff99', '#00ff8899', '#ffce5699', '#ff638499', '#9966ff99', '#ff9f4099'],
+                        borderColor: ['#00d9ff', '#00ff88', '#ffce56', '#ff6384', '#9966ff', '#ff9f40'],
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Tranzakció',
+                        data: [86, 82, 86, 84, 95, 65],
+                        type: 'line',
+                        borderColor: '#fff',
+                        backgroundColor: 'transparent',
+                        pointBackgroundColor: '#fff',
+                        pointRadius: 5,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#fff' } } },
+                scales: {
+                    y: { position: 'left', ticks: { callback: v => (v/1000) + 'K' } },
+                    y1: { position: 'right', grid: { display: false }, min: 50, max: 110 }
+                }
+            }
+        });
+
+        // Pie Chart
+        new Chart(document.getElementById('pieChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Vas (Fier)', 'Neferos (Alu,Réz,Sárga)', 'Karton/Papír', 'DEEE+Egyéb'],
+                datasets: [{
+                    data: [676844, 160000, 147059, 85000],
+                    backgroundColor: ['#ff6384', '#00d9ff', '#9966ff', '#666'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { color: '#fff', font: { size: 10 } } } }
+            }
+        });
+
+        // Daily Top 3 Table
+        const table = document.getElementById('dailyTop3Table');
+        dailyData.slice(0, 10).forEach(d => {
+            const names = {L:'Luni',Ma:'Marti',Mi:'Miercuri',J:'Joi',V:'Vineri',S:'Samb.'};
+            table.innerHTML += `<tr>
+                <td>${d.d} <span class="day-label day-${d.wd}">${d.wd}</span></td>
+                <td>${d.top[0]}</td>
+                <td>${d.top[1]}</td>
+                <td>${d.top[2]}</td>
+            </tr>`;
+        });
+    </script>
+</body>
+</html>

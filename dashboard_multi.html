@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PAJU - 2024/2025 Összesítő Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: linear-gradient(135deg, #0a0a12 0%, #141428 50%, #1a1a35 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 15px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding: 20px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 16px;
+        }
+        .header h1 {
+            font-size: 2em;
+            background: linear-gradient(45deg, #00d9ff, #00ff88, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+        .header .subtitle { color: #666; font-size: 0.9em; }
+
+        .year-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .year-tab {
+            padding: 12px 30px;
+            background: rgba(255,255,255,0.05);
+            border: none;
+            border-radius: 10px;
+            color: #888;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .year-tab.active {
+            background: linear-gradient(135deg, #00d9ff33, #00ff8833);
+            color: #00ff88;
+            border: 1px solid #00ff8855;
+        }
+        .year-tab:hover:not(.active) { background: rgba(255,255,255,0.08); color: #fff; }
+
+        .big-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        @media (min-width: 768px) { .big-stats { grid-template-columns: repeat(4, 1fr); } }
+
+        .big-stat {
+            background: rgba(255,255,255,0.04);
+            border-radius: 14px;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .big-stat::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+        }
+        .big-stat.year-2024::before { background: linear-gradient(90deg, #00d9ff, #9966ff); }
+        .big-stat.year-2025::before { background: linear-gradient(90deg, #00ff88, #ffce56); }
+        .big-stat h3 { font-size: 0.75em; color: #666; text-transform: uppercase; margin-bottom: 8px; }
+        .big-stat .value { font-size: 2em; font-weight: 700; }
+        .big-stat .value.cyan { color: #00d9ff; }
+        .big-stat .value.green { color: #00ff88; }
+        .big-stat .value.purple { color: #9966ff; }
+        .big-stat .value.orange { color: #ff9f40; }
+        .big-stat .unit { font-size: 0.7em; color: #666; margin-top: 4px; }
+        .big-stat .trend { font-size: 0.8em; margin-top: 6px; }
+        .big-stat .trend.up { color: #00ff88; }
+        .big-stat .trend.down { color: #ff6b6b; }
+
+        .grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 15px; }
+        @media (min-width: 900px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+        @media (min-width: 1200px) { .grid-3 { grid-template-columns: 1fr 1fr 1fr; } }
+
+        .card {
+            background: rgba(255,255,255,0.04);
+            border-radius: 14px;
+            padding: 18px;
+        }
+        .card h2 {
+            font-size: 0.9em;
+            color: #00d9ff;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .chart-container { position: relative; height: 300px; }
+        .chart-container.tall { height: 350px; }
+        .chart-container.short { height: 220px; }
+
+        .month-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        @media (min-width: 768px) { .month-grid { grid-template-columns: repeat(6, 1fr); } }
+        @media (min-width: 1000px) { .month-grid { grid-template-columns: repeat(12, 1fr); } }
+
+        .month-card {
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            padding: 10px 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+        .month-card:hover { background: rgba(255,255,255,0.08); border-color: #00d9ff44; }
+        .month-card.selected { background: rgba(0,217,255,0.1); border-color: #00d9ff; }
+        .month-card .m-name { font-size: 0.7em; color: #888; margin-bottom: 4px; }
+        .month-card .m-value { font-size: 0.9em; font-weight: 700; color: #00d9ff; }
+        .month-card .m-trans { font-size: 0.65em; color: #666; margin-top: 2px; }
+
+        .heatmap-row { display: flex; gap: 2px; margin-bottom: 2px; }
+        .heatmap-day {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .heatmap-day:hover { transform: scale(1.3); }
+        .heatmap-legend { display: flex; gap: 10px; margin-top: 10px; font-size: 0.7em; color: #888; }
+        .heatmap-legend span { display: flex; align-items: center; gap: 4px; }
+        .legend-box { width: 12px; height: 12px; border-radius: 2px; }
+
+        .category-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.8em;
+        }
+        .category-bar .name { width: 110px; color: #ccc; }
+        .category-bar .bar-bg {
+            flex: 1;
+            height: 20px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 0 10px;
+        }
+        .category-bar .bar {
+            height: 100%;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .category-bar .kg { width: 80px; text-align: right; color: #888; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
+        th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        th { color: #00d9ff; font-weight: 600; font-size: 0.75em; text-transform: uppercase; }
+        tr:hover { background: rgba(255,255,255,0.02); }
+        .text-right { text-align: right; }
+        .best { color: #00ff88; }
+        .worst { color: #ff6b6b; }
+
+        .insight-box {
+            background: linear-gradient(135deg, rgba(0,255,136,0.08), rgba(0,217,255,0.05));
+            border-left: 3px solid #00ff88;
+            border-radius: 0 10px 10px 0;
+            padding: 14px;
+            margin-bottom: 10px;
+            font-size: 0.85em;
+        }
+        .insight-box strong { color: #00d9ff; }
+
+        .scroll-x { overflow-x: auto; }
+
+        .compare-table td:nth-child(2), .compare-table td:nth-child(3) { font-weight: 600; }
+
+        #tooltip {
+            position: fixed;
+            background: rgba(0,0,0,0.9);
+            border: 1px solid #00d9ff;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 0.8em;
+            pointer-events: none;
+            display: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="tooltip"></div>
+
+    <div class="header">
+        <h1>PAJU Hulladékfelvásárlás</h1>
+        <div class="subtitle">2024-2025 Összesítő Dashboard • Generálva: 2025-11-27</div>
+    </div>
+
+    <div class="year-tabs">
+        <button class="year-tab active" onclick="showYear('all')">Összesítés</button>
+        <button class="year-tab" onclick="showYear('2024')">2024</button>
+        <button class="year-tab" onclick="showYear('2025')">2025</button>
+    </div>
+
+    <!-- BIG SUMMARY STATS -->
+    <div class="big-stats" id="bigStats">
+        <div class="big-stat">
+            <h3>Teljes Forgalom</h3>
+            <div class="value cyan" id="totalValue">119.2M</div>
+            <div class="unit">RON</div>
+        </div>
+        <div class="big-stat">
+            <h3>Tranzakciók</h3>
+            <div class="value green" id="totalTrans">51,367</div>
+        </div>
+        <div class="big-stat">
+            <h3>Munkanapok</h3>
+            <div class="value purple" id="totalDays">537</div>
+        </div>
+        <div class="big-stat">
+            <h3>Átlag/Nap</h3>
+            <div class="value orange" id="avgDay">222K</div>
+            <div class="unit">RON</div>
+        </div>
+    </div>
+
+    <!-- YEAR COMPARISON -->
+    <div class="grid grid-2">
+        <div class="card">
+            <h2>Éves Összehasonlítás</h2>
+            <div class="chart-container">
+                <canvas id="yearCompareChart"></canvas>
+            </div>
+        </div>
+        <div class="card">
+            <h2>Havi Trendek (2024 vs 2025)</h2>
+            <div class="chart-container">
+                <canvas id="monthlyTrendChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- MONTHLY HEATMAPS -->
+    <div class="card" style="margin-bottom:15px;">
+        <h2>Havi Teljesítmény Áttekintés</h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+            <div>
+                <div style="color:#00d9ff;font-weight:600;margin-bottom:10px;">2024</div>
+                <div class="month-grid" id="months2024"></div>
+            </div>
+            <div>
+                <div style="color:#00ff88;font-weight:600;margin-bottom:10px;">2025</div>
+                <div class="month-grid" id="months2025"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CATEGORY BREAKDOWN -->
+    <div class="grid grid-2">
+        <div class="card">
+            <h2>Top 10 Kategória - 2024 (kg)</h2>
+            <div id="categories2024"></div>
+        </div>
+        <div class="card">
+            <h2>Top 10 Kategória - 2025 (kg)</h2>
+            <div id="categories2025"></div>
+        </div>
+    </div>
+
+    <!-- WEEKLY PATTERNS -->
+    <div class="card" style="margin-bottom:15px;">
+        <h2>Heti Minták Összehasonlítása</h2>
+        <div class="chart-container">
+            <canvas id="weekdayChart"></canvas>
+        </div>
+    </div>
+
+    <!-- DETAILED TABLE -->
+    <div class="card" style="margin-bottom:15px;">
+        <h2>Részletes Havi Adatok</h2>
+        <div class="scroll-x">
+            <table class="compare-table">
+                <thead>
+                    <tr>
+                        <th>Hónap</th>
+                        <th class="text-right">2024 (RON)</th>
+                        <th class="text-right">2025 (RON)</th>
+                        <th class="text-right">Változás</th>
+                        <th class="text-right">2024 Tranz</th>
+                        <th class="text-right">2025 Tranz</th>
+                    </tr>
+                </thead>
+                <tbody id="monthlyTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- INSIGHTS -->
+    <div class="grid grid-2">
+        <div class="card">
+            <h2>Kulcs Megállapítások</h2>
+            <div class="insight-box">
+                <strong>Legjobb hónap 2024:</strong> Április - <strong>7.64M RON</strong> (2,964 tranzakció)
+            </div>
+            <div class="insight-box">
+                <strong>Legjobb hónap 2025:</strong> Július - <strong>6.69M RON</strong> (2,716 tranzakció)
+            </div>
+            <div class="insight-box" style="border-color:#ff6b6b;">
+                <strong>2025 vs 2024:</strong> Az első 11 hónap forgalma <strong>-31.7%</strong> csökkent
+            </div>
+        </div>
+        <div class="card">
+            <h2>Anyag Összetétel</h2>
+            <div class="chart-container short">
+                <canvas id="materialPieChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load data from JSON
+        let allData = null;
+
+        fetch('all_data.json')
+            .then(r => r.json())
+            .then(data => {
+                allData = data;
+                initDashboard();
+            })
+            .catch(e => {
+                console.error('Error loading data:', e);
+                // Use embedded fallback data
+                initDashboard();
+            });
+
+        // Fallback data if JSON fails
+        const fallbackData = {
+            years: {
+                '2024': {
+                    summary: { total_value: 70818120, transactions: 28029, working_days: 280, avg_per_day: 252922 },
+                    months: {
+                        '01': { summary: { total_value: 4952669, transactions: 2082 } },
+                        '02': { summary: { total_value: 6450668, transactions: 2704 } },
+                        '03': { summary: { total_value: 6133259, transactions: 2635 } },
+                        '04': { summary: { total_value: 7642293, transactions: 2964 } },
+                        '05': { summary: { total_value: 5810382, transactions: 2279 } },
+                        '06': { summary: { total_value: 6093778, transactions: 2230 } },
+                        '07': { summary: { total_value: 5839542, transactions: 2449 } },
+                        '08': { summary: { total_value: 3090315, transactions: 1481 } },
+                        '09': { summary: { total_value: 5838671, transactions: 2431 } },
+                        '10': { summary: { total_value: 6970742, transactions: 2623 } },
+                        '11': { summary: { total_value: 6600467, transactions: 2371 } },
+                        '12': { summary: { total_value: 5395334, transactions: 1780 } }
+                    },
+                    total_by_category: {
+                        'Vas (Fier)': 8943559, 'Rez (Cupru)': 941014, 'Aluminiu': 890979,
+                        'Elektronika (DEEE)': 841537, 'Akkumulator': 791787, 'Karton/Papir': 650000,
+                        'Uveg': 180000, 'Sargarez (Alama)': 150000, 'Alu Felni': 120000, 'Inox': 45000
+                    }
+                },
+                '2025': {
+                    summary: { total_value: 48344251, transactions: 23338, working_days: 257, avg_per_day: 188110 },
+                    months: {
+                        '01': { summary: { total_value: 4971450, transactions: 1889 } },
+                        '02': { summary: { total_value: 5155082, transactions: 2218 } },
+                        '03': { summary: { total_value: 5662621, transactions: 2525 } },
+                        '04': { summary: { total_value: 4337412, transactions: 2107 } },
+                        '05': { summary: { total_value: 5086256, transactions: 2304 } },
+                        '06': { summary: { total_value: 5327686, transactions: 2266 } },
+                        '07': { summary: { total_value: 6688536, transactions: 2716 } },
+                        '08': { summary: { total_value: 2021782, transactions: 1318 } },
+                        '09': { summary: { total_value: 3200042, transactions: 2035 } },
+                        '10': { summary: { total_value: 3088657, transactions: 2038 } },
+                        '11': { summary: { total_value: 2804727, transactions: 1922 } }
+                    },
+                    total_by_category: {
+                        'Vas (Fier)': 7658911, 'Elektronika (DEEE)': 1072600, 'Aluminiu': 655414,
+                        'Akkumulator': 621931, 'Rez (Cupru)': 564045, 'Karton/Papir': 450000,
+                        'Uveg': 130000, 'Sargarez (Alama)': 100000, 'Alu Felni': 85000, 'Inox': 35000
+                    }
+                }
+            }
+        };
+
+        const monthNames = ['Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun', 'Iul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthNamesFull = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie', 'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'];
+
+        Chart.defaults.color = '#888';
+        Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+
+        function formatNumber(n) {
+            if (n >= 1000000) return (n/1000000).toFixed(2) + 'M';
+            if (n >= 1000) return (n/1000).toFixed(0) + 'K';
+            return n.toLocaleString();
+        }
+
+        function initDashboard() {
+            const data = allData || fallbackData;
+
+            // Update big stats
+            const total = data.years['2024'].summary.total_value + data.years['2025'].summary.total_value;
+            const totalTrans = data.years['2024'].summary.transactions + data.years['2025'].summary.transactions;
+            const totalDays = data.years['2024'].summary.working_days + data.years['2025'].summary.working_days;
+            document.getElementById('totalValue').textContent = formatNumber(total);
+            document.getElementById('totalTrans').textContent = totalTrans.toLocaleString();
+            document.getElementById('totalDays').textContent = totalDays;
+            document.getElementById('avgDay').textContent = formatNumber(total/totalDays);
+
+            // Year comparison chart
+            new Chart(document.getElementById('yearCompareChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Forgalom (M RON)', 'Tranzakciók (K)', 'Munkanapok', 'Átlag/Nap (K)'],
+                    datasets: [
+                        {
+                            label: '2024',
+                            data: [
+                                data.years['2024'].summary.total_value / 1000000,
+                                data.years['2024'].summary.transactions / 1000,
+                                data.years['2024'].summary.working_days,
+                                data.years['2024'].summary.avg_per_day / 1000
+                            ],
+                            backgroundColor: 'rgba(0,217,255,0.7)',
+                            borderColor: '#00d9ff',
+                            borderWidth: 1,
+                            borderRadius: 6
+                        },
+                        {
+                            label: '2025',
+                            data: [
+                                data.years['2025'].summary.total_value / 1000000,
+                                data.years['2025'].summary.transactions / 1000,
+                                data.years['2025'].summary.working_days,
+                                data.years['2025'].summary.avg_per_day / 1000
+                            ],
+                            backgroundColor: 'rgba(0,255,136,0.7)',
+                            borderColor: '#00ff88',
+                            borderWidth: 1,
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#fff' } } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            // Monthly trend chart
+            const months2024 = Object.entries(data.years['2024'].months).sort((a,b) => a[0].localeCompare(b[0]));
+            const months2025 = Object.entries(data.years['2025'].months).sort((a,b) => a[0].localeCompare(b[0]));
+
+            new Chart(document.getElementById('monthlyTrendChart'), {
+                type: 'line',
+                data: {
+                    labels: monthNames,
+                    datasets: [
+                        {
+                            label: '2024',
+                            data: months2024.map(([k,v]) => v.summary.total_value / 1000000),
+                            borderColor: '#00d9ff',
+                            backgroundColor: 'rgba(0,217,255,0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 5,
+                            pointBackgroundColor: '#00d9ff'
+                        },
+                        {
+                            label: '2025',
+                            data: monthNames.map((m, i) => {
+                                const key = String(i+1).padStart(2, '0');
+                                return data.years['2025'].months[key] ? data.years['2025'].months[key].summary.total_value / 1000000 : null;
+                            }),
+                            borderColor: '#00ff88',
+                            backgroundColor: 'rgba(0,255,136,0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 5,
+                            pointBackgroundColor: '#00ff88'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#fff' } },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y ? ctx.parsed.y.toFixed(2) + 'M RON' : 'N/A')
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: v => v + 'M' }
+                        }
+                    }
+                }
+            });
+
+            // Month cards
+            ['2024', '2025'].forEach(year => {
+                const container = document.getElementById('months' + year);
+                const months = data.years[year].months;
+                Object.entries(months).sort((a,b) => a[0].localeCompare(b[0])).forEach(([key, m]) => {
+                    const div = document.createElement('div');
+                    div.className = 'month-card';
+                    div.innerHTML = `
+                        <div class="m-name">${monthNames[parseInt(key)-1]}</div>
+                        <div class="m-value">${formatNumber(m.summary.total_value)}</div>
+                        <div class="m-trans">${m.summary.transactions} tr</div>
+                    `;
+                    container.appendChild(div);
+                });
+            });
+
+            // Category bars
+            ['2024', '2025'].forEach(year => {
+                const container = document.getElementById('categories' + year);
+                const cats = data.years[year].total_by_category || {};
+                const entries = Object.entries(cats).slice(0, 10);
+                const maxKg = entries[0] ? entries[0][1] : 1;
+
+                entries.forEach(([cat, kg], i) => {
+                    const pct = (kg / maxKg * 100).toFixed(0);
+                    const colors = ['#ff6384', '#00d9ff', '#00ff88', '#9966ff', '#ffce56', '#ff9f40', '#4bc0c0', '#e7e9ed', '#36a2eb', '#c9cbcf'];
+                    container.innerHTML += `
+                        <div class="category-bar">
+                            <span class="name">${cat}</span>
+                            <div class="bar-bg">
+                                <div class="bar" style="width:${pct}%;background:${colors[i % colors.length]};">
+                                    ${pct > 15 ? formatNumber(kg) : ''}
+                                </div>
+                            </div>
+                            <span class="kg">${formatNumber(kg)} kg</span>
+                        </div>
+                    `;
+                });
+            });
+
+            // Monthly comparison table
+            const tableBody = document.getElementById('monthlyTable');
+            for (let i = 0; i < 12; i++) {
+                const key = String(i+1).padStart(2, '0');
+                const m2024 = data.years['2024'].months[key];
+                const m2025 = data.years['2025'].months[key];
+
+                const v2024 = m2024 ? m2024.summary.total_value : 0;
+                const v2025 = m2025 ? m2025.summary.total_value : 0;
+                const t2024 = m2024 ? m2024.summary.transactions : 0;
+                const t2025 = m2025 ? m2025.summary.transactions : 0;
+
+                const change = v2024 > 0 && v2025 > 0 ? ((v2025 - v2024) / v2024 * 100).toFixed(1) : '-';
+                const changeClass = change !== '-' ? (parseFloat(change) >= 0 ? 'best' : 'worst') : '';
+
+                tableBody.innerHTML += `
+                    <tr>
+                        <td>${monthNamesFull[i]}</td>
+                        <td class="text-right">${v2024 ? formatNumber(v2024) : '-'}</td>
+                        <td class="text-right">${v2025 ? formatNumber(v2025) : '-'}</td>
+                        <td class="text-right ${changeClass}">${change !== '-' ? change + '%' : '-'}</td>
+                        <td class="text-right">${t2024 || '-'}</td>
+                        <td class="text-right">${t2025 || '-'}</td>
+                    </tr>
+                `;
+            }
+
+            // Material pie chart
+            const allCats2024 = data.years['2024'].total_by_category || {};
+            const allCats2025 = data.years['2025'].total_by_category || {};
+            const combinedCats = {};
+            [...Object.entries(allCats2024), ...Object.entries(allCats2025)].forEach(([k,v]) => {
+                combinedCats[k] = (combinedCats[k] || 0) + v;
+            });
+            const topCombined = Object.entries(combinedCats).sort((a,b) => b[1]-a[1]).slice(0, 6);
+
+            new Chart(document.getElementById('materialPieChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: topCombined.map(x => x[0]),
+                    datasets: [{
+                        data: topCombined.map(x => x[1]),
+                        backgroundColor: ['#ff6384', '#00d9ff', '#00ff88', '#9966ff', '#ffce56', '#ff9f40'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { color: '#fff', font: { size: 11 } } }
+                    }
+                }
+            });
+
+            // Weekday comparison
+            const weekdays = ['Hétfő', 'Kedd', 'Szerda', 'Csütörtök', 'Péntek', 'Szombat'];
+            const wdKeys = ['Luni', 'Marti', 'Miercuri', 'Joi', 'Vineri', 'Sambata'];
+
+            // Aggregate weekday patterns from all months
+            const wdTotals2024 = {}, wdTotals2025 = {};
+            wdKeys.forEach(k => { wdTotals2024[k] = []; wdTotals2025[k] = []; });
+
+            Object.values(data.years['2024'].months).forEach(m => {
+                if (m.weekday_patterns) {
+                    Object.entries(m.weekday_patterns).forEach(([wd, stats]) => {
+                        if (wdTotals2024[wd]) wdTotals2024[wd].push(stats.avg_value);
+                    });
+                }
+            });
+            Object.values(data.years['2025'].months).forEach(m => {
+                if (m.weekday_patterns) {
+                    Object.entries(m.weekday_patterns).forEach(([wd, stats]) => {
+                        if (wdTotals2025[wd]) wdTotals2025[wd].push(stats.avg_value);
+                    });
+                }
+            });
+
+            const avgWd2024 = wdKeys.map(k => wdTotals2024[k].length ? wdTotals2024[k].reduce((a,b) => a+b, 0) / wdTotals2024[k].length / 1000 : 0);
+            const avgWd2025 = wdKeys.map(k => wdTotals2025[k].length ? wdTotals2025[k].reduce((a,b) => a+b, 0) / wdTotals2025[k].length / 1000 : 0);
+
+            new Chart(document.getElementById('weekdayChart'), {
+                type: 'bar',
+                data: {
+                    labels: weekdays,
+                    datasets: [
+                        {
+                            label: '2024 Átlag',
+                            data: avgWd2024,
+                            backgroundColor: 'rgba(0,217,255,0.7)',
+                            borderColor: '#00d9ff',
+                            borderWidth: 1,
+                            borderRadius: 6
+                        },
+                        {
+                            label: '2025 Átlag',
+                            data: avgWd2025,
+                            backgroundColor: 'rgba(0,255,136,0.7)',
+                            borderColor: '#00ff88',
+                            borderWidth: 1,
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#fff' } } },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: v => v + 'K RON' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function showYear(year) {
+            document.querySelectorAll('.year-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if (!allData) return;
+
+            if (year === 'all') {
+                const total = allData.years['2024'].summary.total_value + allData.years['2025'].summary.total_value;
+                const totalTrans = allData.years['2024'].summary.transactions + allData.years['2025'].summary.transactions;
+                const totalDays = allData.years['2024'].summary.working_days + allData.years['2025'].summary.working_days;
+                document.getElementById('totalValue').textContent = formatNumber(total);
+                document.getElementById('totalTrans').textContent = totalTrans.toLocaleString();
+                document.getElementById('totalDays').textContent = totalDays;
+                document.getElementById('avgDay').textContent = formatNumber(total/totalDays);
+            } else {
+                const d = allData.years[year].summary;
+                document.getElementById('totalValue').textContent = formatNumber(d.total_value);
+                document.getElementById('totalTrans').textContent = d.transactions.toLocaleString();
+                document.getElementById('totalDays').textContent = d.working_days;
+                document.getElementById('avgDay').textContent = formatNumber(d.avg_per_day);
+            }
+        }
+    </script>
+</body>
+</html>
