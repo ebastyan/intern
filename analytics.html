@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PAJU Analytics - Uzleti Intelligencia</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: linear-gradient(135deg, #0a0a12 0%, #1a1025 50%, #0d1a2d 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 15px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 16px;
+        }
+        .header h1 {
+            font-size: 1.8em;
+            background: linear-gradient(45deg, #ff6b6b, #feca57, #48dbfb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .nav-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .nav-tab {
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.05);
+            border: none;
+            border-radius: 8px;
+            color: #888;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .nav-tab.active { background: linear-gradient(135deg, #ff6b6b33, #feca5733); color: #feca57; }
+        .nav-tab:hover:not(.active) { background: rgba(255,255,255,0.1); color: #fff; }
+
+        .section { display: none; }
+        .section.active { display: block; }
+
+        .grid { display: grid; gap: 15px; margin-bottom: 15px; }
+        .grid-2 { grid-template-columns: 1fr; }
+        .grid-3 { grid-template-columns: 1fr; }
+        .grid-4 { grid-template-columns: repeat(2, 1fr); }
+        @media (min-width: 768px) { .grid-2 { grid-template-columns: 1fr 1fr; } .grid-4 { grid-template-columns: repeat(4, 1fr); } }
+        @media (min-width: 1024px) { .grid-3 { grid-template-columns: 1fr 1fr 1fr; } }
+
+        .card {
+            background: rgba(255,255,255,0.04);
+            border-radius: 14px;
+            padding: 18px;
+        }
+        .card h2 {
+            font-size: 0.9em;
+            color: #feca57;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card h2 .icon { font-size: 1.2em; }
+
+        .stat-box {
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+        }
+        .stat-box h3 { font-size: 0.7em; color: #888; text-transform: uppercase; margin-bottom: 8px; }
+        .stat-box .value { font-size: 1.8em; font-weight: 700; }
+        .stat-box .value.green { color: #1dd1a1; }
+        .stat-box .value.yellow { color: #feca57; }
+        .stat-box .value.red { color: #ff6b6b; }
+        .stat-box .value.blue { color: #48dbfb; }
+        .stat-box .sub { font-size: 0.75em; color: #666; margin-top: 4px; }
+
+        .chart-container { position: relative; height: 280px; }
+        .chart-container.tall { height: 350px; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
+        th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        th { color: #feca57; font-weight: 600; font-size: 0.75em; text-transform: uppercase; }
+        .text-right { text-align: right; }
+        .scroll-table { max-height: 350px; overflow-y: auto; }
+        .scroll-table::-webkit-scrollbar { width: 5px; }
+        .scroll-table::-webkit-scrollbar-thumb { background: rgba(254,202,87,0.3); border-radius: 3px; }
+
+        .alert-card {
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .alert-card.warning { background: rgba(254,202,87,0.1); border-left: 3px solid #feca57; }
+        .alert-card.danger { background: rgba(255,107,107,0.1); border-left: 3px solid #ff6b6b; }
+        .alert-card.success { background: rgba(29,209,161,0.1); border-left: 3px solid #1dd1a1; }
+        .alert-card .icon { font-size: 1.5em; }
+        .alert-card .content { flex: 1; }
+        .alert-card .title { font-weight: 600; margin-bottom: 3px; }
+        .alert-card .desc { font-size: 0.85em; color: #888; }
+
+        .progress-bar {
+            height: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .progress-bar .fill { height: 100%; border-radius: 4px; }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.7em;
+            font-weight: 600;
+        }
+        .badge.vip { background: #feca57; color: #000; }
+        .badge.returning { background: #1dd1a1; color: #000; }
+        .badge.inactive { background: #ff6b6b; color: #fff; }
+
+        .county-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .county-bar .name { width: 100px; font-size: 0.85em; }
+        .county-bar .bar-bg {
+            flex: 1;
+            height: 24px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 0 10px;
+        }
+        .county-bar .bar {
+            height: 100%;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            padding-left: 10px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+        .county-bar .value { width: 80px; text-align: right; font-size: 0.8em; color: #888; }
+
+        .trend-indicator { display: inline-flex; align-items: center; gap: 4px; }
+        .trend-indicator.up { color: #1dd1a1; }
+        .trend-indicator.down { color: #ff6b6b; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>PAJU Uzleti Intelligencia</h1>
+        <p style="color:#888;font-size:0.9em;margin-top:8px;">Partner elemzes, trendek, elorejelzesek</p>
+    </div>
+
+    <div class="nav-tabs">
+        <button class="nav-tab active" onclick="showSection('overview')">Attekintes</button>
+        <button class="nav-tab" onclick="showSection('partners')">Partnerek</button>
+        <button class="nav-tab" onclick="showSection('geo')">Foldrajz</button>
+        <button class="nav-tab" onclick="showSection('trends')">Trendek</button>
+        <button class="nav-tab" onclick="showSection('alerts')">Riasztasok</button>
+        <button class="nav-tab" onclick="showSection('predictions')">Elorejelzes</button>
+    </div>
+
+    <!-- OVERVIEW SECTION -->
+    <div id="section-overview" class="section active">
+        <div class="grid grid-4">
+            <div class="stat-box">
+                <h3>Osszes Partner</h3>
+                <div class="value blue" id="totalPartners">13,321</div>
+            </div>
+            <div class="stat-box">
+                <h3>Visszatero</h3>
+                <div class="value green" id="returningPartners">6,536</div>
+                <div class="sub">49.1%</div>
+            </div>
+            <div class="stat-box">
+                <h3>VIP (10+)</h3>
+                <div class="value yellow" id="vipPartners">942</div>
+            </div>
+            <div class="stat-box">
+                <h3>Elaludt (90+ nap)</h3>
+                <div class="value red" id="inactivePartners">10,178</div>
+            </div>
+        </div>
+
+        <div class="grid grid-2">
+            <div class="card">
+                <h2><span class="icon">👥</span> Partner Megoszlas</h2>
+                <div class="chart-container">
+                    <canvas id="partnerPieChart"></canvas>
+                </div>
+            </div>
+            <div class="card">
+                <h2><span class="icon">📊</span> Korcsoport Elemzes</h2>
+                <div class="chart-container">
+                    <canvas id="ageChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><span class="icon">🏆</span> Top 10 Partner (Ertek szerint)</h2>
+            <div class="scroll-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Nev</th>
+                            <th class="text-right">Ossz. Ertek</th>
+                            <th class="text-right">Latogatasok</th>
+                            <th class="text-right">Atlag/Alk</th>
+                            <th>Tipus</th>
+                        </tr>
+                    </thead>
+                    <tbody id="topPartnersTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- PARTNERS SECTION -->
+    <div id="section-partners" class="section">
+        <div class="grid grid-3">
+            <div class="card">
+                <h2><span class="icon">😴</span> Elaludt Partnerek (30-60 nap)</h2>
+                <div class="scroll-table">
+                    <table>
+                        <thead><tr><th>Nev</th><th>Utolso</th><th class="text-right">Ertek</th></tr></thead>
+                        <tbody id="inactive30Table"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card">
+                <h2><span class="icon">😴</span> Elaludt Partnerek (60-90 nap)</h2>
+                <div class="scroll-table">
+                    <table>
+                        <thead><tr><th>Nev</th><th>Utolso</th><th class="text-right">Ertek</th></tr></thead>
+                        <tbody id="inactive60Table"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card">
+                <h2><span class="icon">💀</span> Elvesztett Partnerek (90+ nap)</h2>
+                <div class="scroll-table">
+                    <table>
+                        <thead><tr><th>Nev</th><th>Utolso</th><th class="text-right">Ertek</th></tr></thead>
+                        <tbody id="inactive90Table"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><span class="icon">⭐</span> VIP Partnerek (10+ latogatas)</h2>
+            <p style="color:#888;font-size:0.85em;margin-bottom:15px;">Ezek az ugyfelek a legfontosabbak - tartsuk oket elegedetten!</p>
+            <div class="scroll-table">
+                <table>
+                    <thead>
+                        <tr><th>Nev</th><th>Megye</th><th class="text-right">Latog.</th><th class="text-right">Ossz. Ertek</th><th>Fo Anyag</th></tr>
+                    </thead>
+                    <tbody id="vipTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- GEOGRAPHY SECTION -->
+    <div id="section-geo" class="section">
+        <div class="grid grid-2">
+            <div class="card">
+                <h2><span class="icon">🗺️</span> Megyek Szerinti Megoszlas</h2>
+                <div id="countyBars"></div>
+            </div>
+            <div class="card">
+                <h2><span class="icon">📍</span> Megye Statisztikak</h2>
+                <div class="chart-container">
+                    <canvas id="countyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><span class="icon">🎯</span> Tavolsagi Elemzes</h2>
+            <div class="alert-card success">
+                <div class="icon">✅</div>
+                <div class="content">
+                    <div class="title">Bihor megye dominancia</div>
+                    <div class="desc">A partnerek 80.6%-a Bihor megyebol jon - helyi uzlet, jo!</div>
+                </div>
+            </div>
+            <div class="alert-card warning">
+                <div class="icon">⚠️</div>
+                <div class="content">
+                    <div class="title">Teleorman meglepetes</div>
+                    <div class="desc">62 partner Teleormanbol 10.6M RON ertekben - vizsgald meg, nagykereskedok?</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TRENDS SECTION -->
+    <div id="section-trends" class="section">
+        <div class="card">
+            <h2><span class="icon">📈</span> Havi Anyag Mix Valtozas</h2>
+            <div class="chart-container tall">
+                <canvas id="categoryTrendChart"></canvas>
+            </div>
+        </div>
+
+        <div class="grid grid-2">
+            <div class="card">
+                <h2><span class="icon">📅</span> Honap Kozbeni Mintak</h2>
+                <div class="chart-container">
+                    <canvas id="dayOfMonthChart"></canvas>
+                </div>
+            </div>
+            <div class="card">
+                <h2><span class="icon">🔄</span> Szezonalitas</h2>
+                <div id="seasonalInsights">
+                    <div class="alert-card success">
+                        <div class="icon">📈</div>
+                        <div class="content">
+                            <div class="title">Aprilis a legerosebb honap</div>
+                            <div class="desc">2024-ben 7.64M RON - tavaszi nagytakaritas?</div>
+                        </div>
+                    </div>
+                    <div class="alert-card warning">
+                        <div class="icon">📉</div>
+                        <div class="content">
+                            <div class="title">Augusztus gyenge</div>
+                            <div class="desc">Szabadsagok miatt 50%-kal kevesebb forgalom</div>
+                        </div>
+                    </div>
+                    <div class="alert-card danger">
+                        <div class="icon">⬇️</div>
+                        <div class="content">
+                            <div class="title">2025 visszaeses</div>
+                            <div class="desc">Aug-Nov 2025: jelentos csokkenes 2024-hez kepest</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ALERTS SECTION -->
+    <div id="section-alerts" class="section">
+        <div class="card">
+            <h2><span class="icon">🚨</span> Aktiv Riasztasok</h2>
+
+            <div class="alert-card danger">
+                <div class="icon">🔴</div>
+                <div class="content">
+                    <div class="title">10,178 partner eltunt 90+ napja!</div>
+                    <div class="desc">Potencialis veszteseg: ~50M RON/ev. Fontold meg visszacasabito akciot (SMS, telefon).</div>
+                </div>
+            </div>
+
+            <div class="alert-card danger">
+                <div class="icon">📉</div>
+                <div class="content">
+                    <div class="title">2025 Q4 forgalom 40%-kal alacsonyabb</div>
+                    <div class="desc">Szept-Nov 2025: 9.1M RON vs 2024: 19.0M RON ugyanebben az idoszakban.</div>
+                </div>
+            </div>
+
+            <div class="alert-card warning">
+                <div class="icon">⚠️</div>
+                <div class="content">
+                    <div class="title">950 partner "keson" - meg visszahozhatoak!</div>
+                    <div class="desc">30-60 napja nem jartak. Ez a legjobb idopont a visszacsabitasra!</div>
+                </div>
+            </div>
+
+            <div class="alert-card warning">
+                <div class="icon">👀</div>
+                <div class="content">
+                    <div class="title">Teleorman megye - szokatlan minta</div>
+                    <div class="desc">62 partner, 10.6M RON, 170K RON/fo atlag - normalis uzlet vagy vizsgalandok?</div>
+                </div>
+            </div>
+
+            <div class="alert-card success">
+                <div class="icon">✅</div>
+                <div class="content">
+                    <div class="title">VIP retention jo</div>
+                    <div class="desc">942 VIP partner aktivan jar - tartsuk oket!</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><span class="icon">📊</span> Napi Cel Kovetes (Mai nap)</h2>
+            <div class="stat-box" style="background:transparent;text-align:left;">
+                <h3>Atlagos napi forgalom (2024)</h3>
+                <div class="value yellow" style="font-size:1.5em;">253K RON</div>
+                <div class="progress-bar">
+                    <div class="fill" style="width:75%;background:linear-gradient(90deg,#feca57,#1dd1a1);"></div>
+                </div>
+                <div class="sub" style="margin-top:10px;">A cel elerese erdekeben ~95 tranzakciora van szukseg naponta</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PREDICTIONS SECTION -->
+    <div id="section-predictions" class="section">
+        <div class="card">
+            <h2><span class="icon">🔮</span> December 2025 Elorejelzes</h2>
+            <div class="grid grid-3" style="margin-top:15px;">
+                <div class="stat-box">
+                    <h3>Varhato Forgalom</h3>
+                    <div class="value yellow">~2.5M</div>
+                    <div class="sub">RON (jelenlegi trend alapjan)</div>
+                </div>
+                <div class="stat-box">
+                    <h3>Tranzakciok</h3>
+                    <div class="value blue">~1,600</div>
+                    <div class="sub">becsult</div>
+                </div>
+                <div class="stat-box">
+                    <h3>Munkanapok</h3>
+                    <div class="value green">~18</div>
+                    <div class="sub">unnepek miatt kevesebb</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><span class="icon">📈</span> 2026 Q1 Kileatas</h2>
+            <div class="alert-card warning">
+                <div class="icon">📊</div>
+                <div class="content">
+                    <div class="title">Visszaeses folytatodhat</div>
+                    <div class="desc">Ha a trend folytatodik, 2026 Q1: ~12M RON (vs 2024 Q1: 17.5M RON, vs 2025 Q1: 15.8M RON)</div>
+                </div>
+            </div>
+            <div class="alert-card success">
+                <div class="icon">💡</div>
+                <div class="content">
+                    <div class="title">Lehetoseg: Elaludt partnerek</div>
+                    <div class="desc">Ha a 10,178 elaludt partner 10%-at visszahozzuk, az +5M RON/ev potencial!</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><span class="icon">🎯</span> Ajanlas</h2>
+            <ol style="color:#ccc;line-height:2;padding-left:20px;">
+                <li><strong style="color:#feca57;">Azonnali:</strong> Hivd fel a 950 "30-60 napos" elaludt partnert - ok meg visszahozhatok!</li>
+                <li><strong style="color:#feca57;">Rovid tav:</strong> VIP program a top 100 partnernek - extra kedvezmenyek, elsobbseg</li>
+                <li><strong style="color:#feca57;">Kozep tav:</strong> Vizsgald meg a Teleorman/Salaj kapcsolatokat - nagykereskedok?</li>
+                <li><strong style="color:#feca57;">Hosszu tav:</strong> Fiatal (18-24) csoport novelese - ok a jovo!</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        let analyticsData = null;
+
+        // Load data
+        fetch('analytics.json')
+            .then(r => r.json())
+            .then(data => {
+                analyticsData = data;
+                initDashboard();
+            })
+            .catch(e => console.error('Error:', e));
+
+        Chart.defaults.color = '#888';
+        Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+
+        function formatNumber(n) {
+            if (n >= 1000000) return (n/1000000).toFixed(2) + 'M';
+            if (n >= 1000) return (n/1000).toFixed(0) + 'K';
+            return n.toLocaleString();
+        }
+
+        function showSection(id) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('section-' + id).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function initDashboard() {
+            const data = analyticsData;
+            if (!data) return;
+
+            // Update stats
+            document.getElementById('totalPartners').textContent = data.summary.unique_partners.toLocaleString();
+            document.getElementById('returningPartners').textContent = data.summary.returning_partners.toLocaleString();
+            document.getElementById('vipPartners').textContent = data.summary.vip_partners.toLocaleString();
+            document.getElementById('inactivePartners').textContent = data.summary.inactive_90_plus.toLocaleString();
+
+            // Partner Pie Chart
+            new Chart(document.getElementById('partnerPieChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Visszatero (2-9x)', 'VIP (10+)', 'Egyszeri'],
+                    datasets: [{
+                        data: [
+                            data.summary.returning_partners - data.summary.vip_partners,
+                            data.summary.vip_partners,
+                            data.summary.one_time_partners
+                        ],
+                        backgroundColor: ['#48dbfb', '#feca57', '#ff6b6b'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right', labels: { color: '#fff' } } }
+                }
+            });
+
+            // Age Chart
+            const ageLabels = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
+            const ageValues = ageLabels.map(l => data.age_groups[l] ? data.age_groups[l].value / 1000000 : 0);
+            new Chart(document.getElementById('ageChart'), {
+                type: 'bar',
+                data: {
+                    labels: ageLabels,
+                    datasets: [{
+                        label: 'Ertek (M RON)',
+                        data: ageValues,
+                        backgroundColor: ['#ff6b6b', '#feca57', '#1dd1a1', '#48dbfb', '#a55eea', '#778ca3'],
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { callback: v => v + 'M' } } }
+                }
+            });
+
+            // Top Partners Table
+            const topTable = document.getElementById('topPartnersTable');
+            data.top_100_partners.slice(0, 10).forEach((p, i) => {
+                const badge = p.total_visits >= 10 ? '<span class="badge vip">VIP</span>' :
+                             p.total_visits > 1 ? '<span class="badge returning">Visszatero</span>' : '';
+                topTable.innerHTML += `
+                    <tr>
+                        <td>${i+1}</td>
+                        <td>${p.name}</td>
+                        <td class="text-right">${formatNumber(p.total_value)}</td>
+                        <td class="text-right">${p.total_visits}</td>
+                        <td class="text-right">${formatNumber(p.avg_value)}</td>
+                        <td>${badge}</td>
+                    </tr>
+                `;
+            });
+
+            // Inactive tables
+            ['30_60', '60_90', '90_plus'].forEach(key => {
+                const tableId = key === '30_60' ? 'inactive30Table' : key === '60_90' ? 'inactive60Table' : 'inactive90Table';
+                const table = document.getElementById(tableId);
+                const partners = data.inactive_partners[key + '_days'] || [];
+                partners.slice(0, 15).forEach(p => {
+                    table.innerHTML += `
+                        <tr>
+                            <td>${p.name}</td>
+                            <td>${p.last_visit}</td>
+                            <td class="text-right">${formatNumber(p.total_value)}</td>
+                        </tr>
+                    `;
+                });
+            });
+
+            // VIP Table
+            const vipTable = document.getElementById('vipTable');
+            data.top_100_partners.filter(p => p.total_visits >= 10).slice(0, 20).forEach(p => {
+                const county = p.cnp_info ? p.cnp_info.county_name : '-';
+                const topCat = Object.keys(p.categories)[0] || '-';
+                vipTable.innerHTML += `
+                    <tr>
+                        <td>${p.name}</td>
+                        <td>${county}</td>
+                        <td class="text-right">${p.total_visits}</td>
+                        <td class="text-right">${formatNumber(p.total_value)}</td>
+                        <td>${topCat}</td>
+                    </tr>
+                `;
+            });
+
+            // County bars
+            const countyContainer = document.getElementById('countyBars');
+            const counties = Object.entries(data.county_stats).slice(0, 10);
+            const maxCountyValue = counties[0] ? counties[0][1].value : 1;
+            counties.forEach(([name, stats]) => {
+                const pct = (stats.value / maxCountyValue * 100).toFixed(0);
+                countyContainer.innerHTML += `
+                    <div class="county-bar">
+                        <span class="name">${name}</span>
+                        <div class="bar-bg">
+                            <div class="bar" style="width:${pct}%;background:linear-gradient(90deg,#feca57,#ff6b6b);">
+                                ${stats.count} partner
+                            </div>
+                        </div>
+                        <span class="value">${formatNumber(stats.value)}</span>
+                    </div>
+                `;
+            });
+
+            // County Chart
+            new Chart(document.getElementById('countyChart'), {
+                type: 'pie',
+                data: {
+                    labels: counties.slice(0, 6).map(c => c[0]),
+                    datasets: [{
+                        data: counties.slice(0, 6).map(c => c[1].value),
+                        backgroundColor: ['#ff6b6b', '#feca57', '#1dd1a1', '#48dbfb', '#a55eea', '#778ca3'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right', labels: { color: '#fff', font: { size: 11 } } } }
+                }
+            });
+
+            // Category Trend Chart
+            const months = Object.keys(data.monthly_category_trends).sort();
+            const mainCats = ['Vas', 'Aluminiu', 'Rez', 'Akkumulator', 'DEEE'];
+            const catColors = { Vas: '#ff6b6b', Aluminiu: '#48dbfb', Rez: '#feca57', Akkumulator: '#1dd1a1', DEEE: '#a55eea' };
+
+            new Chart(document.getElementById('categoryTrendChart'), {
+                type: 'line',
+                data: {
+                    labels: months.map(m => m.substring(2)),
+                    datasets: mainCats.map(cat => ({
+                        label: cat,
+                        data: months.map(m => (data.monthly_category_trends[m][cat] || 0) / 1000),
+                        borderColor: catColors[cat],
+                        backgroundColor: 'transparent',
+                        tension: 0.3,
+                        pointRadius: 2
+                    }))
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#fff' } } },
+                    scales: { y: { ticks: { callback: v => v + 'T kg' } } }
+                }
+            });
+
+            // Day of month chart
+            const dailyValues = {};
+            Object.entries(data.daily_stats).forEach(([date, stats]) => {
+                const day = parseInt(date.split('-')[2]);
+                if (!dailyValues[day]) dailyValues[day] = [];
+                dailyValues[day].push(stats.value);
+            });
+            const avgByDay = [];
+            for (let d = 1; d <= 31; d++) {
+                avgByDay.push(dailyValues[d] ? dailyValues[d].reduce((a,b) => a+b, 0) / dailyValues[d].length / 1000 : 0);
+            }
+
+            new Chart(document.getElementById('dayOfMonthChart'), {
+                type: 'bar',
+                data: {
+                    labels: Array.from({length: 31}, (_, i) => i + 1),
+                    datasets: [{
+                        label: 'Atlag forgalom (K RON)',
+                        data: avgByDay,
+                        backgroundColor: avgByDay.map(v => v > 250 ? '#1dd1a1' : v > 200 ? '#feca57' : '#ff6b6b'),
+                        borderRadius: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
