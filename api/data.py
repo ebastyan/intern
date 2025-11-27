@@ -52,6 +52,13 @@ class handler(BaseHTTPRequestHandler):
                     'total_by_category': {}
                 }
 
+            # Get weekday patterns
+            cur.execute("""
+                SELECT year, month, weekday_name, avg_value, avg_transactions, days_count
+                FROM weekday_patterns
+            """)
+            weekday_data = cur.fetchall()
+
             for m in monthly:
                 year = str(m['year'])
                 month = str(m['month']).zfill(2)
@@ -67,8 +74,20 @@ class handler(BaseHTTPRequestHandler):
                         'avg_per_trans': float(m['avg_per_trans']),
                         'best_day': {'date': m['best_day_date'], 'value': float(m['best_day_value'])} if m['best_day_date'] else None,
                         'worst_day': {'date': m['worst_day_date'], 'value': float(m['worst_day_value'])} if m['worst_day_date'] else None
-                    }
+                    },
+                    'weekday_patterns': {}
                 }
+
+            # Add weekday patterns to months
+            for w in weekday_data:
+                year = str(w['year'])
+                month = str(w['month']).zfill(2)
+                if year in result['years'] and month in result['years'][year]['months']:
+                    result['years'][year]['months'][month]['weekday_patterns'][w['weekday_name']] = {
+                        'avg_value': float(w['avg_value']),
+                        'avg_transactions': w['avg_transactions'],
+                        'days_count': w['days_count']
+                    }
 
             for c in categories:
                 year = str(c['year'])
