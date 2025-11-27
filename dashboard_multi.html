@@ -337,19 +337,28 @@
     </div>
 
     <script>
-        // Load data from JSON
+        // Load data from API or JSON fallback
         let allData = null;
 
-        fetch('all_data.json')
-            .then(r => r.json())
+        // Try API first, then JSON, then fallback
+        fetch('/api/data')
+            .then(r => r.ok ? r.json() : Promise.reject('API failed'))
             .then(data => {
                 allData = data;
                 initDashboard();
             })
-            .catch(e => {
-                console.error('Error loading data:', e);
-                // Use embedded fallback data
-                initDashboard();
+            .catch(() => {
+                // Try JSON file
+                fetch('all_data.json')
+                    .then(r => r.json())
+                    .then(data => {
+                        allData = data;
+                        initDashboard();
+                    })
+                    .catch(e => {
+                        console.error('Error loading data:', e);
+                        initDashboard();
+                    });
             });
 
         // Fallback data if JSON fails

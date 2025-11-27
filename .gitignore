@@ -1,0 +1,21 @@
+# Data files (nagy xls mappak)
+2024/
+2025/
+situatie vanzari/
+
+# Excel files
+*.xls
+*.xlsx
+
+# Temp files
+nul
+__pycache__/
+*.pyc
+.env
+
+# Local JSON (nagy file)
+# all_data.json - ezt megtartjuk fallbacknak
+
+# IDE
+.vscode/
+.idea/
