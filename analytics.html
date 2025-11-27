@@ -424,51 +424,77 @@
     <!-- PREDICTIONS SECTION -->
     <div id="section-predictions" class="section">
         <div class="card">
-            <h2><span class="icon">🔮</span> December 2025 Elorejelzes</h2>
-            <div class="grid grid-3" style="margin-top:15px;">
-                <div class="stat-box">
-                    <h3>Varhato Forgalom</h3>
-                    <div class="value yellow">~2.5M</div>
-                    <div class="sub">RON (jelenlegi trend alapjan)</div>
+            <h2><span class="icon">📊</span> Havi Trend Elemzes es Elorejelzes</h2>
+            <div class="chart-container tall">
+                <canvas id="predictionChart"></canvas>
+            </div>
+        </div>
+
+        <div class="grid grid-2">
+            <div class="card">
+                <h2><span class="icon">🔮</span> December 2025 Elorejelzes</h2>
+                <div class="grid grid-3" style="margin-top:15px;">
+                    <div class="stat-box">
+                        <h3>Varhato Forgalom</h3>
+                        <div class="value yellow" id="predDec">~2.5M</div>
+                        <div class="sub">RON (trend alapjan)</div>
+                    </div>
+                    <div class="stat-box">
+                        <h3>Tranzakciok</h3>
+                        <div class="value blue" id="predTrans">~1,600</div>
+                        <div class="sub">becsult</div>
+                    </div>
+                    <div class="stat-box">
+                        <h3>YoY Valtozas</h3>
+                        <div class="value red" id="predYoY">-35%</div>
+                        <div class="sub">vs 2024 Dec</div>
+                    </div>
                 </div>
-                <div class="stat-box">
-                    <h3>Tranzakciok</h3>
-                    <div class="value blue">~1,600</div>
-                    <div class="sub">becsult</div>
-                </div>
-                <div class="stat-box">
-                    <h3>Munkanapok</h3>
-                    <div class="value green">~18</div>
-                    <div class="sub">unnepek miatt kevesebb</div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">📈</span> 2026 Q1 Kileatas</h2>
+                <div class="grid grid-3" style="margin-top:15px;">
+                    <div class="stat-box">
+                        <h3>Jan Becsles</h3>
+                        <div class="value yellow" id="predJan">~3.5M</div>
+                        <div class="sub">RON</div>
+                    </div>
+                    <div class="stat-box">
+                        <h3>Feb Becsles</h3>
+                        <div class="value yellow" id="predFeb">~3.8M</div>
+                        <div class="sub">RON</div>
+                    </div>
+                    <div class="stat-box">
+                        <h3>Q1 Ossz</h3>
+                        <div class="value blue" id="predQ1">~11M</div>
+                        <div class="sub">RON</div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="card">
-            <h2><span class="icon">📈</span> 2026 Q1 Kileatas</h2>
-            <div class="alert-card warning">
-                <div class="icon">📊</div>
-                <div class="content">
-                    <div class="title">Visszaeses folytatodhat</div>
-                    <div class="desc">Ha a trend folytatodik, 2026 Q1: ~12M RON (vs 2024 Q1: 17.5M RON, vs 2025 Q1: 15.8M RON)</div>
-                </div>
-            </div>
-            <div class="alert-card success">
-                <div class="icon">💡</div>
-                <div class="content">
-                    <div class="title">Lehetoseg: Elaludt partnerek</div>
-                    <div class="desc">Ha a 10,178 elaludt partner 10%-at visszahozzuk, az +5M RON/ev potencial!</div>
+            <h2><span class="icon">🎯</span> Trend Osszefoglalo</h2>
+            <div id="trendSummary">
+                <div class="alert-card danger">
+                    <div class="icon">📉</div>
+                    <div class="content">
+                        <div class="title" id="trendTitle">2025 trend negatív</div>
+                        <div class="desc" id="trendDesc">Atlagos havi csokkenes: kalkulalas folyamatban...</div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="card">
-            <h2><span class="icon">🎯</span> Ajanlas</h2>
+            <h2><span class="icon">💡</span> Ajanlas</h2>
             <ol style="color:#ccc;line-height:2;padding-left:20px;">
-                <li><strong style="color:#feca57;">Azonnali:</strong> Hivd fel a 950 "30-60 napos" elaludt partnert - ok meg visszahozhatok!</li>
+                <li><strong style="color:#feca57;">Azonnali:</strong> Hivd fel a <span id="recInactive30">950</span> "30-60 napos" elaludt partnert - ok meg visszahozhatok!</li>
                 <li><strong style="color:#feca57;">Rovid tav:</strong> VIP program a top 100 partnernek - extra kedvezmenyek, elsobbseg</li>
-                <li><strong style="color:#feca57;">Kozep tav:</strong> Vizsgald meg a Teleorman/Salaj kapcsolatokat - nagykereskedok?</li>
+                <li><strong style="color:#feca57;">Kozep tav:</strong> Vizsgald meg a magas erteku tavoli partnerekat (Teleorman, Salaj)</li>
                 <li><strong style="color:#feca57;">Hosszu tav:</strong> Fiatal (18-24) csoport novelese - ok a jovo!</li>
+                <li><strong style="color:#1dd1a1;">Potencial:</strong> Ha a <span id="recInactive90">10,178</span> elaludt partner 10%-at visszahozzuk, az +<span id="recPotential">5M</span> RON/ev!</li>
             </ol>
         </div>
     </div>
@@ -695,6 +721,160 @@
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            // PREDICTION CHART AND CALCULATIONS
+            buildPredictions(data);
+        }
+
+        function buildPredictions(data) {
+            // Calculate monthly values from daily_stats
+            const monthlyTotals = {};
+            Object.entries(data.daily_stats).forEach(([date, stats]) => {
+                const monthKey = date.substring(0, 7);
+                if (!monthlyTotals[monthKey]) monthlyTotals[monthKey] = 0;
+                monthlyTotals[monthKey] += stats.value;
+            });
+
+            // Separate 2024 and 2025 data
+            const months2024 = [], values2024 = [];
+            const months2025 = [], values2025 = [];
+
+            Object.keys(monthlyTotals).sort().forEach(m => {
+                if (m.startsWith('2024')) {
+                    months2024.push(m);
+                    values2024.push(monthlyTotals[m] / 1000000);
+                } else if (m.startsWith('2025')) {
+                    months2025.push(m);
+                    values2025.push(monthlyTotals[m] / 1000000);
+                }
+            });
+
+            // Calculate predictions based on 2025 trend
+            const last3Months = values2025.slice(-3);
+            const avgLast3 = last3Months.reduce((a,b) => a+b, 0) / last3Months.length;
+
+            // Simple linear trend from 2025 data
+            let slope = 0;
+            if (values2025.length >= 3) {
+                const n = values2025.length;
+                const xMean = (n - 1) / 2;
+                const yMean = values2025.reduce((a,b) => a+b, 0) / n;
+                let num = 0, den = 0;
+                values2025.forEach((y, i) => {
+                    num += (i - xMean) * (y - yMean);
+                    den += (i - xMean) ** 2;
+                });
+                slope = den !== 0 ? num / den : 0;
+            }
+
+            // Predict Dec 2025, Jan-Mar 2026
+            const predDec = Math.max(0.5, avgLast3 + slope);
+            const predJan = Math.max(0.5, predDec * 1.2); // January usually higher
+            const predFeb = Math.max(0.5, predJan * 0.95);
+            const predMar = Math.max(0.5, predFeb * 1.1);
+            const predQ1 = predJan + predFeb + predMar;
+
+            // Get Dec 2024 for YoY comparison
+            const dec2024 = monthlyTotals['2024-12'] ? monthlyTotals['2024-12'] / 1000000 : 4.5;
+            const yoyChange = ((predDec - dec2024) / dec2024 * 100).toFixed(0);
+
+            // Estimate transactions based on avg value per transaction
+            const avgValuePerTrans = 2400; // RON
+            const predTransCount = Math.round(predDec * 1000000 / avgValuePerTrans);
+
+            // Update UI
+            document.getElementById('predDec').textContent = '~' + predDec.toFixed(1) + 'M';
+            document.getElementById('predTrans').textContent = '~' + predTransCount.toLocaleString();
+            document.getElementById('predYoY').textContent = yoyChange + '%';
+            document.getElementById('predYoY').className = 'value ' + (parseFloat(yoyChange) < 0 ? 'red' : 'green');
+
+            document.getElementById('predJan').textContent = '~' + predJan.toFixed(1) + 'M';
+            document.getElementById('predFeb').textContent = '~' + predFeb.toFixed(1) + 'M';
+            document.getElementById('predQ1').textContent = '~' + predQ1.toFixed(0) + 'M';
+
+            // Trend summary
+            const monthlyChange = (slope * 100 / avgLast3).toFixed(1);
+            document.getElementById('trendTitle').textContent = slope < 0 ? '2025 trend negativ' : '2025 trend pozitiv';
+            document.getElementById('trendDesc').textContent =
+                `Atlagos havi ${slope < 0 ? 'csokkenes' : 'novekedes'}: ${Math.abs(monthlyChange)}% havonta. ` +
+                `Utolso 3 honap atlaga: ${avgLast3.toFixed(1)}M RON.`;
+
+            // Recommendation numbers
+            document.getElementById('recInactive30').textContent = data.summary.inactive_30_60.toLocaleString();
+            document.getElementById('recInactive90').textContent = data.summary.inactive_90_plus.toLocaleString();
+
+            // Calculate potential from inactive partners
+            const avgPartnerValue = data.top_100_partners.reduce((a,p) => a + p.total_value, 0) / 100;
+            const potential = (data.summary.inactive_90_plus * 0.1 * avgPartnerValue / 1000000).toFixed(0);
+            document.getElementById('recPotential').textContent = potential + 'M';
+
+            // Build prediction chart
+            const allLabels = [...months2024, ...months2025, '2025-12', '2026-01', '2026-02', '2026-03'];
+            const shortLabels = allLabels.map(m => m.substring(2));
+
+            const actual2024Data = new Array(months2024.length).fill(null).map((_, i) => values2024[i]);
+            const actual2025Data = new Array(months2024.length).fill(null).concat(values2025);
+            const predictionData = new Array(months2024.length + months2025.length).fill(null);
+            predictionData.push(predDec, predJan, predFeb, predMar);
+
+            // Pad arrays to same length
+            while (actual2024Data.length < allLabels.length) actual2024Data.push(null);
+            while (actual2025Data.length < allLabels.length) actual2025Data.push(null);
+
+            new Chart(document.getElementById('predictionChart'), {
+                type: 'line',
+                data: {
+                    labels: shortLabels,
+                    datasets: [
+                        {
+                            label: '2024 Tenyleges',
+                            data: actual2024Data,
+                            borderColor: '#48dbfb',
+                            backgroundColor: 'rgba(72, 219, 251, 0.1)',
+                            tension: 0.3,
+                            pointRadius: 4,
+                            fill: true
+                        },
+                        {
+                            label: '2025 Tenyleges',
+                            data: actual2025Data,
+                            borderColor: '#feca57',
+                            backgroundColor: 'rgba(254, 202, 87, 0.1)',
+                            tension: 0.3,
+                            pointRadius: 4,
+                            fill: true
+                        },
+                        {
+                            label: 'Elorejelzes',
+                            data: predictionData,
+                            borderColor: '#ff6b6b',
+                            borderDash: [5, 5],
+                            backgroundColor: 'transparent',
+                            tension: 0.3,
+                            pointRadius: 6,
+                            pointStyle: 'triangle'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#fff' } },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => ctx.dataset.label + ': ' + (ctx.raw ? ctx.raw.toFixed(2) + 'M RON' : '-')
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: v => v + 'M' }
+                        }
+                    }
                 }
             });
         }
