@@ -139,6 +139,7 @@
             <button class="nav-tab" onclick="showSection('waste')">Deseuri</button>
             <button class="nav-tab" onclick="showSection('geo')">Regiuni</button>
             <button class="nav-tab" onclick="showSection('predictions')">Predictii</button>
+            <button class="nav-tab" onclick="showSection('stats')">Statisztika</button>
         </div>
         <div class="last-update">Actualizat: <span id="lastUpdate">...</span></div>
     </nav>
@@ -159,7 +160,7 @@
                 <div class="card"><h2><span class="icon">📈</span> Tendinte Lunare</h2><div class="chart-container"><canvas id="monthlyTrendChart"></canvas></div></div>
             </div>
             <div class="grid grid-2">
-                <div class="card"><h2><span class="icon">🏆</span> Top 10 Parteneri</h2><div class="scroll-table"><table><thead><tr><th>#</th><th>Nume</th><th>Oras</th><th class="text-right">Valoare</th><th class="text-right">Vizite</th></tr></thead><tbody id="topPartnersTable"></tbody></table></div></div>
+                <div class="card"><h2><span class="icon">🏆</span> Top 10 Parteneri</h2><div class="scroll-table"><table><thead><tr><th>#</th><th>Nume</th><th>Oras</th><th class="text-right">Valoare</th><th class="text-right">Vizite</th><th class="text-right">Ultima Vizita</th></tr></thead><tbody id="topPartnersTable"></tbody></table></div></div>
                 <div class="card"><h2><span class="icon">📦</span> Categorii Deseuri</h2><div id="categoryBars"></div></div>
             </div>
         </div>
@@ -233,17 +234,8 @@
                         <label>De la:</label><input type="date" id="onetimeDateFrom" value="2024-01-01">
                         <label>Pana la:</label><input type="date" id="onetimeDateTo" value="2025-12-31">
                         <label>Numar vizite:</label>
-                        <select id="onetimeVisitCount">
-                            <option value="1">Exact 1 vizita</option>
-                            <option value="2">Exact 2 vizite</option>
-                            <option value="3">Exact 3 vizite</option>
-                            <option value="4">Exact 4 vizite</option>
-                            <option value="5">5 sau mai putine</option>
-                            <option value="10">10 sau mai putine</option>
-                            <option value="20">20 sau mai putine</option>
-                            <option value="50">50 sau mai putine</option>
-                            <option value="100">100 sau mai putine</option>
-                        </select>
+                        <input type="number" id="onetimeVisitCount" value="1" min="1" max="500" style="width:70px;">
+                        <span style="color:#888;font-size:0.85em;">(1-4: exact, 5+: max)</span>
                         <button onclick="loadOnetimeVisitors()">Cauta</button>
                     </div>
                 </div>
@@ -261,9 +253,9 @@
 
             <div id="partnerTab-regulars" class="partner-tab" style="display:none;">
                 <div class="grid grid-3">
-                    <div class="card"><h2><span class="icon">📅</span> Vizitatori Saptamanali</h2><p style="color:#888;font-size:0.8em;margin-bottom:10px;">Min 4 sapt/an in 2024 SI 2025</p><div class="scroll-table"><table><thead><tr><th>Nume</th><th class="text-right">Vizite</th><th class="text-right">Valoare</th></tr></thead><tbody id="weeklyRegulars"></tbody></table></div></div>
-                    <div class="card"><h2><span class="icon">📆</span> Vizitatori Lunari</h2><p style="color:#888;font-size:0.8em;margin-bottom:10px;">Min 6 luni/an in 2024, 4 luni in 2025</p><div class="scroll-table"><table><thead><tr><th>Nume</th><th class="text-right">Vizite</th><th class="text-right">Valoare</th></tr></thead><tbody id="monthlyRegulars"></tbody></table></div></div>
-                    <div class="card"><h2><span class="icon">🔄</span> Vizitatori Anuali</h2><p style="color:#888;font-size:0.8em;margin-bottom:10px;">Activi in ambii ani</p><div class="scroll-table"><table><thead><tr><th>Nume</th><th class="text-right">Vizite</th><th class="text-right">Valoare</th></tr></thead><tbody id="yearlyRegulars"></tbody></table></div></div>
+                    <div class="card"><h2><span class="icon">📅</span> Vizitatori Saptamanali</h2><p style="color:#888;font-size:0.8em;margin-bottom:10px;"><strong>Definicie:</strong> Partnerek akik MIN 4 kulonbozo heten jottek 2024-ben ES 2025-ben is. (pl: valaki aki jan 1. het, jan 3. het, feb 2. het, mar 1. het jott 2024-ben ES ugyan igy 2025-ben is)</p><div class="scroll-table"><table><thead><tr><th>Nume</th><th class="text-right">Vizite</th><th class="text-right">Valoare</th></tr></thead><tbody id="weeklyRegulars"></tbody></table></div></div>
+                    <div class="card"><h2><span class="icon">📆</span> Vizitatori Lunari</h2><p style="color:#888;font-size:0.8em;margin-bottom:10px;"><strong>Definicie:</strong> Partnerek akik MIN 6 kulonbozo honapban jottek 2024-ben ES MIN 4 honapban 2025-ben. (pl: jan, mar, apr, mai, iun, iul 2024-ben ES jan, feb, mar, apr 2025-ben)</p><div class="scroll-table"><table><thead><tr><th>Nume</th><th class="text-right">Vizite</th><th class="text-right">Valoare</th></tr></thead><tbody id="monthlyRegulars"></tbody></table></div></div>
+                    <div class="card"><h2><span class="icon">🔄</span> Vizitatori Anuali</h2><p style="color:#888;font-size:0.8em;margin-bottom:10px;"><strong>Definicie:</strong> Partnerek akik MIND A KET evben (2024 ES 2025) aktivak voltak, legalabb 1-1 tranzakcioval. Ertek szerint rendezve.</p><div class="scroll-table"><table><thead><tr><th>Nume</th><th class="text-right">Vizite</th><th class="text-right">Valoare</th></tr></thead><tbody id="yearlyRegulars"></tbody></table></div></div>
                 </div>
             </div>
 
@@ -297,14 +289,18 @@
             <div id="partnerTab-big" class="partner-tab" style="display:none;">
                 <div class="filter-row">
                     <label>Categorie:</label>
-                    <select id="bigCategory"><option value="Cupru">Cupru</option><option value="Alama">Alama</option><option value="Aluminiu">Aluminiu</option><option value="Fier">Fier</option></select>
-                    <label>Min kg:</label><input type="number" id="bigMinKg" value="100" min="1">
-                    <label>Min vizite/an:</label><input type="number" id="bigMinVisits" value="2" min="1">
+                    <select id="bigCategory"><option value="Cupru">Cupru</option><option value="Alama">Alama</option><option value="Aluminiu">Aluminiu</option><option value="Fier">Fier</option><option value="Inox">Inox</option><option value="DEEE">DEEE</option><option value="Acumulatori">Acumulatori</option></select>
+                    <label>Judet:</label>
+                    <select id="bigCounty"><option value="">Toate</option></select>
+                    <label>Oras:</label>
+                    <input type="text" id="bigCity" placeholder="Oras..." style="width:120px;">
+                    <label>Min kg:</label><input type="number" id="bigMinKg" value="100" min="1" style="width:80px;">
+                    <label>Min vizite:</label><input type="number" id="bigMinVisits" value="2" min="1" style="width:60px;">
                     <label>An:</label>
                     <select id="bigYear"><option value="">Toti anii</option><option value="2024">2024</option><option value="2025">2025</option></select>
                     <button onclick="loadBigSuppliers()">Cauta</button>
                 </div>
-                <div class="card"><h2><span class="icon">💎</span> Mari Furnizori</h2><div class="scroll-table"><table><thead><tr><th>Nume</th><th>Oras</th><th class="text-right">Total kg</th><th class="text-right">Vizite</th><th class="text-right">Pret Mediu</th><th class="text-right">Valoare</th></tr></thead><tbody id="bigSuppliersTable"></tbody></table></div></div>
+                <div class="card"><h2><span class="icon">💎</span> Mari Furnizori</h2><div class="scroll-table"><table><thead><tr><th>Nume</th><th>Oras</th><th>Judet</th><th class="text-right">Total kg</th><th class="text-right">Vizite</th><th class="text-right">Pret Mediu</th><th class="text-right">Valoare</th></tr></thead><tbody id="bigSuppliersTable"></tbody></table></div></div>
             </div>
         </div>
 
@@ -349,6 +345,53 @@
                 <div class="card"><h2><span class="icon">📈</span> Perspectiva Q1 2026</h2><div class="big-stats" style="margin:0;"><div class="stat-card green"><h4>Estimare Ianuarie</h4><div class="value green" id="predJan">...</div></div><div class="stat-card purple"><h4>Total Q1 Est.</h4><div class="value purple" id="predQ1">...</div></div></div><div id="janAlert" style="margin-top:15px;"></div></div>
             </div>
             <div class="card"><h2><span class="icon">🚨</span> Alerte si Recomandari</h2><div id="alertsContainer"></div></div>
+        </div>
+
+        <!-- STATISZTIKA -->
+        <div id="section-stats" class="section">
+            <div class="grid grid-2">
+                <div class="card">
+                    <h2><span class="icon">🏆</span> TOP per Kategoria - Suly (kg)</h2>
+                    <p style="color:#888;font-size:0.8em;margin-bottom:10px;">A legtobb kg-ot beszallito partner kategoriankent</p>
+                    <div class="scroll-table"><table><thead><tr><th>Kategoria</th><th>Partner</th><th class="text-right">Ossz. kg</th></tr></thead><tbody id="topWeightTable"></tbody></table></div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">💰</span> TOP per Kategoria - Ertek (RON)</h2>
+                    <p style="color:#888;font-size:0.8em;margin-bottom:10px;">A legnagyobb ertek kategoriankent</p>
+                    <div class="scroll-table"><table><thead><tr><th>Kategoria</th><th>Partner</th><th class="text-right">Ossz. RON</th></tr></thead><tbody id="topValueTable"></tbody></table></div>
+                </div>
+            </div>
+            <div class="grid grid-2">
+                <div class="card">
+                    <h2><span class="icon">📉</span> Legkisebb Visszatero per Kategoria</h2>
+                    <p style="color:#888;font-size:0.8em;margin-bottom:10px;">Min 3 vizit, de legkisebb osszeg</p>
+                    <div class="scroll-table"><table><thead><tr><th>Kategoria</th><th>Partner</th><th class="text-right">Vizit</th><th class="text-right">Ossz. RON</th></tr></thead><tbody id="bottomValueTable"></tbody></table></div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">🎯</span> Konzisztens Partnerek</h2>
+                    <p style="color:#888;font-size:0.8em;margin-bottom:10px;">Mindig kb ugyan annyi kg-ot hoznak (alacsony szoras)</p>
+                    <div class="scroll-table"><table><thead><tr><th>Partner</th><th class="text-right">Vizit</th><th class="text-right">Atlag kg</th><th class="text-right">Szoras</th></tr></thead><tbody id="consistentTable"></tbody></table></div>
+                </div>
+            </div>
+            <div class="grid grid-3">
+                <div class="card">
+                    <h2><span class="icon">📅</span> Legjobb Idoszak</h2>
+                    <div id="bestPeriod" style="font-size:1.1em;"></div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">😄</span> Vicces Nevek</h2>
+                    <div id="funnyNames"></div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">🗺️</span> Furcsa Telepulesek</h2>
+                    <div id="unusualCities"></div>
+                </div>
+            </div>
+            <div class="card">
+                <h2><span class="icon">🎄</span> Unnep Elemzes</h2>
+                <p style="color:#888;font-size:0.8em;margin-bottom:10px;">Ortodox Husvet, Karacsony, Mikulas kornyeken</p>
+                <div class="scroll-table"><table><thead><tr><th>Unnep</th><th>Idoszak</th><th class="text-right">Tranzakciok</th><th class="text-right">Ertek RON</th><th>Top Kategoriak</th></tr></thead><tbody id="holidaysTable"></tbody></table></div>
+            </div>
         </div>
     </div>
 
@@ -420,6 +463,7 @@
                 initGeo(county);
                 initPredictions(data, yearly);
                 initPartners(topPartners);
+                initStats();
             } catch (e) {
                 console.error('Error:', e);
                 document.getElementById('totalValue').textContent = 'Eroare!';
@@ -436,18 +480,36 @@
 
             if (monthly && monthly.years) {
                 const years = Object.keys(monthly.years).sort();
+                const yearRawData = years.map(y => ({ year: y, rulaj: monthly.years[y].summary.total_value, tranz: monthly.years[y].summary.transactions, zile: monthly.years[y].summary.working_days }));
                 new Chart(document.getElementById('yearCompareChart'), {
                     type: 'bar',
                     data: {
-                        labels: ['Rulaj (M)', 'Tranzactii (K)', 'Zile Lucr.'],
+                        labels: ['Rulaj', 'Tranzactii', 'Zile Lucr.'],
                         datasets: years.map((y, i) => ({
                             label: y,
                             data: [monthly.years[y].summary.total_value/1e6, monthly.years[y].summary.transactions/1000, monthly.years[y].summary.working_days],
                             backgroundColor: i===0 ? 'rgba(0,217,255,0.7)' : 'rgba(0,255,136,0.7)',
-                            borderRadius: 6
+                            borderRadius: 6,
+                            rawValues: [monthly.years[y].summary.total_value, monthly.years[y].summary.transactions, monthly.years[y].summary.working_days]
                         }))
                     },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#fff' } } } }
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: {
+                            legend: { labels: { color: '#fff' } },
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => {
+                                        const raw = ctx.dataset.rawValues[ctx.dataIndex];
+                                        const label = ctx.dataset.label;
+                                        if (ctx.dataIndex === 0) return label + ': ' + fmt(raw) + ' RON';
+                                        if (ctx.dataIndex === 1) return label + ': ' + fmt(raw) + ' tranzactii';
+                                        return label + ': ' + raw + ' zile';
+                                    }
+                                }
+                            }
+                        }
+                    }
                 });
 
                 const allMonths = [];
@@ -478,7 +540,16 @@
             }
 
             if (topPartners?.partners) {
-                document.getElementById('topPartnersTable').innerHTML = topPartners.partners.slice(0,10).map((p,i) => `<tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;"><td>${i+1}</td><td>${p.name}</td><td>${p.city||'-'}</td><td class="text-right">${fmt(p.total_value)}</td><td class="text-right">${p.visit_count}</td></tr>`).join('');
+                document.getElementById('topPartnersTable').innerHTML = topPartners.partners.slice(0,10).map((p,i) => {
+                    let daysSince = '-';
+                    if (p.last_visit) {
+                        const lastDate = new Date(p.last_visit);
+                        const today = new Date();
+                        const diffDays = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
+                        daysSince = diffDays + ' zile';
+                    }
+                    return `<tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;"><td>${i+1}</td><td>${p.name}</td><td>${p.city||'-'}</td><td class="text-right">${fmt(p.total_value)}</td><td class="text-right">${p.visit_count}</td><td class="text-right">${daysSince}</td></tr>`;
+                }).join('');
             }
         }
 
@@ -800,6 +871,66 @@
             document.getElementById('alertsContainer').innerHTML = alerts;
         }
 
+        async function initStats() {
+            try {
+                const [tops, holidays] = await Promise.all([
+                    fetch('/api/analytics?type=tops').then(r => r.json()),
+                    fetch('/api/analytics?type=holidays').then(r => r.json())
+                ]);
+
+                // Top by weight
+                if (tops.top_by_weight) {
+                    document.getElementById('topWeightTable').innerHTML = Object.entries(tops.top_by_weight)
+                        .map(([cat, p]) => `<tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;"><td>${cat}</td><td style="color:#00d9ff;">${p.name}</td><td class="text-right">${fmt(p.total_kg)}</td></tr>`).join('');
+                }
+
+                // Top by value
+                if (tops.top_by_value) {
+                    document.getElementById('topValueTable').innerHTML = Object.entries(tops.top_by_value)
+                        .map(([cat, p]) => `<tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;"><td>${cat}</td><td style="color:#00d9ff;">${p.name}</td><td class="text-right">${fmt(p.total_value)}</td></tr>`).join('');
+                }
+
+                // Bottom by value
+                if (tops.bottom_by_value) {
+                    document.getElementById('bottomValueTable').innerHTML = Object.entries(tops.bottom_by_value)
+                        .map(([cat, p]) => `<tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;"><td>${cat}</td><td style="color:#ff6b6b;">${p.name}</td><td class="text-right">${p.visits}</td><td class="text-right">${fmt(p.total_value)}</td></tr>`).join('');
+                }
+
+                // Consistent partners
+                if (tops.consistent_partners) {
+                    document.getElementById('consistentTable').innerHTML = tops.consistent_partners
+                        .map(p => `<tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;"><td style="color:#00d9ff;">${p.name}</td><td class="text-right">${p.visits}</td><td class="text-right">${p.avg_weight.toFixed(1)}</td><td class="text-right">${p.std_weight.toFixed(2)}</td></tr>`).join('');
+                }
+
+                // Best period
+                let periodHtml = '';
+                if (tops.best_month) periodHtml += `<p><strong>Legjobb honap:</strong> ${tops.best_month.month} (${fmt(tops.best_month.value)} RON)</p>`;
+                if (tops.best_weekday) periodHtml += `<p><strong>Legjobb nap:</strong> ${tops.best_weekday.day} (${fmt(tops.best_weekday.value)} RON)</p>`;
+                document.getElementById('bestPeriod').innerHTML = periodHtml || 'Nincs adat';
+
+                // Funny names
+                document.getElementById('funnyNames').innerHTML = tops.funny_names?.length
+                    ? tops.funny_names.map(n => `<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.1);" onclick="showPartnerProfile('${n.cnp}')" class="cursor:pointer;">${n.name} <span style="color:#888;font-size:0.85em;">(${n.city || '?'})</span></div>`).join('')
+                    : '<p style="color:#888;">Nem talaltam vicces neveket</p>';
+
+                // Unusual cities
+                document.getElementById('unusualCities').innerHTML = tops.unusual_cities?.length
+                    ? tops.unusual_cities.map(c => `<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${c}</div>`).join('')
+                    : '<p style="color:#888;">Nem talaltam furcsa telepuleseket</p>';
+
+                // Holidays
+                if (holidays.holidays) {
+                    document.getElementById('holidaysTable').innerHTML = Object.values(holidays.holidays)
+                        .map(h => {
+                            const topCats = h.top_categories?.map(c => `${c.name}: ${fmt(c.kg)} kg`).join(', ') || '-';
+                            return `<tr><td>${h.name}</td><td>${h.period}</td><td class="text-right">${h.transactions}</td><td class="text-right">${fmt(h.total_value)}</td><td style="font-size:0.85em;">${topCats}</td></tr>`;
+                        }).join('');
+                }
+            } catch (e) {
+                console.error('Stats error:', e);
+            }
+        }
+
         async function initPartners(topPartners) {
             if (topPartners?.partners) {
                 document.getElementById('vipTable').innerHTML = topPartners.partners.map(p => `<tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;"><td>${p.name}</td><td class="text-right">${fmt(p.total_value)}</td><td class="text-right">${p.visit_count}</td><td><button onclick="event.stopPropagation();showPartnerProfile('${p.cnp}')" style="background:#00d9ff;border:none;color:#000;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:0.75em;">Profil</button></td></tr>`).join('');
@@ -813,7 +944,29 @@
                 if (y.partners) document.getElementById('yearlyRegulars').innerHTML = y.partners.slice(0,30).map(p => `<tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;"><td>${p.name}</td><td class="text-right">${p.total_visits}</td><td class="text-right">${fmt(p.total_value)}</td></tr>`).join('');
             });
 
-            fetch('/api/partners?inactive=60&limit=50').then(r => r.json()).then(d => { if (d.partners) document.getElementById('inactiveTable').innerHTML = d.partners.map(p => `<tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;"><td>${p.name}</td><td>${p.city||'-'}</td><td>${p.last_visit}</td><td class="text-right">${p.days_inactive}</td><td class="text-right">${fmt(p.total_value)}</td><td><button onclick="event.stopPropagation();showPartnerProfile('${p.cnp}')" style="background:#00d9ff;border:none;color:#000;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:0.75em;">Profil</button></td></tr>`).join(''); });
+            fetch('/api/partners?inactive=60&limit=50').then(r => r.json()).then(d => {
+                if (d.partners) document.getElementById('inactiveTable').innerHTML = d.partners.map(p => {
+                    const days = p.days_inactive;
+                    let daysText = days + ' zile';
+                    if (days >= 365) {
+                        const years = Math.floor(days / 365);
+                        const months = Math.floor((days % 365) / 30);
+                        daysText = years + ' an' + (years > 1 ? 'i' : '') + (months > 0 ? ' ' + months + ' luni' : '');
+                    } else if (days >= 30) {
+                        const months = Math.floor(days / 30);
+                        const remainDays = days % 30;
+                        daysText = months + ' lun' + (months > 1 ? 'i' : 'a') + (remainDays > 0 ? ' ' + remainDays + ' zile' : '');
+                    }
+                    return `<tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;"><td>${p.name}</td><td>${p.city||'-'}</td><td>${p.last_visit}</td><td class="text-right">${daysText}</td><td class="text-right">${fmt(p.total_value)}</td><td><button onclick="event.stopPropagation();showPartnerProfile('${p.cnp}')" style="background:#00d9ff;border:none;color:#000;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:0.75em;">Profil</button></td></tr>`;
+                }).join('');
+            });
+            // Load counties for big suppliers filter
+            fetch('/api/analytics?type=county').then(r => r.json()).then(d => {
+                if (d.by_county) {
+                    const sel = document.getElementById('bigCounty');
+                    d.by_county.forEach(c => { if (c.county) sel.innerHTML += `<option value="${c.county}">${c.county}</option>`; });
+                }
+            });
 
             loadFamilyData();
 
@@ -825,12 +978,17 @@
 
         async function loadBigSuppliers() {
             const cat = document.getElementById('bigCategory').value;
+            const county = document.getElementById('bigCounty').value;
+            const city = document.getElementById('bigCity').value;
             const minKg = document.getElementById('bigMinKg').value;
             const minVis = document.getElementById('bigMinVisits').value;
             const year = document.getElementById('bigYear').value;
-            const url = `/api/partners?big_suppliers=${cat}&min_kg=${minKg}&min_visits=${minVis}${year ? '&year='+year : ''}`;
+            let url = `/api/partners?big_suppliers=${cat}&min_kg=${minKg}&min_visits=${minVis}`;
+            if (year) url += '&year=' + year;
+            if (county) url += '&county=' + encodeURIComponent(county);
+            if (city) url += '&city=' + encodeURIComponent(city);
             const d = await fetch(url).then(r => r.json());
-            if (d.partners) document.getElementById('bigSuppliersTable').innerHTML = d.partners.map(p => `<tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;"><td>${p.name}</td><td>${p.city||'-'}</td><td class="text-right">${fmt(p.total_kg)}</td><td class="text-right">${p.visit_count}</td><td class="text-right">${fmtDec(p.avg_price)}</td><td class="text-right">${fmt(p.total_value)}</td></tr>`).join('');
+            if (d.partners) document.getElementById('bigSuppliersTable').innerHTML = d.partners.map(p => `<tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;"><td>${p.name}</td><td>${p.city||'-'}</td><td>${p.county||'-'}</td><td class="text-right">${fmt(p.total_kg)}</td><td class="text-right">${p.visit_count}</td><td class="text-right">${fmtDec(p.avg_price)}</td><td class="text-right">${fmt(p.total_value)}</td></tr>`).join('');
         }
 
         async function loadFamilyData() {
@@ -844,7 +1002,7 @@
             // Helper: format name with sex/age as clickable
             function formatPartner(name, cnp, sex, age) {
                 const sexColor = sex === 'M' ? '#54a0ff' : '#ff6b9d';
-                const sexLabel = sex === 'M' ? 'B' : (sex === 'F' ? 'N' : '?');
+                const sexLabel = sex === 'M' ? 'B' : (sex === 'F' ? 'F' : '?');
                 const ageStr = age ? age : '?';
                 return `<span onclick="showPartnerProfile('${cnp}')" style="cursor:pointer;color:#00d9ff;">${name} <span style="color:${sexColor};font-size:0.85em;">(${sexLabel}/${ageStr})</span></span>`;
             }

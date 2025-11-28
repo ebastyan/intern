@@ -95,7 +95,9 @@ class handler(BaseHTTPRequestHandler):
                 min_kg = float(params.get('min_kg', [100])[0])
                 min_visits = int(params.get('min_visits', [2])[0])
                 year = params.get('year', [None])[0]
-                result = self.get_big_suppliers(cur, category, min_kg, min_visits, year)
+                county = params.get('county', [None])[0]
+                city = params.get('city', [None])[0]
+                result = self.get_big_suppliers(cur, category, min_kg, min_visits, year, county, city)
 
             else:
                 result = {'error': 'Specify ?q=search, ?cnp=XXX, ?inactive=days, ?top=N, ?onetime, ?filter, ?regulars, ?same_address, ?same_family, or ?big_suppliers'}
@@ -630,16 +632,24 @@ class handler(BaseHTTPRequestHandler):
             } for g in groups]
         }
 
-    def get_big_suppliers(self, cur, category, min_kg, min_visits, year):
+    def get_big_suppliers(self, cur, category, min_kg, min_visits, year, county=None, city=None):
         """Get big suppliers for a specific category with minimum kg and visits"""
-        year_filter = ""
-        params = [f'%{category}%', min_kg, min_visits]
+        extra_filters = ""
+        params = [f'%{category}%']
 
         if year:
-            year_filter = "AND EXTRACT(YEAR FROM t.date) = %s"
+            extra_filters += " AND EXTRACT(YEAR FROM t.date) = %s"
             params.append(int(year))
 
-        params.append(100)  # limit
+        if county:
+            extra_filters += " AND p.county ILIKE %s"
+            params.append(f'%{county}%')
+
+        if city:
+            extra_filters += " AND p.city ILIKE %s"
+            params.append(f'%{city}%')
+
+        params.extend([min_kg, min_visits, 100])
 
         cur.execute(f"""
             SELECT p.cnp, p.name, p.city, p.county,
@@ -655,7 +665,7 @@ class handler(BaseHTTPRequestHandler):
             JOIN waste_types wt ON ti.waste_type_id = wt.id
             JOIN waste_categories wc ON wt.category_id = wc.id
             WHERE wc.name ILIKE %s
-              {year_filter}
+              {extra_filters}
             GROUP BY p.cnp, p.name, p.city, p.county
             HAVING SUM(ti.weight_kg) >= %s
                AND COUNT(DISTINCT t.document_id) >= %s
@@ -669,6 +679,8 @@ class handler(BaseHTTPRequestHandler):
             'min_kg': min_kg,
             'min_visits': min_visits,
             'year': year,
+            'county': county,
+            'city': city,
             'count': len(partners),
             'partners': [{
                 'cnp': p['cnp'],

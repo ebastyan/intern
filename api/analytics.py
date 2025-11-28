@@ -58,10 +58,14 @@ class handler(BaseHTTPRequestHandler):
                 result = self.get_age_analysis(cur)
             elif analysis_type == 'trends':
                 result = self.get_trends(cur)
+            elif analysis_type == 'tops':
+                result = self.get_top_stats(cur)
+            elif analysis_type == 'holidays':
+                result = self.get_holiday_analysis(cur)
             else:
                 result = {
                     'error': 'Unknown analysis type',
-                    'available': ['overview', 'monthly', 'yearly', 'county', 'city', 'weekday', 'age', 'trends']
+                    'available': ['overview', 'monthly', 'yearly', 'county', 'city', 'weekday', 'age', 'trends', 'tops', 'holidays']
                 }
 
             cur.close()
@@ -429,3 +433,181 @@ class handler(BaseHTTPRequestHandler):
                 'growth': g['growth']
             } for g in growing]
         }
+
+    def get_top_stats(self, cur):
+        """Get various top statistics for the Statisztika tab"""
+        # Top by weight per category
+        cur.execute("""
+            SELECT wc.name as category, p.name, p.cnp, SUM(ti.weight_kg) as total_kg
+            FROM transaction_items ti
+            JOIN waste_types wt ON ti.waste_type_id = wt.id
+            JOIN waste_categories wc ON wt.category_id = wc.id
+            JOIN transactions t ON ti.document_id = t.document_id
+            JOIN partners p ON t.cnp = p.cnp
+            GROUP BY wc.name, p.name, p.cnp
+            ORDER BY wc.name, total_kg DESC
+        """)
+        all_by_cat = cur.fetchall()
+
+        # Group by category and get top 1
+        top_by_weight = {}
+        for row in all_by_cat:
+            cat = row['category']
+            if cat not in top_by_weight:
+                top_by_weight[cat] = {'name': row['name'], 'cnp': row['cnp'], 'total_kg': float(row['total_kg'])}
+
+        # Top by value per category
+        cur.execute("""
+            SELECT wc.name as category, p.name, p.cnp, SUM(ti.value) as total_value
+            FROM transaction_items ti
+            JOIN waste_types wt ON ti.waste_type_id = wt.id
+            JOIN waste_categories wc ON wt.category_id = wc.id
+            JOIN transactions t ON ti.document_id = t.document_id
+            JOIN partners p ON t.cnp = p.cnp
+            GROUP BY wc.name, p.name, p.cnp
+            ORDER BY wc.name, total_value DESC
+        """)
+        all_val = cur.fetchall()
+
+        top_by_value = {}
+        for row in all_val:
+            cat = row['category']
+            if cat not in top_by_value:
+                top_by_value[cat] = {'name': row['name'], 'cnp': row['cnp'], 'total_value': float(row['total_value'])}
+
+        # Bottom by value per category (smallest total among returning partners)
+        cur.execute("""
+            SELECT wc.name as category, p.name, p.cnp, SUM(ti.value) as total_value, COUNT(DISTINCT t.document_id) as visits
+            FROM transaction_items ti
+            JOIN waste_types wt ON ti.waste_type_id = wt.id
+            JOIN waste_categories wc ON wt.category_id = wc.id
+            JOIN transactions t ON ti.document_id = t.document_id
+            JOIN partners p ON t.cnp = p.cnp
+            GROUP BY wc.name, p.name, p.cnp
+            HAVING COUNT(DISTINCT t.document_id) >= 3
+            ORDER BY wc.name, total_value ASC
+        """)
+        all_bottom = cur.fetchall()
+
+        bottom_by_value = {}
+        for row in all_bottom:
+            cat = row['category']
+            if cat not in bottom_by_value:
+                bottom_by_value[cat] = {'name': row['name'], 'cnp': row['cnp'], 'total_value': float(row['total_value']), 'visits': row['visits']}
+
+        # Funny/unusual names (containing unusual patterns)
+        cur.execute("""
+            SELECT name, cnp, city FROM partners
+            WHERE name ~* '(xxx|zzz|aaa|eee|ooo|uuu|iii)'
+               OR LENGTH(name) <= 5
+               OR name ~* '^[A-Z]{1,2} [A-Z]{1,2}$'
+            LIMIT 10
+        """)
+        funny_names = [{'name': r['name'], 'cnp': r['cnp'], 'city': r['city']} for r in cur.fetchall()]
+
+        # Unusual cities
+        cur.execute("""
+            SELECT DISTINCT city FROM partners
+            WHERE city IS NOT NULL
+              AND (LENGTH(city) <= 3 OR city ~* '[0-9]' OR city ~* '(xxx|zzz|test)')
+            LIMIT 10
+        """)
+        unusual_cities = [r['city'] for r in cur.fetchall()]
+
+        # Consistent weight partners (low std deviation)
+        cur.execute("""
+            SELECT p.name, p.cnp,
+                   COUNT(DISTINCT t.document_id) as visits,
+                   AVG(ti.weight_kg) as avg_weight,
+                   STDDEV(ti.weight_kg) as std_weight
+            FROM partners p
+            JOIN transactions t ON p.cnp = t.cnp
+            JOIN transaction_items ti ON t.document_id = ti.document_id
+            GROUP BY p.name, p.cnp
+            HAVING COUNT(DISTINCT t.document_id) >= 10 AND STDDEV(ti.weight_kg) < 5
+            ORDER BY std_weight ASC
+            LIMIT 10
+        """)
+        consistent_partners = [{'name': r['name'], 'cnp': r['cnp'], 'visits': r['visits'], 'avg_weight': float(r['avg_weight']), 'std_weight': float(r['std_weight']) if r['std_weight'] else 0} for r in cur.fetchall()]
+
+        # Best month overall
+        cur.execute("""
+            SELECT EXTRACT(MONTH FROM date)::int as month, SUM(gross_value) as total
+            FROM transactions
+            GROUP BY EXTRACT(MONTH FROM date)
+            ORDER BY total DESC
+            LIMIT 1
+        """)
+        best_month = cur.fetchone()
+        month_names = ['', 'Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie', 'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie']
+
+        # Best weekday
+        cur.execute("""
+            SELECT EXTRACT(DOW FROM date)::int as dow, SUM(gross_value) as total
+            FROM transactions
+            GROUP BY EXTRACT(DOW FROM date)
+            ORDER BY total DESC
+            LIMIT 1
+        """)
+        best_dow = cur.fetchone()
+        dow_names = ['Duminica', 'Luni', 'Marti', 'Miercuri', 'Joi', 'Vineri', 'Sambata']
+
+        return {
+            'top_by_weight': top_by_weight,
+            'top_by_value': top_by_value,
+            'bottom_by_value': bottom_by_value,
+            'funny_names': funny_names,
+            'unusual_cities': unusual_cities,
+            'consistent_partners': consistent_partners,
+            'best_month': {'month': month_names[best_month['month']], 'value': float(best_month['total'])} if best_month else None,
+            'best_weekday': {'day': dow_names[best_dow['dow']], 'value': float(best_dow['total'])} if best_dow else None
+        }
+
+    def get_holiday_analysis(self, cur):
+        """Analyze performance around holidays"""
+        # Orthodox Easter 2024: May 5, 2025: April 20
+        # Christmas: Dec 25
+        # St Nicholas: Dec 6
+
+        holidays = {
+            'paste_2024': {'start': '2024-04-28', 'end': '2024-05-12', 'name': 'Paste 2024'},
+            'paste_2025': {'start': '2025-04-13', 'end': '2025-04-27', 'name': 'Paste 2025'},
+            'craciun_2024': {'start': '2024-12-20', 'end': '2024-12-31', 'name': 'Craciun 2024'},
+            'mos_nicolae_2024': {'start': '2024-12-01', 'end': '2024-12-08', 'name': 'Mos Nicolae 2024'}
+        }
+
+        results = {}
+        for key, h in holidays.items():
+            cur.execute("""
+                SELECT COUNT(*) as transactions,
+                       COALESCE(SUM(gross_value), 0) as total_value,
+                       COUNT(DISTINCT cnp) as partners
+                FROM transactions
+                WHERE date BETWEEN %s AND %s
+            """, (h['start'], h['end']))
+            data = cur.fetchone()
+
+            # Get top category during this period
+            cur.execute("""
+                SELECT wc.name, SUM(ti.weight_kg) as total_kg, SUM(ti.value) as total_value
+                FROM transactions t
+                JOIN transaction_items ti ON t.document_id = ti.document_id
+                JOIN waste_types wt ON ti.waste_type_id = wt.id
+                JOIN waste_categories wc ON wt.category_id = wc.id
+                WHERE t.date BETWEEN %s AND %s
+                GROUP BY wc.name
+                ORDER BY total_kg DESC
+                LIMIT 3
+            """, (h['start'], h['end']))
+            top_cats = cur.fetchall()
+
+            results[key] = {
+                'name': h['name'],
+                'period': f"{h['start']} - {h['end']}",
+                'transactions': data['transactions'],
+                'total_value': float(data['total_value']),
+                'partners': data['partners'],
+                'top_categories': [{'name': c['name'], 'kg': float(c['total_kg']), 'value': float(c['total_value'])} for c in top_cats]
+            }
+
+        return {'holidays': results}
