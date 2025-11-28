@@ -783,17 +783,48 @@ class handler(BaseHTTPRequestHandler):
         }
 
     def get_all_cities(self, cur):
-        """Get list of all cities with stats"""
+        """Get list of all cities with stats - normalized to avoid duplicates"""
+        # First, normalize city names by removing prefixes like "Com.", "Oras", "Sat", "Mun."
+        # and group by the normalized name, picking the most common county
         cur.execute("""
-            SELECT p.city, p.county,
-                   COUNT(DISTINCT p.cnp) as partners,
+            WITH normalized_cities AS (
+                SELECT
+                    p.cnp,
+                    TRIM(REGEXP_REPLACE(
+                        REGEXP_REPLACE(
+                            REGEXP_REPLACE(
+                                REGEXP_REPLACE(
+                                    REGEXP_REPLACE(p.city, '^(Com\\.?|Comuna)\\s*', '', 'i'),
+                                    '^(Oras|Or\\.?)\\s*', '', 'i'),
+                                '^(Sat|S\\.?)\\s*', '', 'i'),
+                            '^(Mun\\.?|Municipiul)\\s*', '', 'i'),
+                        '^\\s+|\\s+$', '', 'g')
+                    ) as normalized_city,
+                    p.county
+                FROM partners p
+                WHERE p.city IS NOT NULL
+            ),
+            city_counties AS (
+                SELECT normalized_city, county, COUNT(*) as cnt
+                FROM normalized_cities
+                WHERE county IS NOT NULL
+                GROUP BY normalized_city, county
+            ),
+            best_county AS (
+                SELECT DISTINCT ON (normalized_city) normalized_city, county
+                FROM city_counties
+                ORDER BY normalized_city, cnt DESC
+            )
+            SELECT nc.normalized_city as city,
+                   bc.county,
+                   COUNT(DISTINCT nc.cnp) as partners,
                    SUM(ti.weight_kg) as total_kg,
                    SUM(ti.value) as total_value
-            FROM partners p
-            JOIN transactions t ON p.cnp = t.cnp
+            FROM normalized_cities nc
+            JOIN transactions t ON nc.cnp = t.cnp
             JOIN transaction_items ti ON t.document_id = ti.document_id
-            WHERE p.city IS NOT NULL
-            GROUP BY p.city, p.county
+            LEFT JOIN best_county bc ON nc.normalized_city = bc.normalized_city
+            GROUP BY nc.normalized_city, bc.county
             ORDER BY total_value DESC
         """)
         cities = [{'city': r['city'], 'county': r['county'], 'partners': r['partners'],
@@ -801,11 +832,15 @@ class handler(BaseHTTPRequestHandler):
         return {'cities': cities, 'count': len(cities)}
 
     def get_city_details(self, cur, city):
-        """Get detailed breakdown for a specific city"""
+        """Get detailed breakdown for a specific city - handles normalized city names"""
         if not city:
             return {'error': 'City parameter required'}
 
-        # Basic stats - use ILIKE for case-insensitive matching and SUM across all counties
+        # Create a normalized city match pattern - match both exact and with prefixes
+        # This handles cases like "Simleul Silvaniei" matching "Com. Simleul Silvaniei", "Oras Simleul Silvaniei", etc.
+        city_pattern = f'%{city}%'
+
+        # Basic stats - use pattern matching to find all variations
         cur.execute("""
             SELECT COUNT(DISTINCT p.cnp) as partners,
                    COUNT(DISTINCT t.document_id) as transactions,
@@ -815,18 +850,39 @@ class handler(BaseHTTPRequestHandler):
             JOIN transactions t ON p.cnp = t.cnp
             JOIN transaction_items ti ON t.document_id = ti.document_id
             WHERE p.city ILIKE %s
-        """, (city,))
+               OR TRIM(REGEXP_REPLACE(
+                    REGEXP_REPLACE(
+                        REGEXP_REPLACE(
+                            REGEXP_REPLACE(
+                                REGEXP_REPLACE(p.city, '^(Com\\.?|Comuna)\\s*', '', 'i'),
+                                '^(Oras|Or\\.?)\\s*', '', 'i'),
+                            '^(Sat|S\\.?)\\s*', '', 'i'),
+                        '^(Mun\\.?|Municipiul)\\s*', '', 'i'),
+                    '^\\s+|\\s+$', '', 'g')
+                  ) ILIKE %s
+        """, (city_pattern, city))
         basic = cur.fetchone()
 
         # Get the county (most common one for this city)
         cur.execute("""
             SELECT p.county, COUNT(*) as cnt
             FROM partners p
-            WHERE p.city ILIKE %s AND p.county IS NOT NULL
+            WHERE (p.city ILIKE %s
+               OR TRIM(REGEXP_REPLACE(
+                    REGEXP_REPLACE(
+                        REGEXP_REPLACE(
+                            REGEXP_REPLACE(
+                                REGEXP_REPLACE(p.city, '^(Com\\.?|Comuna)\\s*', '', 'i'),
+                                '^(Oras|Or\\.?)\\s*', '', 'i'),
+                            '^(Sat|S\\.?)\\s*', '', 'i'),
+                        '^(Mun\\.?|Municipiul)\\s*', '', 'i'),
+                    '^\\s+|\\s+$', '', 'g')
+                  ) ILIKE %s)
+              AND p.county IS NOT NULL
             GROUP BY p.county
             ORDER BY cnt DESC
             LIMIT 1
-        """, (city,))
+        """, (city_pattern, city))
         county_row = cur.fetchone()
         county = county_row['county'] if county_row else None
 
@@ -844,9 +900,19 @@ class handler(BaseHTTPRequestHandler):
             JOIN waste_types wt ON ti.waste_type_id = wt.id
             JOIN waste_categories wc ON wt.category_id = wc.id
             WHERE p.city ILIKE %s
+               OR TRIM(REGEXP_REPLACE(
+                    REGEXP_REPLACE(
+                        REGEXP_REPLACE(
+                            REGEXP_REPLACE(
+                                REGEXP_REPLACE(p.city, '^(Com\\.?|Comuna)\\s*', '', 'i'),
+                                '^(Oras|Or\\.?)\\s*', '', 'i'),
+                            '^(Sat|S\\.?)\\s*', '', 'i'),
+                        '^(Mun\\.?|Municipiul)\\s*', '', 'i'),
+                    '^\\s+|\\s+$', '', 'g')
+                  ) ILIKE %s
             GROUP BY wc.name
             ORDER BY total_kg DESC
-        """, (city,))
+        """, (city_pattern, city))
         by_category = [{'category': r['category'], 'total_kg': float(r['total_kg']), 'total_value': float(r['total_value'])} for r in cur.fetchall()]
 
         # Top partners by visits
@@ -855,10 +921,20 @@ class handler(BaseHTTPRequestHandler):
             FROM partners p
             JOIN transactions t ON p.cnp = t.cnp
             WHERE p.city ILIKE %s
+               OR TRIM(REGEXP_REPLACE(
+                    REGEXP_REPLACE(
+                        REGEXP_REPLACE(
+                            REGEXP_REPLACE(
+                                REGEXP_REPLACE(p.city, '^(Com\\.?|Comuna)\\s*', '', 'i'),
+                                '^(Oras|Or\\.?)\\s*', '', 'i'),
+                            '^(Sat|S\\.?)\\s*', '', 'i'),
+                        '^(Mun\\.?|Municipiul)\\s*', '', 'i'),
+                    '^\\s+|\\s+$', '', 'g')
+                  ) ILIKE %s
             GROUP BY p.cnp, p.name
             ORDER BY visits DESC
             LIMIT 20
-        """, (city,))
+        """, (city_pattern, city))
         top_by_visits = [{'cnp': r['cnp'], 'name': r['name'], 'visits': r['visits'], 'total_value': float(r['total_value'])} for r in cur.fetchall()]
 
         # Top partners by value
@@ -867,10 +943,20 @@ class handler(BaseHTTPRequestHandler):
             FROM partners p
             JOIN transactions t ON p.cnp = t.cnp
             WHERE p.city ILIKE %s
+               OR TRIM(REGEXP_REPLACE(
+                    REGEXP_REPLACE(
+                        REGEXP_REPLACE(
+                            REGEXP_REPLACE(
+                                REGEXP_REPLACE(p.city, '^(Com\\.?|Comuna)\\s*', '', 'i'),
+                                '^(Oras|Or\\.?)\\s*', '', 'i'),
+                            '^(Sat|S\\.?)\\s*', '', 'i'),
+                        '^(Mun\\.?|Municipiul)\\s*', '', 'i'),
+                    '^\\s+|\\s+$', '', 'g')
+                  ) ILIKE %s
             GROUP BY p.cnp, p.name
             ORDER BY total_value DESC
             LIMIT 20
-        """, (city,))
+        """, (city_pattern, city))
         top_by_value = [{'cnp': r['cnp'], 'name': r['name'], 'visits': r['visits'], 'total_value': float(r['total_value'])} for r in cur.fetchall()]
 
         return {
