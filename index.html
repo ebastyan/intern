@@ -272,6 +272,22 @@
             </div>
 
             <div id="partnerTab-family" class="partner-tab" style="display:none;">
+                <div class="filter-row" style="margin-bottom:15px;">
+                    <label>Kereses:</label>
+                    <input type="text" id="familySearch" placeholder="Utca, varos, nev..." style="width:200px;">
+                    <label>Anyag:</label>
+                    <select id="familyCategory">
+                        <option value="">Osszes</option>
+                        <option value="Cupru">Cupru</option>
+                        <option value="Alama">Alama</option>
+                        <option value="Aluminiu">Aluminiu</option>
+                        <option value="Fier">Fier</option>
+                        <option value="Inox">Inox</option>
+                        <option value="DEEE">DEEE</option>
+                        <option value="Acumulatori">Acumulatori</option>
+                    </select>
+                    <button onclick="loadFamilyData()">Keress</button>
+                </div>
                 <div class="grid grid-2">
                     <div class="card"><h2><span class="icon">🏠</span> Aceeasi Adresa (Oras + Strada)</h2><p style="color:#888;font-size:0.8em;margin-bottom:10px;">Posibili duplicati sau familie la aceeasi adresa</p><div class="scroll-table"><table><thead><tr><th>Adresa</th><th>Parteneri</th><th class="text-right">Valoare Comb.</th></tr></thead><tbody id="sameAddressTable"></tbody></table></div></div>
                     <div class="card"><h2><span class="icon">👨‍👩‍👧‍👦</span> Acelasi Nume Familie + Oras</h2><p style="color:#888;font-size:0.8em;margin-bottom:10px;"><span class="badge cyan">EVIDENTIATI</span> = aceeasi strada</p><div class="scroll-table"><table><thead><tr><th>Familie</th><th>Oras</th><th>Parteneri</th><th class="text-right">Valoare</th></tr></thead><tbody id="sameFamilyTable"></tbody></table></div></div>
@@ -799,8 +815,7 @@
 
             fetch('/api/partners?inactive=60&limit=50').then(r => r.json()).then(d => { if (d.partners) document.getElementById('inactiveTable').innerHTML = d.partners.map(p => `<tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;"><td>${p.name}</td><td>${p.city||'-'}</td><td>${p.last_visit}</td><td class="text-right">${p.days_inactive}</td><td class="text-right">${fmt(p.total_value)}</td><td><button onclick="event.stopPropagation();showPartnerProfile('${p.cnp}')" style="background:#00d9ff;border:none;color:#000;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:0.75em;">Profil</button></td></tr>`).join(''); });
 
-            fetch('/api/partners?same_address').then(r => r.json()).then(d => { if (d.groups) document.getElementById('sameAddressTable').innerHTML = d.groups.map(g => `<tr><td>${g.city}, ${g.street}</td><td>${g.names.join(', ')}</td><td class="text-right">${fmt(g.combined_value)}</td></tr>`).join(''); });
-            fetch('/api/partners?same_family').then(r => r.json()).then(d => { if (d.groups) document.getElementById('sameFamilyTable').innerHTML = d.groups.map(g => `<tr><td>${g.same_street ? '<span class="badge cyan">'+g.family_name+'</span>' : g.family_name}</td><td>${g.city}</td><td>${g.names.join(', ')}</td><td class="text-right">${fmt(g.combined_value)}</td></tr>`).join(''); });
+            loadFamilyData();
 
             // Load initial one-time visitors (exact 1 visit)
             loadOnetimeVisitors();
@@ -816,6 +831,44 @@
             const url = `/api/partners?big_suppliers=${cat}&min_kg=${minKg}&min_visits=${minVis}${year ? '&year='+year : ''}`;
             const d = await fetch(url).then(r => r.json());
             if (d.partners) document.getElementById('bigSuppliersTable').innerHTML = d.partners.map(p => `<tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;"><td>${p.name}</td><td>${p.city||'-'}</td><td class="text-right">${fmt(p.total_kg)}</td><td class="text-right">${p.visit_count}</td><td class="text-right">${fmtDec(p.avg_price)}</td><td class="text-right">${fmt(p.total_value)}</td></tr>`).join('');
+        }
+
+        async function loadFamilyData() {
+            const search = document.getElementById('familySearch').value;
+            const category = document.getElementById('familyCategory').value;
+            let urlAddr = '/api/partners?same_address';
+            let urlFam = '/api/partners?same_family';
+            if (search) { urlAddr += '&search=' + encodeURIComponent(search); urlFam += '&search=' + encodeURIComponent(search); }
+            if (category) { urlAddr += '&category=' + encodeURIComponent(category); urlFam += '&category=' + encodeURIComponent(category); }
+
+            // Helper: format name with sex/age as clickable
+            function formatPartner(name, cnp, sex, age) {
+                const sexColor = sex === 'M' ? '#54a0ff' : '#ff6b9d';
+                const sexLabel = sex === 'M' ? 'B' : (sex === 'F' ? 'N' : '?');
+                const ageStr = age ? age : '?';
+                return `<span onclick="showPartnerProfile('${cnp}')" style="cursor:pointer;color:#00d9ff;">${name} <span style="color:${sexColor};font-size:0.85em;">(${sexLabel}/${ageStr})</span></span>`;
+            }
+
+            // Load same address
+            fetch(urlAddr).then(r => r.json()).then(d => {
+                if (d.groups) {
+                    document.getElementById('sameAddressTable').innerHTML = d.groups.map(g => {
+                        const partners = g.names.map((name, i) => formatPartner(name, g.cnps[i], g.sexes?.[i], g.ages?.[i])).join(', ');
+                        return `<tr><td>${g.city}, ${g.street}</td><td>${partners}</td><td class="text-right">${fmt(g.combined_value)}</td></tr>`;
+                    }).join('');
+                }
+            });
+
+            // Load same family
+            fetch(urlFam).then(r => r.json()).then(d => {
+                if (d.groups) {
+                    document.getElementById('sameFamilyTable').innerHTML = d.groups.map(g => {
+                        const partners = g.names.map((name, i) => formatPartner(name, g.cnps[i], g.sexes?.[i], g.ages?.[i])).join(', ');
+                        const famLabel = g.same_street ? `<span class="badge cyan">${g.family_name}</span>` : g.family_name;
+                        return `<tr><td>${famLabel}</td><td>${g.city}</td><td>${partners}</td><td class="text-right">${fmt(g.combined_value)}</td></tr>`;
+                    }).join('');
+                }
+            });
         }
 
         async function searchPartners() {

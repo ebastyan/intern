@@ -79,11 +79,15 @@ class handler(BaseHTTPRequestHandler):
 
             # Same address partners (potential duplicates/family)
             elif 'same_address' in params:
-                result = self.get_same_address_partners(cur)
+                search = params.get('search', [None])[0]
+                category = params.get('category', [None])[0]
+                result = self.get_same_address_partners(cur, search, category)
 
             # Same family name + city
             elif 'same_family' in params:
-                result = self.get_same_family_partners(cur)
+                search = params.get('search', [None])[0]
+                category = params.get('category', [None])[0]
+                result = self.get_same_family_partners(cur, search, category)
 
             # Big suppliers by category with min visits
             elif 'big_suppliers' in params:
@@ -496,29 +500,52 @@ class handler(BaseHTTPRequestHandler):
             } for p in partners]
         }
 
-    def get_same_address_partners(self, cur):
+    def get_same_address_partners(self, cur, search=None, category=None):
         """Find partners with same city + street (potential duplicates/family)"""
-        cur.execute("""
+        where_clause = "WHERE p.city IS NOT NULL AND p.street IS NOT NULL AND LENGTH(p.street) > 3"
+        params = []
+
+        if search:
+            where_clause += " AND (p.city ILIKE %s OR p.street ILIKE %s OR p.name ILIKE %s)"
+            params.extend([f'%{search}%', f'%{search}%', f'%{search}%'])
+
+        category_join = ""
+        category_filter = ""
+        if category:
+            category_join = """
+                JOIN transaction_items ti ON t.document_id = ti.document_id
+                JOIN waste_types wt ON ti.waste_type_id = wt.id
+                JOIN waste_categories wc ON wt.category_id = wc.id
+            """
+            category_filter = "AND wc.name ILIKE %s"
+            params.append(f'%{category}%')
+
+        cur.execute(f"""
             SELECT p.city, p.street, p.county,
-                   array_agg(p.name) as names,
-                   array_agg(p.cnp) as cnps,
+                   array_agg(p.name ORDER BY p.name) as names,
+                   array_agg(p.cnp ORDER BY p.name) as cnps,
+                   array_agg(p.sex ORDER BY p.name) as sexes,
+                   array_agg(p.birth_year ORDER BY p.name) as birth_years,
                    COUNT(*) as partner_count,
                    SUM(stats.total_value) as combined_value
             FROM partners p
             JOIN (
-                SELECT cnp, SUM(gross_value) as total_value
-                FROM transactions
-                GROUP BY cnp
+                SELECT t.cnp, SUM(t.gross_value) as total_value
+                FROM transactions t
+                {category_join}
+                WHERE 1=1 {category_filter}
+                GROUP BY t.cnp
             ) stats ON p.cnp = stats.cnp
-            WHERE p.city IS NOT NULL AND p.street IS NOT NULL
-              AND LENGTH(p.street) > 3
+            {where_clause}
             GROUP BY p.city, p.street, p.county
             HAVING COUNT(*) >= 2
             ORDER BY combined_value DESC
             LIMIT 50
-        """)
+        """, params)
 
         groups = cur.fetchall()
+        current_year = 2025
+
         return {
             'count': len(groups),
             'groups': [{
@@ -528,38 +555,64 @@ class handler(BaseHTTPRequestHandler):
                 'partner_count': g['partner_count'],
                 'names': g['names'],
                 'cnps': g['cnps'],
+                'sexes': g['sexes'],
+                'ages': [current_year - by if by else None for by in g['birth_years']],
                 'combined_value': float(g['combined_value'])
             } for g in groups]
         }
 
-    def get_same_family_partners(self, cur):
+    def get_same_family_partners(self, cur, search=None, category=None):
         """Find partners with same family name (first word) + same city"""
-        cur.execute("""
+        where_clause = "WHERE name IS NOT NULL AND city IS NOT NULL"
+        params = []
+
+        if search:
+            where_clause += " AND (city ILIKE %s OR street ILIKE %s OR name ILIKE %s)"
+            params.extend([f'%{search}%', f'%{search}%', f'%{search}%'])
+
+        category_join = ""
+        category_filter = ""
+        if category:
+            category_join = """
+                JOIN transaction_items ti ON t.document_id = ti.document_id
+                JOIN waste_types wt ON ti.waste_type_id = wt.id
+                JOIN waste_categories wc ON wt.category_id = wc.id
+            """
+            category_filter = "AND wc.name ILIKE %s"
+            params.append(f'%{category}%')
+
+        cur.execute(f"""
             WITH family_names AS (
-                SELECT cnp, name, city, county, street,
+                SELECT cnp, name, city, county, street, sex, birth_year,
                        SPLIT_PART(name, ' ', 1) as family_name
                 FROM partners
-                WHERE name IS NOT NULL AND city IS NOT NULL
+                {where_clause}
             )
             SELECT f.family_name, f.city, f.county,
-                   array_agg(f.name) as names,
-                   array_agg(f.cnp) as cnps,
-                   array_agg(f.street) as streets,
+                   array_agg(f.name ORDER BY f.name) as names,
+                   array_agg(f.cnp ORDER BY f.name) as cnps,
+                   array_agg(f.street ORDER BY f.name) as streets,
+                   array_agg(f.sex ORDER BY f.name) as sexes,
+                   array_agg(f.birth_year ORDER BY f.name) as birth_years,
                    COUNT(*) as partner_count,
                    SUM(COALESCE(stats.total_value, 0)) as combined_value
             FROM family_names f
             LEFT JOIN (
-                SELECT cnp, SUM(gross_value) as total_value
-                FROM transactions
-                GROUP BY cnp
+                SELECT t.cnp, SUM(t.gross_value) as total_value
+                FROM transactions t
+                {category_join}
+                WHERE 1=1 {category_filter}
+                GROUP BY t.cnp
             ) stats ON f.cnp = stats.cnp
             GROUP BY f.family_name, f.city, f.county
             HAVING COUNT(*) >= 2
             ORDER BY combined_value DESC
             LIMIT 50
-        """)
+        """, params)
 
         groups = cur.fetchall()
+        current_year = 2025
+
         return {
             'count': len(groups),
             'groups': [{
@@ -570,6 +623,8 @@ class handler(BaseHTTPRequestHandler):
                 'names': g['names'],
                 'cnps': g['cnps'],
                 'streets': g['streets'],
+                'sexes': g['sexes'],
+                'ages': [current_year - by if by else None for by in g['birth_years']],
                 'combined_value': float(g['combined_value']) if g['combined_value'] else 0,
                 'same_street': len(set([s for s in g['streets'] if s])) == 1 if g['streets'] else False
             } for g in groups]
