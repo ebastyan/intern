@@ -81,13 +81,17 @@ class handler(BaseHTTPRequestHandler):
             elif 'same_address' in params:
                 search = params.get('search', [None])[0]
                 category = params.get('category', [None])[0]
-                result = self.get_same_address_partners(cur, search, category)
+                date_from = params.get('date_from', [None])[0]
+                date_to = params.get('date_to', [None])[0]
+                result = self.get_same_address_partners(cur, search, category, date_from, date_to)
 
             # Same family name + city
             elif 'same_family' in params:
                 search = params.get('search', [None])[0]
                 category = params.get('category', [None])[0]
-                result = self.get_same_family_partners(cur, search, category)
+                date_from = params.get('date_from', [None])[0]
+                date_to = params.get('date_to', [None])[0]
+                result = self.get_same_family_partners(cur, search, category, date_from, date_to)
 
             # Big suppliers by category with min visits
             elif 'big_suppliers' in params:
@@ -502,7 +506,7 @@ class handler(BaseHTTPRequestHandler):
             } for p in partners]
         }
 
-    def get_same_address_partners(self, cur, search=None, category=None):
+    def get_same_address_partners(self, cur, search=None, category=None, date_from=None, date_to=None):
         """Find partners with same city + street (potential duplicates/family)"""
         where_clause = "WHERE p.city IS NOT NULL AND p.street IS NOT NULL AND LENGTH(p.street) > 3"
         params = []
@@ -513,6 +517,7 @@ class handler(BaseHTTPRequestHandler):
 
         category_join = ""
         category_filter = ""
+        date_filter = ""
         if category:
             category_join = """
                 JOIN transaction_items ti ON t.document_id = ti.document_id
@@ -521,6 +526,13 @@ class handler(BaseHTTPRequestHandler):
             """
             category_filter = "AND wc.name ILIKE %s"
             params.append(f'%{category}%')
+
+        if date_from:
+            date_filter += " AND t.date >= %s"
+            params.append(date_from)
+        if date_to:
+            date_filter += " AND t.date <= %s"
+            params.append(date_to)
 
         cur.execute(f"""
             SELECT p.city, p.street, p.county,
@@ -535,7 +547,7 @@ class handler(BaseHTTPRequestHandler):
                 SELECT t.cnp, SUM(t.gross_value) as total_value
                 FROM transactions t
                 {category_join}
-                WHERE 1=1 {category_filter}
+                WHERE 1=1 {category_filter} {date_filter}
                 GROUP BY t.cnp
             ) stats ON p.cnp = stats.cnp
             {where_clause}
@@ -563,7 +575,7 @@ class handler(BaseHTTPRequestHandler):
             } for g in groups]
         }
 
-    def get_same_family_partners(self, cur, search=None, category=None):
+    def get_same_family_partners(self, cur, search=None, category=None, date_from=None, date_to=None):
         """Find partners with same family name (first word) + same city"""
         where_clause = "WHERE name IS NOT NULL AND city IS NOT NULL"
         params = []
@@ -574,6 +586,7 @@ class handler(BaseHTTPRequestHandler):
 
         category_join = ""
         category_filter = ""
+        date_filter = ""
         if category:
             category_join = """
                 JOIN transaction_items ti ON t.document_id = ti.document_id
@@ -582,6 +595,13 @@ class handler(BaseHTTPRequestHandler):
             """
             category_filter = "AND wc.name ILIKE %s"
             params.append(f'%{category}%')
+
+        if date_from:
+            date_filter += " AND t.date >= %s"
+            params.append(date_from)
+        if date_to:
+            date_filter += " AND t.date <= %s"
+            params.append(date_to)
 
         cur.execute(f"""
             WITH family_names AS (
@@ -603,7 +623,7 @@ class handler(BaseHTTPRequestHandler):
                 SELECT t.cnp, SUM(t.gross_value) as total_value
                 FROM transactions t
                 {category_join}
-                WHERE 1=1 {category_filter}
+                WHERE 1=1 {category_filter} {date_filter}
                 GROUP BY t.cnp
             ) stats ON f.cnp = stats.cnp
             GROUP BY f.family_name, f.city, f.county

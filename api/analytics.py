@@ -62,10 +62,18 @@ class handler(BaseHTTPRequestHandler):
                 result = self.get_top_stats(cur)
             elif analysis_type == 'holidays':
                 result = self.get_holiday_analysis(cur)
+            elif analysis_type == 'waste_by_region':
+                category = params.get('category', [None])[0]
+                result = self.get_waste_by_region(cur, category)
+            elif analysis_type == 'city_details':
+                city = params.get('city', [None])[0]
+                result = self.get_city_details(cur, city)
+            elif analysis_type == 'all_cities':
+                result = self.get_all_cities(cur)
             else:
                 result = {
                     'error': 'Unknown analysis type',
-                    'available': ['overview', 'monthly', 'yearly', 'county', 'city', 'weekday', 'age', 'trends', 'tops', 'holidays']
+                    'available': ['overview', 'monthly', 'yearly', 'county', 'city', 'weekday', 'age', 'trends', 'tops', 'holidays', 'waste_by_region', 'city_details', 'all_cities']
                 }
 
             cur.close()
@@ -564,15 +572,28 @@ class handler(BaseHTTPRequestHandler):
         best_dow = cur.fetchone()
         dow_names = ['Duminica', 'Luni', 'Marti', 'Miercuri', 'Joi', 'Vineri', 'Sambata']
 
+        # Best week (ISO week number)
+        cur.execute("""
+            SELECT EXTRACT(ISOYEAR FROM date)::int as year,
+                   EXTRACT(WEEK FROM date)::int as week,
+                   SUM(gross_value) as total,
+                   COUNT(DISTINCT date) as days_count,
+                   MIN(date) as week_start
+            FROM transactions
+            GROUP BY EXTRACT(ISOYEAR FROM date), EXTRACT(WEEK FROM date)
+            ORDER BY total DESC
+            LIMIT 1
+        """)
+        best_week = cur.fetchone()
+
         return {
             'top_by_weight': top_by_weight,
             'top_by_value': top_by_value,
             'bottom_by_value': bottom_by_value,
-            'funny_names': funny_names,
-            'unusual_cities': unusual_cities,
             'consistent_partners': consistent_partners,
             'best_month': {'month': month_names[best_month['month']], 'value': float(best_month['total']), 'avg_per_day': float(best_month['avg_per_day']), 'days': best_month['days_count']} if best_month else None,
-            'best_weekday': {'day': dow_names[best_dow['dow']], 'value': float(best_dow['total']), 'avg_per_day': float(best_dow['avg_per_day']), 'days': best_dow['days_count']} if best_dow else None
+            'best_weekday': {'day': dow_names[best_dow['dow']], 'value': float(best_dow['total']), 'avg_per_day': float(best_dow['avg_per_day']), 'days': best_dow['days_count']} if best_dow else None,
+            'best_week': {'year': best_week['year'], 'week': best_week['week'], 'value': float(best_week['total']), 'days': best_week['days_count'], 'week_start': str(best_week['week_start'])} if best_week else None
         }
 
     def get_holiday_analysis(self, cur):
@@ -583,10 +604,18 @@ class handler(BaseHTTPRequestHandler):
         from datetime import datetime, timedelta
 
         holidays = {
-            'paste_2024': {'start': '2024-04-28', 'end': '2024-05-12', 'name': 'Paste 2024', 'before_start': '2024-04-14', 'before_end': '2024-04-27'},
-            'paste_2025': {'start': '2025-04-13', 'end': '2025-04-27', 'name': 'Paste 2025', 'before_start': '2025-03-30', 'before_end': '2025-04-12'},
-            'craciun_2024': {'start': '2024-12-20', 'end': '2024-12-31', 'name': 'Craciun 2024', 'before_start': '2024-12-06', 'before_end': '2024-12-19'},
-            'mos_nicolae_2024': {'start': '2024-12-01', 'end': '2024-12-08', 'name': 'Mos Nicolae 2024', 'before_start': '2024-11-17', 'before_end': '2024-11-30'}
+            'paste_2024': {'start': '2024-04-28', 'end': '2024-05-12', 'name': 'Paste 2024',
+                          'before_start': '2024-04-14', 'before_end': '2024-04-27',
+                          'after_start': '2024-05-13', 'after_end': '2024-05-26'},
+            'paste_2025': {'start': '2025-04-13', 'end': '2025-04-27', 'name': 'Paste 2025',
+                          'before_start': '2025-03-30', 'before_end': '2025-04-12',
+                          'after_start': '2025-04-28', 'after_end': '2025-05-11'},
+            'craciun_2024': {'start': '2024-12-20', 'end': '2024-12-31', 'name': 'Craciun 2024',
+                            'before_start': '2024-12-06', 'before_end': '2024-12-19',
+                            'after_start': '2025-01-01', 'after_end': '2025-01-14'},
+            'mos_nicolae_2024': {'start': '2024-12-01', 'end': '2024-12-08', 'name': 'Mos Nicolae 2024',
+                                'before_start': '2024-11-17', 'before_end': '2024-11-30',
+                                'after_start': '2024-12-09', 'after_end': '2024-12-16'}
         }
 
         results = {}
@@ -601,7 +630,7 @@ class handler(BaseHTTPRequestHandler):
             """, (h['start'], h['end']))
             data = cur.fetchone()
 
-            # Get data for BEFORE period (same length)
+            # Get data for BEFORE period
             cur.execute("""
                 SELECT COUNT(*) as transactions,
                        COALESCE(SUM(gross_value), 0) as total_value,
@@ -610,6 +639,16 @@ class handler(BaseHTTPRequestHandler):
                 WHERE date BETWEEN %s AND %s
             """, (h['before_start'], h['before_end']))
             before_data = cur.fetchone()
+
+            # Get data for AFTER period
+            cur.execute("""
+                SELECT COUNT(*) as transactions,
+                       COALESCE(SUM(gross_value), 0) as total_value,
+                       COUNT(DISTINCT cnp) as partners
+                FROM transactions
+                WHERE date BETWEEN %s AND %s
+            """, (h['after_start'], h['after_end']))
+            after_data = cur.fetchone()
 
             # Get top category during this period
             cur.execute("""
@@ -625,10 +664,25 @@ class handler(BaseHTTPRequestHandler):
             """, (h['start'], h['end']))
             top_cats = cur.fetchall()
 
-            # Calculate before/after difference
+            # Calculate differences
             before_val = float(before_data['total_value']) if before_data['total_value'] else 0
             holiday_val = float(data['total_value']) if data['total_value'] else 0
-            diff_pct = ((holiday_val - before_val) / before_val * 100) if before_val > 0 else 0
+            after_val = float(after_data['total_value']) if after_data['total_value'] else 0
+
+            diff_before_pct = ((holiday_val - before_val) / before_val * 100) if before_val > 0 else 0
+            diff_after_pct = ((holiday_val - after_val) / after_val * 100) if after_val > 0 else 0
+
+            # Generate explanation
+            if diff_before_pct > 10 and diff_after_pct > 10:
+                explanation = "Sarbatoarea creste vanzarile! Inainte si dupa sunt mai slabe."
+            elif diff_before_pct < -10 and diff_after_pct < -10:
+                explanation = "Sarbatoarea scade vanzarile - lumea nu vine in perioada asta."
+            elif diff_before_pct > 10:
+                explanation = "Creste fata de inainte, dar dupa sarbatoare e similar."
+            elif diff_after_pct > 10:
+                explanation = "Dupa sarbatoare scad vanzarile semnificativ."
+            else:
+                explanation = "Fara impact semnificativ al sarbatorii."
 
             results[key] = {
                 'name': h['name'],
@@ -638,10 +692,185 @@ class handler(BaseHTTPRequestHandler):
                 'partners': data['partners'],
                 'top_categories': [{'name': c['name'], 'kg': float(c['total_kg']), 'value': float(c['total_value'])} for c in top_cats],
                 'vs_before': {
-                    'before_period': f"{h['before_start']} - {h['before_end']}",
-                    'before_value': before_val,
-                    'diff_pct': diff_pct
-                }
+                    'period': f"{h['before_start']} - {h['before_end']}",
+                    'value': before_val,
+                    'diff_pct': diff_before_pct
+                },
+                'vs_after': {
+                    'period': f"{h['after_start']} - {h['after_end']}",
+                    'value': after_val,
+                    'diff_pct': diff_after_pct
+                },
+                'explanation': explanation
             }
 
         return {'holidays': results}
+
+    def get_waste_by_region(self, cur, category=None):
+        """Get waste breakdown by county, city, and age group"""
+        category_filter = ""
+        params = []
+        if category:
+            category_filter = "AND wc.name ILIKE %s"
+            params.append(f'%{category}%')
+
+        # By County
+        cur.execute(f"""
+            SELECT p.county, SUM(ti.weight_kg) as total_kg, SUM(ti.value) as total_value,
+                   COUNT(DISTINCT p.cnp) as partners
+            FROM partners p
+            JOIN transactions t ON p.cnp = t.cnp
+            JOIN transaction_items ti ON t.document_id = ti.document_id
+            JOIN waste_types wt ON ti.waste_type_id = wt.id
+            JOIN waste_categories wc ON wt.category_id = wc.id
+            WHERE p.county IS NOT NULL {category_filter}
+            GROUP BY p.county
+            ORDER BY total_kg DESC
+            LIMIT 15
+        """, params)
+        by_county = [{'county': r['county'], 'total_kg': float(r['total_kg']), 'total_value': float(r['total_value']), 'partners': r['partners']} for r in cur.fetchall()]
+
+        # By City
+        cur.execute(f"""
+            SELECT p.city, p.county, SUM(ti.weight_kg) as total_kg, SUM(ti.value) as total_value,
+                   COUNT(DISTINCT p.cnp) as partners
+            FROM partners p
+            JOIN transactions t ON p.cnp = t.cnp
+            JOIN transaction_items ti ON t.document_id = ti.document_id
+            JOIN waste_types wt ON ti.waste_type_id = wt.id
+            JOIN waste_categories wc ON wt.category_id = wc.id
+            WHERE p.city IS NOT NULL {category_filter}
+            GROUP BY p.city, p.county
+            ORDER BY total_kg DESC
+            LIMIT 15
+        """, params)
+        by_city = [{'city': r['city'], 'county': r['county'], 'total_kg': float(r['total_kg']), 'total_value': float(r['total_value']), 'partners': r['partners']} for r in cur.fetchall()]
+
+        # By Age Group
+        cur.execute(f"""
+            SELECT
+                CASE
+                    WHEN 2025 - p.birth_year < 25 THEN '18-24'
+                    WHEN 2025 - p.birth_year < 35 THEN '25-34'
+                    WHEN 2025 - p.birth_year < 45 THEN '35-44'
+                    WHEN 2025 - p.birth_year < 55 THEN '45-54'
+                    WHEN 2025 - p.birth_year < 65 THEN '55-64'
+                    ELSE '65+'
+                END as age_group,
+                SUM(ti.weight_kg) as total_kg, SUM(ti.value) as total_value,
+                COUNT(DISTINCT p.cnp) as partners
+            FROM partners p
+            JOIN transactions t ON p.cnp = t.cnp
+            JOIN transaction_items ti ON t.document_id = ti.document_id
+            JOIN waste_types wt ON ti.waste_type_id = wt.id
+            JOIN waste_categories wc ON wt.category_id = wc.id
+            WHERE p.birth_year IS NOT NULL {category_filter}
+            GROUP BY age_group
+            ORDER BY total_kg DESC
+        """, params)
+        by_age = [{'age_group': r['age_group'], 'total_kg': float(r['total_kg']), 'total_value': float(r['total_value']), 'partners': r['partners']} for r in cur.fetchall()]
+
+        # Get all categories for dropdown
+        cur.execute("SELECT name FROM waste_categories ORDER BY name")
+        categories = [r['name'] for r in cur.fetchall()]
+
+        return {
+            'category': category,
+            'by_county': by_county,
+            'by_city': by_city,
+            'by_age': by_age,
+            'categories': categories
+        }
+
+    def get_all_cities(self, cur):
+        """Get list of all cities with stats"""
+        cur.execute("""
+            SELECT p.city, p.county,
+                   COUNT(DISTINCT p.cnp) as partners,
+                   SUM(ti.weight_kg) as total_kg,
+                   SUM(ti.value) as total_value
+            FROM partners p
+            JOIN transactions t ON p.cnp = t.cnp
+            JOIN transaction_items ti ON t.document_id = ti.document_id
+            WHERE p.city IS NOT NULL
+            GROUP BY p.city, p.county
+            ORDER BY total_value DESC
+        """)
+        cities = [{'city': r['city'], 'county': r['county'], 'partners': r['partners'],
+                   'total_kg': float(r['total_kg']), 'total_value': float(r['total_value'])} for r in cur.fetchall()]
+        return {'cities': cities, 'count': len(cities)}
+
+    def get_city_details(self, cur, city):
+        """Get detailed breakdown for a specific city"""
+        if not city:
+            return {'error': 'City parameter required'}
+
+        # Basic stats
+        cur.execute("""
+            SELECT p.county,
+                   COUNT(DISTINCT p.cnp) as partners,
+                   COUNT(DISTINCT t.document_id) as transactions,
+                   SUM(ti.weight_kg) as total_kg,
+                   SUM(ti.value) as total_value
+            FROM partners p
+            JOIN transactions t ON p.cnp = t.cnp
+            JOIN transaction_items ti ON t.document_id = ti.document_id
+            WHERE p.city = %s
+            GROUP BY p.county
+        """, (city,))
+        basic = cur.fetchone()
+
+        if not basic:
+            return {'error': f'City {city} not found'}
+
+        # Breakdown by waste category
+        cur.execute("""
+            SELECT wc.name as category,
+                   SUM(ti.weight_kg) as total_kg,
+                   SUM(ti.value) as total_value
+            FROM partners p
+            JOIN transactions t ON p.cnp = t.cnp
+            JOIN transaction_items ti ON t.document_id = ti.document_id
+            JOIN waste_types wt ON ti.waste_type_id = wt.id
+            JOIN waste_categories wc ON wt.category_id = wc.id
+            WHERE p.city = %s
+            GROUP BY wc.name
+            ORDER BY total_kg DESC
+        """, (city,))
+        by_category = [{'category': r['category'], 'total_kg': float(r['total_kg']), 'total_value': float(r['total_value'])} for r in cur.fetchall()]
+
+        # Top partners by visits
+        cur.execute("""
+            SELECT p.cnp, p.name, COUNT(t.document_id) as visits, SUM(t.gross_value) as total_value
+            FROM partners p
+            JOIN transactions t ON p.cnp = t.cnp
+            WHERE p.city = %s
+            GROUP BY p.cnp, p.name
+            ORDER BY visits DESC
+            LIMIT 20
+        """, (city,))
+        top_by_visits = [{'cnp': r['cnp'], 'name': r['name'], 'visits': r['visits'], 'total_value': float(r['total_value'])} for r in cur.fetchall()]
+
+        # Top partners by value
+        cur.execute("""
+            SELECT p.cnp, p.name, COUNT(t.document_id) as visits, SUM(t.gross_value) as total_value
+            FROM partners p
+            JOIN transactions t ON p.cnp = t.cnp
+            WHERE p.city = %s
+            GROUP BY p.cnp, p.name
+            ORDER BY total_value DESC
+            LIMIT 20
+        """, (city,))
+        top_by_value = [{'cnp': r['cnp'], 'name': r['name'], 'visits': r['visits'], 'total_value': float(r['total_value'])} for r in cur.fetchall()]
+
+        return {
+            'city': city,
+            'county': basic['county'],
+            'partners': basic['partners'],
+            'transactions': basic['transactions'],
+            'total_kg': float(basic['total_kg']),
+            'total_value': float(basic['total_value']),
+            'by_category': by_category,
+            'top_by_visits': top_by_visits,
+            'top_by_value': top_by_value
+        }

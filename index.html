@@ -235,7 +235,7 @@
                         <label>Pana la:</label><input type="date" id="onetimeDateTo" value="2025-12-31">
                         <label>Numar vizite:</label>
                         <input type="number" id="onetimeVisitCount" value="1" min="1" max="500" style="width:70px;">
-                        <span style="color:#888;font-size:0.85em;">(1-4: exact, 5+: max)</span>
+                        <span style="color:#888;font-size:0.85em;">(nr. exact de vizite)</span>
                         <button onclick="loadOnetimeVisitors()">Cauta</button>
                     </div>
                 </div>
@@ -265,6 +265,10 @@
 
             <div id="partnerTab-family" class="partner-tab" style="display:none;">
                 <div class="filter-row" style="margin-bottom:15px;">
+                    <label>De la:</label>
+                    <input type="date" id="familyDateFrom" value="2024-01-01">
+                    <label>Pana la:</label>
+                    <input type="date" id="familyDateTo" value="2025-12-31">
                     <label>Kereses:</label>
                     <input type="text" id="familySearch" placeholder="Utca, varos, nev..." style="width:200px;">
                     <label>Anyag:</label>
@@ -324,6 +328,44 @@
                 <div class="card"><h2><span class="icon">📊</span> Statistica Judete</h2><div class="chart-container"><canvas id="countyChart"></canvas></div></div>
             </div>
             <div class="card"><h2><span class="icon">🏙️</span> Top Orase</h2><div class="scroll-table"><table><thead><tr><th>Oras</th><th>Judet</th><th class="text-right">Parteneri</th><th class="text-right">Tranzactii</th><th class="text-right">Valoare</th></tr></thead><tbody id="cityTable"></tbody></table></div></div>
+
+            <!-- Waste by Region/City/Age -->
+            <div class="card">
+                <h2><span class="icon">♻️</span> Hulladek per Categorie - Regional</h2>
+                <div style="margin-bottom:15px;">
+                    <label>Categorie:</label>
+                    <select id="wasteRegionCategory" onchange="loadWasteByRegion()" style="padding:5px;background:#1a1a2e;border:1px solid #333;color:#fff;border-radius:4px;">
+                        <option value="">Toate</option>
+                    </select>
+                </div>
+                <div class="grid grid-3">
+                    <div>
+                        <h4 style="color:#00d9ff;margin-bottom:10px;">Top Judete</h4>
+                        <div id="wasteByCounty" class="scroll-table" style="max-height:300px;"></div>
+                    </div>
+                    <div>
+                        <h4 style="color:#00d9ff;margin-bottom:10px;">Top Orase/Sate</h4>
+                        <div id="wasteByCity" class="scroll-table" style="max-height:300px;"></div>
+                    </div>
+                    <div>
+                        <h4 style="color:#00d9ff;margin-bottom:10px;">Top Varsta</h4>
+                        <div id="wasteByAge" class="scroll-table" style="max-height:300px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Full City List -->
+            <div class="card">
+                <h2><span class="icon">📍</span> Lista Completa Localitati</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">Click pe un oras pentru detalii complete</p>
+                <div class="scroll-table" style="max-height:400px;">
+                    <table>
+                        <thead><tr><th>Localitate</th><th>Judet</th><th class="text-right">Parteneri</th><th class="text-right">Total kg</th><th class="text-right">Valoare RON</th></tr></thead>
+                        <tbody id="fullCityList"></tbody>
+                    </table>
+                </div>
+            </div>
+
             <div class="card"><h2><span class="icon">👥</span> Analiza pe Grupe de Varsta</h2><div class="chart-container"><canvas id="ageChart"></canvas></div></div>
         </div>
 
@@ -373,24 +415,14 @@
                     <div class="scroll-table"><table><thead><tr><th>Partener</th><th class="text-right">Vizite</th><th class="text-right">Media kg</th><th class="text-right">Dev.Std</th></tr></thead><tbody id="consistentTable"></tbody></table></div>
                 </div>
             </div>
-            <div class="grid grid-3">
-                <div class="card">
-                    <h2><span class="icon">📅</span> Cea Mai Buna Perioada</h2>
-                    <div id="bestPeriod" style="font-size:1.1em;"></div>
-                </div>
-                <div class="card">
-                    <h2><span class="icon">😄</span> Nume Amuzante</h2>
-                    <div id="funnyNames"></div>
-                </div>
-                <div class="card">
-                    <h2><span class="icon">🗺️</span> Localitati Ciudate</h2>
-                    <div id="unusualCities"></div>
-                </div>
+            <div class="card">
+                <h2><span class="icon">📅</span> Cea Mai Buna Perioada</h2>
+                <div id="bestPeriod" style="font-size:1.1em;"></div>
             </div>
             <div class="card">
                 <h2><span class="icon">🎄</span> Analiza Sarbatori</h2>
-                <p style="color:#888;font-size:0.8em;margin-bottom:10px;">Paste Ortodox, Craciun, Mos Nicolae - comparatie inainte/dupa sarbatoare</p>
-                <div class="scroll-table"><table><thead><tr><th>Sarbatoare</th><th>Perioada</th><th class="text-right">Tranzactii</th><th class="text-right">Valoare RON</th><th class="text-right">vs Inainte</th><th>Top Categorii</th></tr></thead><tbody id="holidaysTable"></tbody></table></div>
+                <p style="color:#888;font-size:0.8em;margin-bottom:10px;">Comparam perioadele de sarbatori cu perioadele de INAINTE si DUPA pentru a vedea daca sarbatoarea influenteaza vanzarile</p>
+                <div class="scroll-table"><table><thead><tr><th>Sarbatoare</th><th>Perioada</th><th class="text-right">Tranzactii</th><th class="text-right">Valoare</th><th class="text-right">vs Inainte</th><th class="text-right">vs Dupa</th><th>Explicatie</th></tr></thead><tbody id="holidaysTable"></tbody></table></div>
             </div>
         </div>
     </div>
@@ -740,6 +772,10 @@
             fetch('/api/analytics?type=city').then(r => r.json()).then(d => { if (d.by_city) document.getElementById('cityTable').innerHTML = d.by_city.slice(0, 20).map(c => `<tr><td>${c.city}</td><td>${c.county}</td><td class="text-right">${c.partner_count}</td><td class="text-right">${c.transaction_count}</td><td class="text-right">${fmt(c.total_value)}</td></tr>`).join(''); });
 
             fetch('/api/analytics?type=age').then(r => r.json()).then(d => { if (d.by_age_group) new Chart(document.getElementById('ageChart'), { type: 'bar', data: { labels: d.by_age_group.map(a => a.age_group), datasets: [{ label: 'Valoare (M RON)', data: d.by_age_group.map(a => a.total_value/1e6), backgroundColor: ['#ff6b6b', '#feca57', '#1dd1a1', '#48dbfb', '#a55eea', '#778ca3'], borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } }); });
+
+            // Load waste by region and full city list
+            loadWasteByRegion();
+            loadAllCities();
         }
 
         function initPredictions(monthly, yearly) {
@@ -911,30 +947,40 @@
                         .map(p => `<tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;"><td style="color:#00d9ff;">${p.name}</td><td class="text-right">${p.visits}</td><td class="text-right">${p.avg_weight.toFixed(1)}</td><td class="text-right">${p.std_weight.toFixed(2)}</td></tr>`).join('');
                 }
 
-                // Best period - show AVERAGE per day, not total!
+                // Best period - show AVERAGE per day with Romanian explanations
                 let periodHtml = '';
-                if (tops.best_month) periodHtml += `<p><strong>Cea mai buna luna:</strong> ${tops.best_month.month} (media: ${fmt(tops.best_month.avg_per_day)} RON/zi)</p>`;
-                if (tops.best_weekday) periodHtml += `<p><strong>Cea mai buna zi:</strong> ${tops.best_weekday.day} (media: ${fmt(tops.best_weekday.avg_per_day)} RON/zi)</p>`;
+                if (tops.best_month) {
+                    periodHtml += `<div style="margin-bottom:15px;padding:10px;background:rgba(0,255,136,0.1);border-radius:8px;">
+                        <p style="margin:0;"><strong style="color:#00ff88;">Cea mai buna luna:</strong> ${tops.best_month.month}</p>
+                        <p style="margin:5px 0 0;color:#888;font-size:0.9em;">Media zilnica: <strong style="color:#fff;">${fmt(tops.best_month.avg_per_day)} RON/zi</strong> (${tops.best_month.days} zile lucratoare)</p>
+                        <p style="margin:5px 0 0;color:#666;font-size:0.85em;">Aceasta luna are cel mai mare rulaj mediu pe zi din toate lunile.</p>
+                    </div>`;
+                }
+                if (tops.best_weekday) {
+                    periodHtml += `<div style="margin-bottom:15px;padding:10px;background:rgba(0,217,255,0.1);border-radius:8px;">
+                        <p style="margin:0;"><strong style="color:#00d9ff;">Cea mai buna zi a saptamanii:</strong> ${tops.best_weekday.day}</p>
+                        <p style="margin:5px 0 0;color:#888;font-size:0.9em;">Media: <strong style="color:#fff;">${fmt(tops.best_weekday.avg_per_day)} RON</strong> (${tops.best_weekday.days} zile)</p>
+                        <p style="margin:5px 0 0;color:#666;font-size:0.85em;">In aceasta zi se fac cele mai mari vanzari in medie.</p>
+                    </div>`;
+                }
+                if (tops.best_week) {
+                    periodHtml += `<div style="padding:10px;background:rgba(254,202,87,0.1);border-radius:8px;">
+                        <p style="margin:0;"><strong style="color:#feca57;">Cea mai buna saptamana:</strong> Sapt. ${tops.best_week.week}/${tops.best_week.year}</p>
+                        <p style="margin:5px 0 0;color:#888;font-size:0.9em;">Incepe: ${tops.best_week.week_start} | Total: <strong style="color:#fff;">${fmt(tops.best_week.value)} RON</strong></p>
+                        <p style="margin:5px 0 0;color:#666;font-size:0.85em;">Saptamana cu cel mai mare rulaj total din intreaga perioada.</p>
+                    </div>`;
+                }
                 document.getElementById('bestPeriod').innerHTML = periodHtml || 'Nu sunt date';
 
-                // Funny names
-                document.getElementById('funnyNames').innerHTML = tops.funny_names?.length
-                    ? tops.funny_names.map(n => `<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.1);cursor:pointer;" onclick="showPartnerProfile('${n.cnp}')">${n.name} <span style="color:#888;font-size:0.85em;">(${n.city || '?'})</span></div>`).join('')
-                    : '<p style="color:#888;">Nu am gasit nume amuzante</p>';
-
-                // Unusual cities
-                document.getElementById('unusualCities').innerHTML = tops.unusual_cities?.length
-                    ? tops.unusual_cities.map(c => `<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${c}</div>`).join('')
-                    : '<p style="color:#888;">Nu am gasit localitati ciudate</p>';
-
-                // Holidays with before/after comparison
+                // Holidays with before AND after comparison + explanations
                 if (holidays.holidays) {
                     document.getElementById('holidaysTable').innerHTML = Object.values(holidays.holidays)
                         .map(h => {
-                            const topCats = h.top_categories?.map(c => `${c.name}: ${fmt(c.kg)} kg`).join(', ') || '-';
                             const vsBeforeHtml = h.vs_before ?
                                 `<span style="color:${h.vs_before.diff_pct >= 0 ? '#00ff88' : '#ff6b6b'}">${h.vs_before.diff_pct >= 0 ? '+' : ''}${h.vs_before.diff_pct.toFixed(1)}%</span>` : '-';
-                            return `<tr><td>${h.name}</td><td>${h.period}</td><td class="text-right">${h.transactions}</td><td class="text-right">${fmt(h.total_value)}</td><td class="text-right">${vsBeforeHtml}</td><td style="font-size:0.85em;">${topCats}</td></tr>`;
+                            const vsAfterHtml = h.vs_after ?
+                                `<span style="color:${h.vs_after.diff_pct >= 0 ? '#00ff88' : '#ff6b6b'}">${h.vs_after.diff_pct >= 0 ? '+' : ''}${h.vs_after.diff_pct.toFixed(1)}%</span>` : '-';
+                            return `<tr><td>${h.name}</td><td style="font-size:0.85em;">${h.period}</td><td class="text-right">${h.transactions}</td><td class="text-right">${fmt(h.total_value)}</td><td class="text-right">${vsBeforeHtml}</td><td class="text-right">${vsAfterHtml}</td><td style="font-size:0.8em;color:#888;">${h.explanation || '-'}</td></tr>`;
                         }).join('');
                 }
             } catch (e) {
@@ -1005,10 +1051,14 @@
         async function loadFamilyData() {
             const search = document.getElementById('familySearch').value;
             const category = document.getElementById('familyCategory').value;
+            const dateFrom = document.getElementById('familyDateFrom').value;
+            const dateTo = document.getElementById('familyDateTo').value;
             let urlAddr = '/api/partners?same_address';
             let urlFam = '/api/partners?same_family';
             if (search) { urlAddr += '&search=' + encodeURIComponent(search); urlFam += '&search=' + encodeURIComponent(search); }
             if (category) { urlAddr += '&category=' + encodeURIComponent(category); urlFam += '&category=' + encodeURIComponent(category); }
+            if (dateFrom) { urlAddr += '&date_from=' + dateFrom; urlFam += '&date_from=' + dateFrom; }
+            if (dateTo) { urlAddr += '&date_to=' + dateTo; urlFam += '&date_to=' + dateTo; }
 
             // Helper: format name with sex/age as clickable
             function formatPartner(name, cnp, sex, age) {
@@ -1066,10 +1116,10 @@
         async function loadOnetimeVisitors() {
             const df = document.getElementById('onetimeDateFrom').value;
             const dt = document.getElementById('onetimeDateTo').value;
-            const visitCount = document.getElementById('onetimeVisitCount').value;
-            const isExact = parseInt(visitCount) <= 4;
+            const visitCount = parseInt(document.getElementById('onetimeVisitCount').value);
 
-            const url = `/api/partners?filter=1&date_from=${df}&date_to=${dt}&min_visits=${isExact ? visitCount : 1}&max_visits=${visitCount}&limit=200`;
+            // Always filter for EXACT visit count - min_visits = max_visits = visitCount
+            const url = `/api/partners?filter=1&date_from=${df}&date_to=${dt}&min_visits=${visitCount}&max_visits=${visitCount}&limit=200`;
             const d = await fetch(url).then(r => r.json());
 
             document.getElementById('onetimeCount').textContent = d.count || 0;
@@ -1182,6 +1232,144 @@
         function closeModal() { document.getElementById('partnerModal').classList.remove('active'); currentPartnerCnp = null; currentPartnerData = null; }
         document.getElementById('partnerSearch').addEventListener('keypress', e => { if (e.key === 'Enter') searchPartners(); });
         document.getElementById('partnerModal').addEventListener('click', e => { if (e.target.id === 'partnerModal') closeModal(); });
+
+        // ===== WASTE BY REGION/CITY/AGE =====
+        async function loadWasteByRegion() {
+            const category = document.getElementById('wasteRegionCategory').value;
+            const url = category
+                ? `/api/analytics?type=waste_by_region&category=${encodeURIComponent(category)}`
+                : '/api/analytics?type=waste_by_region';
+
+            try {
+                const data = await fetch(url).then(r => r.json());
+
+                // By County
+                if (data.by_county) {
+                    document.getElementById('wasteByCounty').innerHTML = `<table><thead><tr><th>Judet</th><th class="text-right">kg</th><th class="text-right">RON</th></tr></thead><tbody>${data.by_county.map(c =>
+                        `<tr><td>${c.county}</td><td class="text-right">${fmt(c.total_kg)}</td><td class="text-right">${fmt(c.total_value)}</td></tr>`
+                    ).join('')}</tbody></table>`;
+                }
+
+                // By City
+                if (data.by_city) {
+                    document.getElementById('wasteByCity').innerHTML = `<table><thead><tr><th>Oras</th><th class="text-right">kg</th><th class="text-right">RON</th></tr></thead><tbody>${data.by_city.map(c =>
+                        `<tr><td>${c.city}</td><td class="text-right">${fmt(c.total_kg)}</td><td class="text-right">${fmt(c.total_value)}</td></tr>`
+                    ).join('')}</tbody></table>`;
+                }
+
+                // By Age
+                if (data.by_age) {
+                    document.getElementById('wasteByAge').innerHTML = `<table><thead><tr><th>Varsta</th><th class="text-right">kg</th><th class="text-right">RON</th></tr></thead><tbody>${data.by_age.map(a =>
+                        `<tr><td>${a.age_group}</td><td class="text-right">${fmt(a.total_kg)}</td><td class="text-right">${fmt(a.total_value)}</td></tr>`
+                    ).join('')}</tbody></table>`;
+                }
+
+                // Populate category dropdown if not already populated
+                const sel = document.getElementById('wasteRegionCategory');
+                if (sel.options.length <= 1 && data.categories) {
+                    data.categories.forEach(cat => {
+                        const opt = document.createElement('option');
+                        opt.value = cat;
+                        opt.textContent = cat;
+                        sel.appendChild(opt);
+                    });
+                }
+            } catch (e) {
+                console.error('Waste by region error:', e);
+            }
+        }
+
+        // ===== ALL CITIES LIST =====
+        async function loadAllCities() {
+            try {
+                const data = await fetch('/api/analytics?type=all_cities').then(r => r.json());
+                if (data.cities) {
+                    document.getElementById('fullCityList').innerHTML = data.cities.map(c =>
+                        `<tr onclick="showCityDetails('${c.city.replace(/'/g, "\\'")}')" style="cursor:pointer;">
+                            <td style="color:#00d9ff;">${c.city}</td>
+                            <td>${c.county || '-'}</td>
+                            <td class="text-right">${c.partners}</td>
+                            <td class="text-right">${fmt(c.total_kg)}</td>
+                            <td class="text-right">${fmt(c.total_value)}</td>
+                        </tr>`
+                    ).join('');
+                }
+            } catch (e) {
+                console.error('All cities error:', e);
+            }
+        }
+
+        // ===== CITY DETAILS MODAL =====
+        async function showCityDetails(cityName) {
+            const modal = document.getElementById('partnerModal');
+            const content = document.getElementById('modalContent');
+            modal.classList.add('active');
+            document.getElementById('modalPartnerName').textContent = cityName;
+            content.innerHTML = '<div class="loading">Se incarca...</div>';
+
+            try {
+                const data = await fetch(`/api/analytics?type=city_details&city=${encodeURIComponent(cityName)}`).then(r => r.json());
+
+                if (data.error) {
+                    content.innerHTML = `<p style="color:#ff6b6b;">${data.error}</p>`;
+                    return;
+                }
+
+                content.innerHTML = `
+                    <div class="big-stats" style="margin-bottom:20px;">
+                        <div class="stat-card cyan"><h4>Parteneri</h4><div class="value cyan">${data.partners}</div></div>
+                        <div class="stat-card green"><h4>Tranzactii</h4><div class="value green">${fmt(data.transactions)}</div></div>
+                        <div class="stat-card purple"><h4>Total kg</h4><div class="value purple">${fmt(data.total_kg)}</div></div>
+                        <div class="stat-card orange"><h4>Valoare</h4><div class="value orange">${fmt(data.total_value)}</div><div class="sub">RON</div></div>
+                    </div>
+                    <p style="color:#888;margin-bottom:15px;">Judet: <strong style="color:#fff;">${data.county || '-'}</strong></p>
+
+                    <h4 style="color:#00d9ff;margin:15px 0 10px;">Deseuri per Categorie</h4>
+                    <div class="scroll-table" style="max-height:200px;margin-bottom:20px;">
+                        <table>
+                            <thead><tr><th>Categorie</th><th class="text-right">kg</th><th class="text-right">RON</th></tr></thead>
+                            <tbody>
+                                ${data.by_category?.map(c =>
+                                    `<tr><td>${c.category}</td><td class="text-right">${fmt(c.total_kg)}</td><td class="text-right">${fmt(c.total_value)}</td></tr>`
+                                ).join('') || '<tr><td colspan="3">Nu sunt date</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="grid grid-2">
+                        <div>
+                            <h4 style="color:#00d9ff;margin-bottom:10px;">Top 20 Parteneri - Vizite</h4>
+                            <div class="scroll-table" style="max-height:300px;">
+                                <table>
+                                    <thead><tr><th>Nume</th><th class="text-right">Vizite</th><th class="text-right">Valoare</th></tr></thead>
+                                    <tbody>
+                                        ${data.top_by_visits?.map(p =>
+                                            `<tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;"><td style="color:#00d9ff;">${p.name}</td><td class="text-right">${p.visits}</td><td class="text-right">${fmt(p.total_value)}</td></tr>`
+                                        ).join('') || '<tr><td colspan="3">Nu sunt date</td></tr>'}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 style="color:#00d9ff;margin-bottom:10px;">Top 20 Parteneri - Valoare</h4>
+                            <div class="scroll-table" style="max-height:300px;">
+                                <table>
+                                    <thead><tr><th>Nume</th><th class="text-right">Vizite</th><th class="text-right">Valoare</th></tr></thead>
+                                    <tbody>
+                                        ${data.top_by_value?.map(p =>
+                                            `<tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;"><td style="color:#00d9ff;">${p.name}</td><td class="text-right">${p.visits}</td><td class="text-right">${fmt(p.total_value)}</td></tr>`
+                                        ).join('') || '<tr><td colspan="3">Nu sunt date</td></tr>'}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (e) {
+                console.error('City details error:', e);
+                content.innerHTML = '<p style="color:#ff6b6b;">Eroare la incarcarea datelor</p>';
+            }
+        }
     </script>
 </body>
 </html>
