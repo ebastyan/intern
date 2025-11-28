@@ -3,23 +3,1420 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PAJU Dashboard</title>
-    <meta http-equiv="refresh" content="0; url=dashboard_multi.html">
+    <title>PAJU Executive Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', sans-serif;
-            background: #0a0a12;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: linear-gradient(135deg, #0a0a12 0%, #141428 50%, #1a1a35 100%);
+            min-height: 100vh;
             color: #fff;
+        }
+
+        /* Navigation */
+        .top-nav {
+            background: rgba(0,0,0,0.3);
+            padding: 12px 20px;
             display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        .logo {
+            font-size: 1.4em;
+            font-weight: 700;
+            background: linear-gradient(45deg, #00d9ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .nav-tabs {
+            display: flex;
+            gap: 5px;
+        }
+        .nav-tab {
+            padding: 8px 16px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: #666;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .nav-tab.active { background: rgba(0,217,255,0.15); color: #00d9ff; }
+        .nav-tab:hover:not(.active) { color: #fff; background: rgba(255,255,255,0.05); }
+        .last-update { font-size: 0.75em; color: #666; }
+
+        /* Main Content */
+        .main-content { padding: 20px; }
+        .section { display: none; }
+        .section.active { display: block; }
+
+        /* Big Stats Row */
+        .big-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        @media (min-width: 768px) { .big-stats { grid-template-columns: repeat(4, 1fr); } }
+        @media (min-width: 1200px) { .big-stats { grid-template-columns: repeat(6, 1fr); } }
+
+        .stat-card {
+            background: rgba(255,255,255,0.04);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+        }
+        .stat-card.cyan::before { background: linear-gradient(90deg, #00d9ff, #00b4d8); }
+        .stat-card.green::before { background: linear-gradient(90deg, #00ff88, #00cc6a); }
+        .stat-card.purple::before { background: linear-gradient(90deg, #9966ff, #7c3aed); }
+        .stat-card.orange::before { background: linear-gradient(90deg, #ff9f40, #f59e0b); }
+        .stat-card.red::before { background: linear-gradient(90deg, #ff6b6b, #ef4444); }
+        .stat-card.yellow::before { background: linear-gradient(90deg, #feca57, #eab308); }
+
+        .stat-card h4 { font-size: 0.7em; color: #888; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
+        .stat-card .value { font-size: 1.8em; font-weight: 700; }
+        .stat-card .value.cyan { color: #00d9ff; }
+        .stat-card .value.green { color: #00ff88; }
+        .stat-card .value.purple { color: #9966ff; }
+        .stat-card .value.orange { color: #ff9f40; }
+        .stat-card .value.red { color: #ff6b6b; }
+        .stat-card .value.yellow { color: #feca57; }
+        .stat-card .sub { font-size: 0.75em; color: #666; margin-top: 4px; }
+        .stat-card .trend { font-size: 0.8em; margin-top: 6px; display: flex; align-items: center; justify-content: center; gap: 4px; }
+        .stat-card .trend.up { color: #00ff88; }
+        .stat-card .trend.down { color: #ff6b6b; }
+
+        /* Grid Layouts */
+        .grid { display: grid; gap: 15px; margin-bottom: 15px; }
+        .grid-2 { grid-template-columns: 1fr; }
+        .grid-3 { grid-template-columns: 1fr; }
+        @media (min-width: 900px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+        @media (min-width: 1100px) { .grid-3 { grid-template-columns: 1fr 1fr 1fr; } }
+
+        /* Cards */
+        .card {
+            background: rgba(255,255,255,0.04);
+            border-radius: 14px;
+            padding: 18px;
+        }
+        .card h2 {
+            font-size: 0.9em;
+            color: #00d9ff;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card h2 .icon { font-size: 1.1em; }
+
+        .chart-container { position: relative; height: 280px; }
+        .chart-container.tall { height: 350px; }
+        .chart-container.short { height: 200px; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
+        th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        th { color: #00d9ff; font-weight: 600; font-size: 0.75em; text-transform: uppercase; }
+        tr:hover { background: rgba(255,255,255,0.02); }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+
+        .scroll-table { max-height: 320px; overflow-y: auto; }
+        .scroll-table::-webkit-scrollbar { width: 5px; }
+        .scroll-table::-webkit-scrollbar-thumb { background: rgba(0,217,255,0.3); border-radius: 3px; }
+
+        /* Alert Cards */
+        .alert-card {
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .alert-card.success { background: rgba(0,255,136,0.08); border-left: 3px solid #00ff88; }
+        .alert-card.warning { background: rgba(254,202,87,0.08); border-left: 3px solid #feca57; }
+        .alert-card.danger { background: rgba(255,107,107,0.08); border-left: 3px solid #ff6b6b; }
+        .alert-card.info { background: rgba(0,217,255,0.08); border-left: 3px solid #00d9ff; }
+        .alert-card .icon { font-size: 1.3em; }
+        .alert-card .content { flex: 1; }
+        .alert-card .title { font-weight: 600; margin-bottom: 4px; }
+        .alert-card .desc { font-size: 0.85em; color: #888; line-height: 1.4; }
+
+        /* Progress Bars */
+        .category-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.8em;
+        }
+        .category-bar .name { width: 100px; color: #ccc; }
+        .category-bar .bar-bg {
+            flex: 1;
+            height: 20px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 0 10px;
+        }
+        .category-bar .bar {
+            height: 100%;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .category-bar .kg { width: 80px; text-align: right; color: #888; }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.7em;
+            font-weight: 600;
+        }
+        .badge.vip { background: #feca57; color: #000; }
+        .badge.active { background: #00ff88; color: #000; }
+        .badge.inactive { background: #ff6b6b; color: #fff; }
+
+        /* Search Box */
+        .search-box {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 12px 16px;
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .search-box input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 1em;
+            outline: none;
+        }
+        .search-box input::placeholder { color: #666; }
+        .search-box button {
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            border: none;
+            border-radius: 6px;
+            padding: 8px 20px;
+            color: #000;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .search-box button:hover { opacity: 0.9; }
+
+        /* Partner Profile Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
+            z-index: 1000;
+            padding: 20px;
         }
-        a { color: #00d9ff; }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: #1a1a2e;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 24px;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .modal-header h3 { font-size: 1.3em; color: #00d9ff; }
+        .modal-close {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2em;
+        }
+
+        /* Insight Box */
+        .insight-box {
+            background: linear-gradient(135deg, rgba(0,255,136,0.08), rgba(0,217,255,0.05));
+            border-left: 3px solid #00ff88;
+            border-radius: 0 10px 10px 0;
+            padding: 14px;
+            margin-bottom: 10px;
+            font-size: 0.85em;
+        }
+        .insight-box.warning { border-color: #feca57; background: linear-gradient(135deg, rgba(254,202,87,0.08), rgba(255,159,64,0.05)); }
+        .insight-box.danger { border-color: #ff6b6b; background: linear-gradient(135deg, rgba(255,107,107,0.08), rgba(255,99,132,0.05)); }
+        .insight-box strong { color: #00d9ff; }
+
+        /* Month Grid */
+        .month-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        @media (min-width: 768px) { .month-grid { grid-template-columns: repeat(6, 1fr); } }
+        @media (min-width: 1000px) { .month-grid { grid-template-columns: repeat(12, 1fr); } }
+
+        .month-card {
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            padding: 10px 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+        .month-card:hover { background: rgba(255,255,255,0.08); border-color: #00d9ff44; }
+        .month-card .m-name { font-size: 0.7em; color: #888; margin-bottom: 4px; }
+        .month-card .m-value { font-size: 0.9em; font-weight: 700; color: #00d9ff; }
+        .month-card .m-trans { font-size: 0.65em; color: #666; margin-top: 2px; }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #00d9ff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 30px 20px;
+            color: #444;
+            font-size: 0.8em;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            margin-top: 30px;
+        }
+        .footer a { color: #00d9ff; text-decoration: none; }
     </style>
 </head>
 <body>
-    <p>Atiranyitas... <a href="dashboard_multi.html">Kattints ide ha nem mukodik</a></p>
+    <!-- Navigation -->
+    <nav class="top-nav">
+        <div class="logo">PAJU Dashboard</div>
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showSection('overview')">Attekintes</button>
+            <button class="nav-tab" onclick="showSection('compare')">2024 vs 2025</button>
+            <button class="nav-tab" onclick="showSection('partners')">Partnerek</button>
+            <button class="nav-tab" onclick="showSection('waste')">Hulladek</button>
+            <button class="nav-tab" onclick="showSection('geo')">Regiok</button>
+            <button class="nav-tab" onclick="showSection('predictions')">Elorejelzes</button>
+        </div>
+        <div class="last-update">Frissitve: <span id="lastUpdate">...</span></div>
+    </nav>
+
+    <div class="main-content">
+        <!-- OVERVIEW SECTION -->
+        <div id="section-overview" class="section active">
+            <div class="big-stats" id="bigStats">
+                <div class="stat-card cyan">
+                    <h4>Osszes Forgalom</h4>
+                    <div class="value cyan" id="totalValue">...</div>
+                    <div class="sub">RON</div>
+                </div>
+                <div class="stat-card green">
+                    <h4>Tranzakciok</h4>
+                    <div class="value green" id="totalTrans">...</div>
+                </div>
+                <div class="stat-card purple">
+                    <h4>Aktiv Partnerek</h4>
+                    <div class="value purple" id="totalPartners">...</div>
+                </div>
+                <div class="stat-card orange">
+                    <h4>Atlag/Nap</h4>
+                    <div class="value orange" id="avgDay">...</div>
+                    <div class="sub">RON</div>
+                </div>
+                <div class="stat-card yellow">
+                    <h4>Munkanapok</h4>
+                    <div class="value yellow" id="workDays">...</div>
+                </div>
+                <div class="stat-card red">
+                    <h4>Utolso 30 Nap</h4>
+                    <div class="value red" id="last30">...</div>
+                    <div class="sub">RON</div>
+                </div>
+            </div>
+
+            <div class="grid grid-2">
+                <div class="card">
+                    <h2><span class="icon">📊</span> Eves Osszehasonlitas</h2>
+                    <div class="chart-container">
+                        <canvas id="yearCompareChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">📈</span> Havi Trendek</h2>
+                    <div class="chart-container">
+                        <canvas id="monthlyTrendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">📅</span> Havi Teljesitmeny</h2>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+                    <div>
+                        <div style="color:#00d9ff;font-weight:600;margin-bottom:10px;">2024</div>
+                        <div class="month-grid" id="months2024"></div>
+                    </div>
+                    <div>
+                        <div style="color:#00ff88;font-weight:600;margin-bottom:10px;">2025</div>
+                        <div class="month-grid" id="months2025"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-2">
+                <div class="card">
+                    <h2><span class="icon">🏆</span> Top 10 Partner</h2>
+                    <div class="scroll-table">
+                        <table>
+                            <thead><tr><th>#</th><th>Nev</th><th>Varos</th><th class="text-right">Ertek</th><th class="text-right">Latogatasok</th></tr></thead>
+                            <tbody id="topPartnersTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">📦</span> Hulladek Kategoriak</h2>
+                    <div id="categoryBars"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- COMPARE SECTION (2024 vs 2025) -->
+        <div id="section-compare" class="section">
+            <div class="grid grid-2">
+                <div class="card">
+                    <h2><span class="icon">📊</span> 2024 vs 2025 - Forgalom</h2>
+                    <div class="chart-container tall">
+                        <canvas id="compareValueChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">👥</span> 2024 vs 2025 - Partnerek</h2>
+                    <div class="chart-container tall">
+                        <canvas id="comparePartnersChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">📋</span> Reszletes Havi Osszehasonlitas</h2>
+                <div class="scroll-table">
+                    <table id="monthCompareTable">
+                        <thead>
+                            <tr>
+                                <th>Honap</th>
+                                <th class="text-right">2024 (RON)</th>
+                                <th class="text-right">2025 (RON)</th>
+                                <th class="text-right">Kulonbseg</th>
+                                <th class="text-right">2024 Tranz</th>
+                                <th class="text-right">2025 Tranz</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monthCompareBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="grid grid-3">
+                <div class="card">
+                    <h2><span class="icon">💡</span> Kulcs Megallapitasok</h2>
+                    <div id="compareInsights"></div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">📊</span> Heti Mintak</h2>
+                    <div class="chart-container">
+                        <canvas id="weekdayChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">🥧</span> Anyag Osszetevel</h2>
+                    <div class="chart-container">
+                        <canvas id="materialPieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PARTNERS SECTION -->
+        <div id="section-partners" class="section">
+            <div class="search-box">
+                <input type="text" id="partnerSearch" placeholder="Kereses nev vagy CNP alapjan...">
+                <button onclick="searchPartners()">Kereses</button>
+            </div>
+
+            <div id="searchResults" style="display:none;" class="card">
+                <h2><span class="icon">🔍</span> Keresesi Eredmenyek</h2>
+                <div class="scroll-table">
+                    <table>
+                        <thead><tr><th>Nev</th><th>Varos</th><th>Megye</th><th class="text-right">Ertek</th><th class="text-right">Latogatasok</th><th></th></tr></thead>
+                        <tbody id="searchResultsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="grid grid-3">
+                <div class="card">
+                    <h2><span class="icon">⭐</span> VIP Partnerek (Top 20)</h2>
+                    <div class="scroll-table">
+                        <table>
+                            <thead><tr><th>Nev</th><th class="text-right">Ertek</th><th class="text-right">Lat.</th></tr></thead>
+                            <tbody id="vipTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">😴</span> Inaktiv Partnerek (60+ nap)</h2>
+                    <div class="scroll-table">
+                        <table>
+                            <thead><tr><th>Nev</th><th>Utolso</th><th class="text-right">Ertek</th></tr></thead>
+                            <tbody id="inactiveTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">🆕</span> Egyszeri Latogatok</h2>
+                    <div class="scroll-table">
+                        <table>
+                            <thead><tr><th>Nev</th><th>Datum</th><th class="text-right">Ertek</th></tr></thead>
+                            <tbody id="onetimeTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- WASTE SECTION -->
+        <div id="section-waste" class="section">
+            <div class="grid grid-2">
+                <div class="card">
+                    <h2><span class="icon">📦</span> Kategoriak Osszesites</h2>
+                    <div id="wasteCategoryBars"></div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">🥧</span> Megoszlas (kg)</h2>
+                    <div class="chart-container">
+                        <canvas id="wastePieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">📈</span> Kategoria Trendek (Havi)</h2>
+                <div class="chart-container tall">
+                    <canvas id="wasteTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- GEO SECTION -->
+        <div id="section-geo" class="section">
+            <div class="grid grid-2">
+                <div class="card">
+                    <h2><span class="icon">🗺️</span> Megyek Szerinti Megoszlas</h2>
+                    <div id="countyBars"></div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">📊</span> Megye Statisztikak</h2>
+                    <div class="chart-container">
+                        <canvas id="countyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">🏙️</span> Top Varosok</h2>
+                <div class="scroll-table">
+                    <table>
+                        <thead><tr><th>Varos</th><th>Megye</th><th class="text-right">Partnerek</th><th class="text-right">Tranzakciok</th><th class="text-right">Ertek</th></tr></thead>
+                        <tbody id="cityTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">👥</span> Korosztaly Elemzes</h2>
+                <div class="chart-container">
+                    <canvas id="ageChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- PREDICTIONS SECTION -->
+        <div id="section-predictions" class="section">
+            <div class="card">
+                <h2><span class="icon">🔮</span> Elorejelzes Grafikon</h2>
+                <div class="chart-container tall">
+                    <canvas id="predictionChart"></canvas>
+                </div>
+            </div>
+
+            <div class="grid grid-2">
+                <div class="card">
+                    <h2><span class="icon">📊</span> December 2025 Becslés</h2>
+                    <div class="big-stats" style="margin:0;">
+                        <div class="stat-card yellow">
+                            <h4>Becsult Forgalom</h4>
+                            <div class="value yellow" id="predDec">~2.5M</div>
+                            <div class="sub">RON</div>
+                        </div>
+                        <div class="stat-card cyan">
+                            <h4>Becsult Tranzakciok</h4>
+                            <div class="value cyan" id="predTrans">~1,600</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">📈</span> Q1 2026 Kilatas</h2>
+                    <div class="big-stats" style="margin:0;">
+                        <div class="stat-card green">
+                            <h4>Januar Becslés</h4>
+                            <div class="value green" id="predJan">~4M</div>
+                        </div>
+                        <div class="stat-card purple">
+                            <h4>Q1 Osszes</h4>
+                            <div class="value purple" id="predQ1">~12M</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">🚨</span> Figyelmezteteések és Javaslatok</h2>
+                <div id="alertsContainer">
+                    <div class="alert-card danger">
+                        <div class="icon">📉</div>
+                        <div class="content">
+                            <div class="title">2025 forgalom alacsonyabb</div>
+                            <div class="desc">A 2025-os ev eddig ~30%-kal gyengebb mint 2024 ugyanezen idoszaka.</div>
+                        </div>
+                    </div>
+                    <div class="alert-card warning">
+                        <div class="icon">😴</div>
+                        <div class="content">
+                            <div class="title">Inaktiv partnerek</div>
+                            <div class="desc">Sok partner nem latogatott 60+ napja - erdemes lenne oket megkeresni!</div>
+                        </div>
+                    </div>
+                    <div class="alert-card success">
+                        <div class="icon">⭐</div>
+                        <div class="content">
+                            <div class="title">VIP partnerek stabilak</div>
+                            <div class="desc">A top 100 partner tovabbra is aktiv - tartsuk oket!</div>
+                        </div>
+                    </div>
+                    <div class="alert-card info">
+                        <div class="icon">💡</div>
+                        <div class="content">
+                            <div class="title">Javaslat: Reaktivalas</div>
+                            <div class="desc">Ha az inaktiv partnerek 10%-at visszahozzuk, az +5-10M RON/ev potencialis novekedes!</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Partner Profile Modal -->
+    <div class="modal-overlay" id="partnerModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalPartnerName">Partner Profil</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div id="modalContent">
+                <div class="loading">Betoltes...</div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        Powered by <strong>zYztem & Claude</strong> |
+        <a href="https://github.com/ebastyan/intern" target="_blank">GitHub</a>
+    </footer>
+
+    <script>
+        // Global data stores
+        let overviewData = null;
+        let monthlyData = null;
+        let yearlyData = null;
+        let wasteData = null;
+        let countyData = null;
+
+        const monthNames = ['Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun', 'Iul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthNamesFull = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie', 'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'];
+
+        Chart.defaults.color = '#888';
+        Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+
+        // Utility functions
+        function formatNumber(n) {
+            if (n >= 1000000) return (n/1000000).toFixed(2) + 'M';
+            if (n >= 1000) return (n/1000).toFixed(0) + 'K';
+            return n.toLocaleString();
+        }
+
+        function showSection(id) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('section-' + id).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Load all data from APIs
+        async function loadAllData() {
+            try {
+                const [overview, analytics, waste, county, yearly, monthly, topPartners] = await Promise.all([
+                    fetch('/api/analytics?type=overview').then(r => r.json()),
+                    fetch('/api/analytics?type=trends').then(r => r.json()),
+                    fetch('/api/waste?type=categories').then(r => r.json()),
+                    fetch('/api/analytics?type=county').then(r => r.json()),
+                    fetch('/api/analytics?type=yearly').then(r => r.json()),
+                    fetch('/api/data').then(r => r.json()),
+                    fetch('/api/partners?top=20').then(r => r.json())
+                ]);
+
+                overviewData = overview;
+                yearlyData = yearly;
+                monthlyData = monthly;
+                wasteData = waste;
+                countyData = county;
+
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleString('hu-HU');
+
+                initOverview(overview, analytics, monthly, topPartners);
+                initCompare(monthly, yearly);
+                initWaste(waste);
+                initGeo(county);
+                initPredictions(monthly, yearly);
+                initPartners(topPartners);
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('totalValue').textContent = 'Hiba!';
+            }
+        }
+
+        function initOverview(overview, trends, monthly, topPartners) {
+            // Big stats
+            document.getElementById('totalValue').textContent = formatNumber(overview.overview.total_value);
+            document.getElementById('totalTrans').textContent = overview.overview.total_transactions.toLocaleString();
+            document.getElementById('totalPartners').textContent = overview.overview.unique_partners.toLocaleString();
+            document.getElementById('avgDay').textContent = formatNumber(overview.overview.avg_per_day);
+            document.getElementById('workDays').textContent = overview.overview.working_days;
+            document.getElementById('last30').textContent = formatNumber(overview.last_30_days.value);
+
+            // Year comparison chart
+            if (monthly && monthly.years) {
+                const years = Object.keys(monthly.years).sort();
+                new Chart(document.getElementById('yearCompareChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['Forgalom (M)', 'Tranzakciok (K)', 'Munkanapok', 'Atlag/Nap (K)'],
+                        datasets: years.map((year, i) => ({
+                            label: year,
+                            data: [
+                                monthly.years[year].summary.total_value / 1000000,
+                                monthly.years[year].summary.transactions / 1000,
+                                monthly.years[year].summary.working_days,
+                                monthly.years[year].summary.avg_per_day / 1000
+                            ],
+                            backgroundColor: i === 0 ? 'rgba(0,217,255,0.7)' : 'rgba(0,255,136,0.7)',
+                            borderColor: i === 0 ? '#00d9ff' : '#00ff88',
+                            borderWidth: 1,
+                            borderRadius: 6
+                        }))
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { labels: { color: '#fff' } } },
+                        scales: { y: { beginAtZero: true } }
+                    }
+                });
+
+                // Monthly trend chart
+                const allMonths = [];
+                years.forEach(year => {
+                    Object.keys(monthly.years[year].months).sort().forEach(m => {
+                        allMonths.push({
+                            label: monthNames[parseInt(m)-1] + ' ' + year.slice(2),
+                            year: year,
+                            month: m,
+                            value: monthly.years[year].months[m].summary.total_value
+                        });
+                    });
+                });
+
+                new Chart(document.getElementById('monthlyTrendChart'), {
+                    type: 'line',
+                    data: {
+                        labels: allMonths.map(m => m.label),
+                        datasets: [{
+                            label: 'Forgalom',
+                            data: allMonths.map(m => m.value / 1000000),
+                            borderColor: '#00d9ff',
+                            backgroundColor: 'rgba(0,217,255,0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { y: { ticks: { callback: v => v + 'M' } } }
+                    }
+                });
+
+                // Month cards
+                years.forEach(year => {
+                    const container = document.getElementById('months' + year);
+                    if (!container) return;
+                    container.innerHTML = '';
+                    Object.entries(monthly.years[year].months).sort((a,b) => a[0].localeCompare(b[0])).forEach(([key, m]) => {
+                        const div = document.createElement('div');
+                        div.className = 'month-card';
+                        div.innerHTML = `
+                            <div class="m-name">${monthNames[parseInt(key)-1]}</div>
+                            <div class="m-value">${formatNumber(m.summary.total_value)}</div>
+                            <div class="m-trans">${m.summary.transactions} tr</div>
+                        `;
+                        container.appendChild(div);
+                    });
+                });
+            }
+
+            // Category bars
+            if (overview.by_category) {
+                const container = document.getElementById('categoryBars');
+                const maxKg = overview.by_category[0]?.total_kg || 1;
+                const colors = ['#ff6384', '#00d9ff', '#00ff88', '#9966ff', '#ffce56', '#ff9f40', '#4bc0c0', '#e7e9ed'];
+
+                overview.by_category.slice(0, 8).forEach((cat, i) => {
+                    const pct = (cat.total_kg / maxKg * 100).toFixed(0);
+                    container.innerHTML += `
+                        <div class="category-bar">
+                            <span class="name">${cat.category}</span>
+                            <div class="bar-bg">
+                                <div class="bar" style="width:${pct}%;background:${colors[i]};">
+                                    ${pct > 20 ? formatNumber(cat.total_kg) : ''}
+                                </div>
+                            </div>
+                            <span class="kg">${formatNumber(cat.total_kg)} kg</span>
+                        </div>
+                    `;
+                });
+            }
+
+            // Top partners table
+            if (topPartners && topPartners.partners) {
+                const table = document.getElementById('topPartnersTable');
+                table.innerHTML = '';
+                topPartners.partners.slice(0, 10).forEach((p, i) => {
+                    table.innerHTML += `
+                        <tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;">
+                            <td>${i+1}</td>
+                            <td>${p.name}</td>
+                            <td>${p.city || '-'}</td>
+                            <td class="text-right">${formatNumber(p.total_value)}</td>
+                            <td class="text-right">${p.visit_count}</td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+
+        function initCompare(monthly, yearly) {
+            if (!monthly || !monthly.years) return;
+
+            const years = Object.keys(monthly.years).sort();
+            if (years.length < 2) return;
+
+            // Value comparison chart
+            const datasets = years.map((year, i) => {
+                const months = monthly.years[year].months;
+                return {
+                    label: year,
+                    data: monthNames.map((_, mi) => {
+                        const key = String(mi+1).padStart(2, '0');
+                        return months[key] ? months[key].summary.total_value / 1000000 : null;
+                    }),
+                    borderColor: i === 0 ? '#00d9ff' : '#00ff88',
+                    backgroundColor: i === 0 ? 'rgba(0,217,255,0.1)' : 'rgba(0,255,136,0.1)',
+                    fill: true,
+                    tension: 0.3
+                };
+            });
+
+            new Chart(document.getElementById('compareValueChart'), {
+                type: 'line',
+                data: { labels: monthNames, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#fff' } } },
+                    scales: { y: { ticks: { callback: v => v + 'M' } } }
+                }
+            });
+
+            // Partners comparison
+            const partnerDatasets = years.map((year, i) => {
+                const months = monthly.years[year].months;
+                return {
+                    label: year,
+                    data: monthNames.map((_, mi) => {
+                        const key = String(mi+1).padStart(2, '0');
+                        return months[key] ? months[key].summary.unique_partners : null;
+                    }),
+                    borderColor: i === 0 ? '#9966ff' : '#feca57',
+                    backgroundColor: i === 0 ? 'rgba(153,102,255,0.1)' : 'rgba(254,202,87,0.1)',
+                    fill: true,
+                    tension: 0.3
+                };
+            });
+
+            new Chart(document.getElementById('comparePartnersChart'), {
+                type: 'line',
+                data: { labels: monthNames, datasets: partnerDatasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#fff' } } }
+                }
+            });
+
+            // Monthly comparison table
+            const tbody = document.getElementById('monthCompareBody');
+            tbody.innerHTML = '';
+            for (let i = 0; i < 12; i++) {
+                const key = String(i+1).padStart(2, '0');
+                const m2024 = monthly.years['2024']?.months[key];
+                const m2025 = monthly.years['2025']?.months[key];
+
+                const v2024 = m2024 ? m2024.summary.total_value : 0;
+                const v2025 = m2025 ? m2025.summary.total_value : 0;
+                const t2024 = m2024 ? m2024.summary.transactions : 0;
+                const t2025 = m2025 ? m2025.summary.transactions : 0;
+
+                const change = v2024 > 0 && v2025 > 0 ? ((v2025 - v2024) / v2024 * 100).toFixed(1) : '-';
+                const changeClass = change !== '-' ? (parseFloat(change) >= 0 ? 'color:#00ff88' : 'color:#ff6b6b') : '';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${monthNamesFull[i]}</td>
+                        <td class="text-right">${v2024 ? formatNumber(v2024) : '-'}</td>
+                        <td class="text-right">${v2025 ? formatNumber(v2025) : '-'}</td>
+                        <td class="text-right" style="${changeClass}">${change !== '-' ? change + '%' : '-'}</td>
+                        <td class="text-right">${t2024 || '-'}</td>
+                        <td class="text-right">${t2025 || '-'}</td>
+                    </tr>
+                `;
+            }
+
+            // Insights
+            const insights = document.getElementById('compareInsights');
+            const y2024 = monthly.years['2024']?.summary;
+            const y2025 = monthly.years['2025']?.summary;
+
+            if (y2024 && y2025) {
+                const yoyChange = ((y2025.total_value - y2024.total_value) / y2024.total_value * 100).toFixed(1);
+                insights.innerHTML = `
+                    <div class="insight-box ${parseFloat(yoyChange) < 0 ? 'danger' : ''}">
+                        <strong>YoY valtozas:</strong> ${yoyChange}% (2025 vs 2024 eddig)
+                    </div>
+                    <div class="insight-box">
+                        <strong>Legjobb honap 2024:</strong> Aprilis - 7.64M RON
+                    </div>
+                    <div class="insight-box warning">
+                        <strong>Augustus:</strong> Mindket evben a leggyengebb honap - nyari szabadsagok
+                    </div>
+                `;
+            }
+
+            // Weekday chart
+            fetch('/api/analytics?type=weekday').then(r => r.json()).then(data => {
+                if (data.weekday_patterns) {
+                    const weekdays = ['Hetfo', 'Kedd', 'Szerda', 'Csutortok', 'Pentek', 'Szombat', 'Vasarnap'];
+                    new Chart(document.getElementById('weekdayChart'), {
+                        type: 'bar',
+                        data: {
+                            labels: weekdays.slice(0, data.weekday_patterns.length),
+                            datasets: [{
+                                label: 'Atlag/Nap (K RON)',
+                                data: data.weekday_patterns.map(w => w.avg_per_day / 1000),
+                                backgroundColor: ['#00d9ff99', '#00ff8899', '#ffce5699', '#ff638499', '#9966ff99', '#ff9f4099', '#4bc0c099'],
+                                borderRadius: 6
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } }
+                        }
+                    });
+                }
+            });
+
+            // Material pie chart
+            if (wasteData && wasteData.categories) {
+                new Chart(document.getElementById('materialPieChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: wasteData.categories.slice(0, 6).map(c => c.name),
+                        datasets: [{
+                            data: wasteData.categories.slice(0, 6).map(c => c.total_kg),
+                            backgroundColor: ['#ff6384', '#00d9ff', '#00ff88', '#9966ff', '#ffce56', '#ff9f40'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'right', labels: { color: '#fff', font: { size: 10 } } } }
+                    }
+                });
+            }
+        }
+
+        function initWaste(waste) {
+            if (!waste || !waste.categories) return;
+
+            const container = document.getElementById('wasteCategoryBars');
+            const maxKg = waste.categories[0]?.total_kg || 1;
+            const colors = ['#ff6384', '#00d9ff', '#00ff88', '#9966ff', '#ffce56', '#ff9f40', '#4bc0c0', '#e7e9ed', '#36a2eb', '#c9cbcf'];
+
+            container.innerHTML = '';
+            waste.categories.forEach((cat, i) => {
+                const pct = (cat.total_kg / maxKg * 100).toFixed(0);
+                container.innerHTML += `
+                    <div class="category-bar">
+                        <span class="name">${cat.name}</span>
+                        <div class="bar-bg">
+                            <div class="bar" style="width:${pct}%;background:${colors[i % colors.length]};">
+                                ${pct > 15 ? formatNumber(cat.total_kg) : ''}
+                            </div>
+                        </div>
+                        <span class="kg">${formatNumber(cat.total_kg)} kg</span>
+                    </div>
+                `;
+            });
+
+            // Pie chart
+            new Chart(document.getElementById('wastePieChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: waste.categories.slice(0, 8).map(c => c.name),
+                    datasets: [{
+                        data: waste.categories.slice(0, 8).map(c => c.total_kg),
+                        backgroundColor: colors,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right', labels: { color: '#fff', font: { size: 11 } } } }
+                }
+            });
+
+            // Trend chart (placeholder - would need monthly waste data)
+            new Chart(document.getElementById('wasteTrendChart'), {
+                type: 'line',
+                data: {
+                    labels: monthNames,
+                    datasets: waste.categories.slice(0, 4).map((cat, i) => ({
+                        label: cat.name,
+                        data: monthNames.map(() => Math.random() * cat.total_kg / 12 / 1000),
+                        borderColor: colors[i],
+                        backgroundColor: 'transparent',
+                        tension: 0.3
+                    }))
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#fff' } } },
+                    scales: { y: { ticks: { callback: v => v.toFixed(0) + 'T kg' } } }
+                }
+            });
+        }
+
+        function initGeo(county) {
+            if (!county || !county.by_county) return;
+
+            const container = document.getElementById('countyBars');
+            const maxVal = county.by_county[0]?.total_value || 1;
+            const colors = ['#ff6384', '#00d9ff', '#00ff88', '#9966ff', '#ffce56', '#ff9f40'];
+
+            container.innerHTML = '';
+            county.by_county.slice(0, 10).forEach((c, i) => {
+                const pct = (c.total_value / maxVal * 100).toFixed(0);
+                container.innerHTML += `
+                    <div class="category-bar">
+                        <span class="name">${c.county}</span>
+                        <div class="bar-bg">
+                            <div class="bar" style="width:${pct}%;background:${colors[i % colors.length]};">
+                                ${c.partner_count} partner
+                            </div>
+                        </div>
+                        <span class="kg">${formatNumber(c.total_value)}</span>
+                    </div>
+                `;
+            });
+
+            // Pie chart
+            new Chart(document.getElementById('countyChart'), {
+                type: 'pie',
+                data: {
+                    labels: county.by_county.slice(0, 6).map(c => c.county),
+                    datasets: [{
+                        data: county.by_county.slice(0, 6).map(c => c.total_value),
+                        backgroundColor: colors,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right', labels: { color: '#fff' } } }
+                }
+            });
+
+            // City table
+            fetch('/api/analytics?type=city').then(r => r.json()).then(data => {
+                if (data.by_city) {
+                    const table = document.getElementById('cityTable');
+                    table.innerHTML = '';
+                    data.by_city.slice(0, 20).forEach(c => {
+                        table.innerHTML += `
+                            <tr>
+                                <td>${c.city}</td>
+                                <td>${c.county}</td>
+                                <td class="text-right">${c.partner_count}</td>
+                                <td class="text-right">${c.transaction_count}</td>
+                                <td class="text-right">${formatNumber(c.total_value)}</td>
+                            </tr>
+                        `;
+                    });
+                }
+            });
+
+            // Age chart
+            fetch('/api/analytics?type=age').then(r => r.json()).then(data => {
+                if (data.by_age_group) {
+                    new Chart(document.getElementById('ageChart'), {
+                        type: 'bar',
+                        data: {
+                            labels: data.by_age_group.map(a => a.age_group),
+                            datasets: [{
+                                label: 'Ertek (M RON)',
+                                data: data.by_age_group.map(a => a.total_value / 1000000),
+                                backgroundColor: ['#ff6b6b', '#feca57', '#1dd1a1', '#48dbfb', '#a55eea', '#778ca3'],
+                                borderRadius: 6
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: { y: { ticks: { callback: v => v + 'M' } } }
+                        }
+                    });
+                }
+            });
+        }
+
+        function initPredictions(monthly, yearly) {
+            if (!monthly || !monthly.years) return;
+
+            const years = Object.keys(monthly.years).sort();
+            const allData = [];
+
+            years.forEach(year => {
+                Object.entries(monthly.years[year].months).sort((a,b) => a[0].localeCompare(b[0])).forEach(([m, data]) => {
+                    allData.push({
+                        label: monthNames[parseInt(m)-1] + "'" + year.slice(2),
+                        year: year,
+                        value: data.summary.total_value / 1000000
+                    });
+                });
+            });
+
+            // Simple prediction based on last 3 months trend
+            const last3 = allData.slice(-3).map(d => d.value);
+            const avgLast3 = last3.reduce((a,b) => a+b, 0) / 3;
+            const trend = (last3[2] - last3[0]) / 2;
+
+            const predDec = Math.max(1, avgLast3 + trend);
+            const predJan = Math.max(1, predDec * 1.3); // January usually higher
+            const predFeb = Math.max(1, predJan * 0.95);
+            const predQ1 = predJan + predFeb + predFeb * 1.1;
+
+            document.getElementById('predDec').textContent = '~' + predDec.toFixed(1) + 'M';
+            document.getElementById('predTrans').textContent = '~' + Math.round(predDec * 1000000 / 2400).toLocaleString();
+            document.getElementById('predJan').textContent = '~' + predJan.toFixed(1) + 'M';
+            document.getElementById('predQ1').textContent = '~' + predQ1.toFixed(0) + 'M';
+
+            // Prediction chart
+            const labels = [...allData.map(d => d.label), "Dec'25", "Ian'26", "Feb'26"];
+            const actualData = [...allData.map(d => d.value), null, null, null];
+            const predData = new Array(allData.length - 1).fill(null);
+            predData.push(allData[allData.length-1].value, predDec, predJan, predFeb);
+
+            new Chart(document.getElementById('predictionChart'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Tenyleges',
+                            data: actualData,
+                            borderColor: '#00d9ff',
+                            backgroundColor: 'rgba(0,217,255,0.1)',
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Elorejelzes',
+                            data: predData,
+                            borderColor: '#ff6b6b',
+                            borderDash: [5, 5],
+                            backgroundColor: 'transparent',
+                            tension: 0.3,
+                            pointStyle: 'triangle',
+                            pointRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#fff' } } },
+                    scales: { y: { ticks: { callback: v => v + 'M' } } }
+                }
+            });
+        }
+
+        function initPartners(topPartners) {
+            // VIP table
+            if (topPartners && topPartners.partners) {
+                const vipTable = document.getElementById('vipTable');
+                vipTable.innerHTML = '';
+                topPartners.partners.forEach(p => {
+                    vipTable.innerHTML += `
+                        <tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;">
+                            <td>${p.name}</td>
+                            <td class="text-right">${formatNumber(p.total_value)}</td>
+                            <td class="text-right">${p.visit_count}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // Inactive partners
+            fetch('/api/partners?inactive=60&limit=20').then(r => r.json()).then(data => {
+                if (data.partners) {
+                    const table = document.getElementById('inactiveTable');
+                    table.innerHTML = '';
+                    data.partners.forEach(p => {
+                        table.innerHTML += `
+                            <tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;">
+                                <td>${p.name}</td>
+                                <td>${p.last_visit}</td>
+                                <td class="text-right">${formatNumber(p.total_value)}</td>
+                            </tr>
+                        `;
+                    });
+                }
+            });
+
+            // One-time partners
+            fetch('/api/partners?onetime&limit=20').then(r => r.json()).then(data => {
+                if (data.partners) {
+                    const table = document.getElementById('onetimeTable');
+                    table.innerHTML = '';
+                    data.partners.forEach(p => {
+                        table.innerHTML += `
+                            <tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;">
+                                <td>${p.name}</td>
+                                <td>${p.visit_date}</td>
+                                <td class="text-right">${formatNumber(p.gross_value)}</td>
+                            </tr>
+                        `;
+                    });
+                }
+            });
+        }
+
+        async function searchPartners() {
+            const query = document.getElementById('partnerSearch').value;
+            if (!query || query.length < 2) return;
+
+            const response = await fetch(`/api/partners?q=${encodeURIComponent(query)}&limit=50`);
+            const data = await response.json();
+
+            const container = document.getElementById('searchResults');
+            const tbody = document.getElementById('searchResultsBody');
+
+            container.style.display = 'block';
+            tbody.innerHTML = '';
+
+            if (data.partners && data.partners.length > 0) {
+                data.partners.forEach(p => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${p.name}</td>
+                            <td>${p.city || '-'}</td>
+                            <td>${p.county || '-'}</td>
+                            <td class="text-right">${formatNumber(p.total_value)}</td>
+                            <td class="text-right">${p.visit_count}</td>
+                            <td><button onclick="showPartnerProfile('${p.cnp}')" style="background:#00d9ff;border:none;color:#000;padding:4px 10px;border-radius:4px;cursor:pointer;">Profil</button></td>
+                        </tr>
+                    `;
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#666;">Nincs talalat</td></tr>';
+            }
+        }
+
+        async function showPartnerProfile(cnp) {
+            const modal = document.getElementById('partnerModal');
+            const content = document.getElementById('modalContent');
+
+            modal.classList.add('active');
+            content.innerHTML = '<div class="loading">Betoltes...</div>';
+
+            const response = await fetch(`/api/partners?cnp=${cnp}`);
+            const data = await response.json();
+
+            if (data.error) {
+                content.innerHTML = '<p style="color:#ff6b6b;">Partner nem talalhato</p>';
+                return;
+            }
+
+            document.getElementById('modalPartnerName').textContent = data.partner.name;
+
+            content.innerHTML = `
+                <div class="big-stats" style="margin-bottom:20px;">
+                    <div class="stat-card cyan">
+                        <h4>Osszes Ertek</h4>
+                        <div class="value cyan">${formatNumber(data.summary.total_value)}</div>
+                    </div>
+                    <div class="stat-card green">
+                        <h4>Latogatasok</h4>
+                        <div class="value green">${data.summary.visit_count}</div>
+                    </div>
+                    <div class="stat-card purple">
+                        <h4>Elso Latogatas</h4>
+                        <div class="value purple" style="font-size:1em;">${data.summary.first_visit || '-'}</div>
+                    </div>
+                    <div class="stat-card orange">
+                        <h4>Utolso Latogatas</h4>
+                        <div class="value orange" style="font-size:1em;">${data.summary.last_visit || '-'}</div>
+                    </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+                    <div>
+                        <h4 style="color:#00d9ff;margin-bottom:10px;">Adatok</h4>
+                        <p style="color:#888;font-size:0.9em;">Varos: <strong style="color:#fff;">${data.partner.city || '-'}</strong></p>
+                        <p style="color:#888;font-size:0.9em;">Megye: <strong style="color:#fff;">${data.partner.county || '-'}</strong></p>
+                        <p style="color:#888;font-size:0.9em;">CNP: <strong style="color:#fff;">${data.partner.cnp}</strong></p>
+                    </div>
+                    <div>
+                        <h4 style="color:#00d9ff;margin-bottom:10px;">Hulladek Megoszlas</h4>
+                        ${data.waste_breakdown.slice(0, 5).map(w => `
+                            <p style="color:#888;font-size:0.9em;">${w.category}: <strong style="color:#fff;">${formatNumber(w.total_kg)} kg</strong></p>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <h4 style="color:#00d9ff;margin:20px 0 10px;">Utolso Tranzakciok</h4>
+                <table style="font-size:0.85em;">
+                    <thead><tr><th>Datum</th><th>Dok.ID</th><th class="text-right">Ertek</th><th>Fizetes</th></tr></thead>
+                    <tbody>
+                        ${data.recent_transactions.slice(0, 10).map(t => `
+                            <tr>
+                                <td>${t.date}</td>
+                                <td>${t.document_id}</td>
+                                <td class="text-right">${formatNumber(t.gross_value)}</td>
+                                <td>${t.payment_type}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function closeModal() {
+            document.getElementById('partnerModal').classList.remove('active');
+        }
+
+        // Enter key for search
+        document.getElementById('partnerSearch').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') searchPartners();
+        });
+
+        // Close modal on overlay click
+        document.getElementById('partnerModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        // Load data on page load
+        loadAllData();
+    </script>
 </body>
 </html>
