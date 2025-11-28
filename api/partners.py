@@ -81,17 +81,19 @@ class handler(BaseHTTPRequestHandler):
             elif 'same_address' in params:
                 search = params.get('search', [None])[0]
                 category = params.get('category', [None])[0]
+                county = params.get('county', [None])[0]
                 date_from = params.get('date_from', [None])[0]
                 date_to = params.get('date_to', [None])[0]
-                result = self.get_same_address_partners(cur, search, category, date_from, date_to)
+                result = self.get_same_address_partners(cur, search, category, county, date_from, date_to)
 
             # Same family name + city
             elif 'same_family' in params:
                 search = params.get('search', [None])[0]
                 category = params.get('category', [None])[0]
+                county = params.get('county', [None])[0]
                 date_from = params.get('date_from', [None])[0]
                 date_to = params.get('date_to', [None])[0]
-                result = self.get_same_family_partners(cur, search, category, date_from, date_to)
+                result = self.get_same_family_partners(cur, search, category, county, date_from, date_to)
 
             # Big suppliers by category with min visits
             elif 'big_suppliers' in params:
@@ -506,7 +508,7 @@ class handler(BaseHTTPRequestHandler):
             } for p in partners]
         }
 
-    def get_same_address_partners(self, cur, search=None, category=None, date_from=None, date_to=None):
+    def get_same_address_partners(self, cur, search=None, category=None, county=None, date_from=None, date_to=None):
         """Find partners with same city + street (potential duplicates/family)"""
         # Build params separately for stats query and where clause
         stats_params = []
@@ -517,6 +519,10 @@ class handler(BaseHTTPRequestHandler):
         if search:
             where_clause += " AND (p.city ILIKE %s OR p.street ILIKE %s OR p.name ILIKE %s)"
             where_params.extend([f'%{search}%', f'%{search}%', f'%{search}%'])
+
+        if county:
+            where_clause += " AND p.county ILIKE %s"
+            where_params.append(f'%{county}%')
 
         # Build the stats subquery based on whether category filter is used
         date_filter = ""
@@ -587,7 +593,7 @@ class handler(BaseHTTPRequestHandler):
             } for g in groups]
         }
 
-    def get_same_family_partners(self, cur, search=None, category=None, date_from=None, date_to=None):
+    def get_same_family_partners(self, cur, search=None, category=None, county=None, date_from=None, date_to=None):
         """Find partners with same family name (first word) + same city"""
         # Build params separately for where clause and stats query
         where_params = []
@@ -598,6 +604,10 @@ class handler(BaseHTTPRequestHandler):
         if search:
             where_clause += " AND (city ILIKE %s OR street ILIKE %s OR name ILIKE %s)"
             where_params.extend([f'%{search}%', f'%{search}%', f'%{search}%'])
+
+        if county:
+            where_clause += " AND county ILIKE %s"
+            where_params.append(f'%{county}%')
 
         # Build the stats subquery based on whether category filter is used
         date_filter = ""

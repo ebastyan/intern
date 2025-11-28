@@ -270,6 +270,10 @@
                     <input type="date" id="familyDateFrom" value="2024-01-01">
                     <label>Pana la:</label>
                     <input type="date" id="familyDateTo" value="2025-12-31">
+                    <label>Judet:</label>
+                    <select id="familyCounty">
+                        <option value="">Toate</option>
+                    </select>
                     <label>Kereses:</label>
                     <input type="text" id="familySearch" placeholder="Utca, varos, nev..." style="width:200px;">
                     <label>Anyag:</label>
@@ -1018,11 +1022,17 @@
                     return `<tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;"><td>${p.name}</td><td>${p.city||'-'}</td><td>${p.last_visit}</td><td class="text-right">${daysText}</td><td class="text-right">${fmt(p.total_value)}</td><td><button onclick="event.stopPropagation();showPartnerProfile('${p.cnp}')" style="background:#00d9ff;border:none;color:#000;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:0.75em;">Profil</button></td></tr>`;
                 }).join('');
             });
-            // Load counties for big suppliers filter
+            // Load counties for big suppliers filter AND family filter
             fetch('/api/analytics?type=county').then(r => r.json()).then(d => {
                 if (d.by_county) {
-                    const sel = document.getElementById('bigCounty');
-                    d.by_county.forEach(c => { if (c.county) sel.innerHTML += `<option value="${c.county}">${c.county}</option>`; });
+                    const selBig = document.getElementById('bigCounty');
+                    const selFamily = document.getElementById('familyCounty');
+                    d.by_county.forEach(c => {
+                        if (c.county) {
+                            selBig.innerHTML += `<option value="${c.county}">${c.county}</option>`;
+                            selFamily.innerHTML += `<option value="${c.county}">${c.county}</option>`;
+                        }
+                    });
                 }
             });
 
@@ -1052,12 +1062,14 @@
         async function loadFamilyData() {
             const search = document.getElementById('familySearch').value;
             const category = document.getElementById('familyCategory').value;
+            const county = document.getElementById('familyCounty').value;
             const dateFrom = document.getElementById('familyDateFrom').value;
             const dateTo = document.getElementById('familyDateTo').value;
             let urlAddr = '/api/partners?same_address';
             let urlFam = '/api/partners?same_family';
             if (search) { urlAddr += '&search=' + encodeURIComponent(search); urlFam += '&search=' + encodeURIComponent(search); }
             if (category) { urlAddr += '&category=' + encodeURIComponent(category); urlFam += '&category=' + encodeURIComponent(category); }
+            if (county) { urlAddr += '&county=' + encodeURIComponent(county); urlFam += '&county=' + encodeURIComponent(county); }
             if (dateFrom) { urlAddr += '&date_from=' + dateFrom; urlFam += '&date_from=' + dateFrom; }
             if (dateTo) { urlAddr += '&date_to=' + dateTo; urlFam += '&date_to=' + dateTo; }
 
