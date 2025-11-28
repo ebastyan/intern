@@ -515,24 +515,36 @@ class handler(BaseHTTPRequestHandler):
             where_clause += " AND (p.city ILIKE %s OR p.street ILIKE %s OR p.name ILIKE %s)"
             params.extend([f'%{search}%', f'%{search}%', f'%{search}%'])
 
-        category_join = ""
-        category_filter = ""
+        # Build the stats subquery based on whether category filter is used
         date_filter = ""
-        if category:
-            category_join = """
-                JOIN transaction_items ti ON t.document_id = ti.document_id
-                JOIN waste_types wt ON ti.waste_type_id = wt.id
-                JOIN waste_categories wc ON wt.category_id = wc.id
-            """
-            category_filter = "AND wc.name ILIKE %s"
-            params.append(f'%{category}%')
-
         if date_from:
             date_filter += " AND t.date >= %s"
             params.append(date_from)
         if date_to:
             date_filter += " AND t.date <= %s"
             params.append(date_to)
+
+        if category:
+            # When category is specified, sum only the value from that category
+            stats_query = f"""
+                SELECT t.cnp, SUM(ti.value) as total_value
+                FROM transactions t
+                JOIN transaction_items ti ON t.document_id = ti.document_id
+                JOIN waste_types wt ON ti.waste_type_id = wt.id
+                JOIN waste_categories wc ON wt.category_id = wc.id
+                WHERE wc.name ILIKE %s {date_filter}
+                GROUP BY t.cnp
+                HAVING SUM(ti.value) > 0
+            """
+            params.insert(0, f'%{category}%')  # Category param goes first
+        else:
+            # No category filter - sum all gross_value
+            stats_query = f"""
+                SELECT t.cnp, SUM(t.gross_value) as total_value
+                FROM transactions t
+                WHERE 1=1 {date_filter}
+                GROUP BY t.cnp
+            """
 
         cur.execute(f"""
             SELECT p.city, p.street, p.county,
@@ -543,13 +555,7 @@ class handler(BaseHTTPRequestHandler):
                    COUNT(*) as partner_count,
                    SUM(stats.total_value) as combined_value
             FROM partners p
-            JOIN (
-                SELECT t.cnp, SUM(t.gross_value) as total_value
-                FROM transactions t
-                {category_join}
-                WHERE 1=1 {category_filter} {date_filter}
-                GROUP BY t.cnp
-            ) stats ON p.cnp = stats.cnp
+            JOIN ({stats_query}) stats ON p.cnp = stats.cnp
             {where_clause}
             GROUP BY p.city, p.street, p.county
             HAVING COUNT(*) >= 2
@@ -584,24 +590,36 @@ class handler(BaseHTTPRequestHandler):
             where_clause += " AND (city ILIKE %s OR street ILIKE %s OR name ILIKE %s)"
             params.extend([f'%{search}%', f'%{search}%', f'%{search}%'])
 
-        category_join = ""
-        category_filter = ""
+        # Build the stats subquery based on whether category filter is used
         date_filter = ""
-        if category:
-            category_join = """
-                JOIN transaction_items ti ON t.document_id = ti.document_id
-                JOIN waste_types wt ON ti.waste_type_id = wt.id
-                JOIN waste_categories wc ON wt.category_id = wc.id
-            """
-            category_filter = "AND wc.name ILIKE %s"
-            params.append(f'%{category}%')
-
         if date_from:
             date_filter += " AND t.date >= %s"
             params.append(date_from)
         if date_to:
             date_filter += " AND t.date <= %s"
             params.append(date_to)
+
+        if category:
+            # When category is specified, sum only the value from that category
+            stats_query = f"""
+                SELECT t.cnp, SUM(ti.value) as total_value
+                FROM transactions t
+                JOIN transaction_items ti ON t.document_id = ti.document_id
+                JOIN waste_types wt ON ti.waste_type_id = wt.id
+                JOIN waste_categories wc ON wt.category_id = wc.id
+                WHERE wc.name ILIKE %s {date_filter}
+                GROUP BY t.cnp
+                HAVING SUM(ti.value) > 0
+            """
+            params.insert(0, f'%{category}%')  # Category param goes first
+        else:
+            # No category filter - sum all gross_value
+            stats_query = f"""
+                SELECT t.cnp, SUM(t.gross_value) as total_value
+                FROM transactions t
+                WHERE 1=1 {date_filter}
+                GROUP BY t.cnp
+            """
 
         cur.execute(f"""
             WITH family_names AS (
@@ -619,13 +637,7 @@ class handler(BaseHTTPRequestHandler):
                    COUNT(*) as partner_count,
                    SUM(COALESCE(stats.total_value, 0)) as combined_value
             FROM family_names f
-            LEFT JOIN (
-                SELECT t.cnp, SUM(t.gross_value) as total_value
-                FROM transactions t
-                {category_join}
-                WHERE 1=1 {category_filter} {date_filter}
-                GROUP BY t.cnp
-            ) stats ON f.cnp = stats.cnp
+            LEFT JOIN ({stats_query}) stats ON f.cnp = stats.cnp
             GROUP BY f.family_name, f.city, f.county
             HAVING COUNT(*) >= 2
             ORDER BY combined_value DESC

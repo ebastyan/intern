@@ -61,12 +61,13 @@
         .chart-container.short { height: 200px; }
         table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
         th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        th { color: #00d9ff; font-weight: 600; font-size: 0.75em; text-transform: uppercase; }
+        th { color: #00d9ff; font-weight: 600; font-size: 0.75em; text-transform: uppercase; position: sticky; top: 0; background: #1a1a2e; z-index: 10; }
         tr:hover { background: rgba(255,255,255,0.02); }
         .text-right { text-align: right; }
         .scroll-table { max-height: 320px; overflow-y: auto; }
         .scroll-table::-webkit-scrollbar { width: 5px; }
         .scroll-table::-webkit-scrollbar-thumb { background: rgba(0,217,255,0.3); border-radius: 3px; }
+        .scroll-table thead th { position: sticky; top: 0; background: #1a1a2e; z-index: 10; }
         .alert-card { border-radius: 10px; padding: 14px; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 12px; }
         .alert-card.success { background: rgba(0,255,136,0.08); border-left: 3px solid #00ff88; }
         .alert-card.warning { background: rgba(254,202,87,0.08); border-left: 3px solid #feca57; }
