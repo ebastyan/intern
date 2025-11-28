@@ -110,6 +110,9 @@
         .badge.red { background: rgba(255,107,107,0.2); color: #ff6b6b; }
         .badge.yellow { background: rgba(254,202,87,0.2); color: #feca57; }
         .badge.cyan { background: rgba(0,217,255,0.2); color: #00d9ff; }
+        /* Toggle switch */
+        .toggle-switch input:checked + span { background: #00d9ff; }
+        .toggle-switch input:checked + span + .toggle-dot { transform: translateX(20px); background: #fff; }
         .loading { text-align: center; padding: 40px; color: #666; }
         .loading::after { content: ''; display: inline-block; width: 20px; height: 20px; border: 2px solid #00d9ff; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin-left: 10px; vertical-align: middle; }
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -392,6 +395,15 @@
                                 <option value="last_visit_desc">Ultima vizita (recent)</option>
                                 <option value="last_visit_asc">Ultima vizita (vechi)</option>
                             </select>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;margin-left:15px;padding:5px 12px;background:#252540;border-radius:6px;">
+                            <label style="color:#888;font-size:0.9em;">Mindenki:</label>
+                            <label class="toggle-switch" style="position:relative;display:inline-block;width:44px;height:24px;">
+                                <input type="checkbox" id="listaShowAll" onchange="loadPartnerList(1)" style="opacity:0;width:0;height:0;">
+                                <span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#444;transition:.3s;border-radius:24px;"></span>
+                                <span class="toggle-dot" style="position:absolute;content:'';height:18px;width:18px;left:3px;bottom:3px;background:#888;transition:.3s;border-radius:50%;"></span>
+                            </label>
+                            <span id="listaShowAllLabel" style="color:#888;font-size:0.85em;">Csak tranzakcioval</span>
                         </div>
                         <button onclick="loadPartnerList(1)" style="background:#00d9ff;color:#000;font-weight:bold;padding:8px 20px;">Cauta</button>
                         <button onclick="resetPartnerListFilters()" style="background:#444;">Reset</button>
@@ -1238,18 +1250,24 @@
             const minValue = document.getElementById('listaMinValue').value;
             const sex = document.getElementById('listaSex').value;
             const sort = document.getElementById('listaSort').value;
+            const showAll = document.getElementById('listaShowAll').checked;
+
+            // Update toggle label
+            document.getElementById('listaShowAllLabel').textContent = showAll ? 'Mindenki' : 'Csak tranzakcioval';
+            document.getElementById('listaShowAllLabel').style.color = showAll ? '#00d9ff' : '#888';
 
             let url = `/api/partners?list=1&page=${page}&limit=25`;
+            if (showAll) url += '&show_all=1';
             if (name) url += '&name=' + encodeURIComponent(name);
             if (cnp) url += '&cnp_search=' + encodeURIComponent(cnp);
             if (county) url += '&county=' + encodeURIComponent(county);
             if (city) url += '&city=' + encodeURIComponent(city);
             if (street) url += '&street=' + encodeURIComponent(street);
-            if (dateFrom) url += '&date_from=' + dateFrom;
-            if (dateTo) url += '&date_to=' + dateTo;
-            if (category) url += '&category=' + encodeURIComponent(category);
-            if (minVisits && minVisits > 0) url += '&min_visits=' + minVisits;
-            if (minValue && minValue > 0) url += '&min_value=' + minValue;
+            if (!showAll && dateFrom) url += '&date_from=' + dateFrom;
+            if (!showAll && dateTo) url += '&date_to=' + dateTo;
+            if (!showAll && category) url += '&category=' + encodeURIComponent(category);
+            if (!showAll && minVisits && minVisits > 0) url += '&min_visits=' + minVisits;
+            if (!showAll && minValue && minValue > 0) url += '&min_value=' + minValue;
             if (sex) url += '&sex=' + sex;
             if (sort) url += '&sort=' + sort;
 
@@ -1338,6 +1356,7 @@
             document.getElementById('listaMinValue').value = '0';
             document.getElementById('listaSex').value = '';
             document.getElementById('listaSort').value = 'value_desc';
+            document.getElementById('listaShowAll').checked = false;
             loadPartnerList(1);
         }
 

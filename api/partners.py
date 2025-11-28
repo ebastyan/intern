@@ -121,8 +121,9 @@ class handler(BaseHTTPRequestHandler):
                 min_value = float(params.get('min_value', [0])[0])
                 sex = params.get('sex', [None])[0]
                 sort = params.get('sort', ['value_desc'])[0]
+                show_all = 'show_all' in params
                 result = self.get_partner_list(cur, page, limit, name, cnp_search, county, city, street,
-                                               date_from, date_to, category, min_visits, min_value, sex, sort)
+                                               date_from, date_to, category, min_visits, min_value, sex, sort, show_all)
 
             else:
                 result = {'error': 'Specify ?q=search, ?cnp=XXX, ?inactive=days, ?top=N, ?onetime, ?filter, ?regulars, ?same_address, ?same_family, ?big_suppliers, or ?list=1'}
@@ -770,7 +771,7 @@ class handler(BaseHTTPRequestHandler):
         }
 
     def get_partner_list(self, cur, page=1, limit=25, name=None, cnp_search=None, county=None, city=None, street=None,
-                         date_from=None, date_to=None, category=None, min_visits=0, min_value=0, sex=None, sort='value_desc'):
+                         date_from=None, date_to=None, category=None, min_visits=0, min_value=0, sex=None, sort='value_desc', show_all=False):
         """Get paginated partner list with advanced filtering"""
         offset = (page - 1) * limit
         params = []
@@ -797,73 +798,112 @@ class handler(BaseHTTPRequestHandler):
             where_clauses.append("p.sex = %s")
             params.append(sex)
 
-        # Transaction-level filters
-        if date_from:
-            where_clauses.append("t.date >= %s")
-            params.append(date_from)
-        if date_to:
-            where_clauses.append("t.date <= %s")
-            params.append(date_to)
-
         where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
 
-        # Build query based on whether category filter is used
-        if category:
-            # When category is specified, join transaction_items and filter by category
+        # If show_all is True, just list all partners from the partners table (no transaction join)
+        if show_all:
+            # Simple query - all partners, with optional transaction stats
             base_query = f"""
                 SELECT p.cnp, p.name, p.city, p.county, p.street, p.sex,
-                       COUNT(DISTINCT t.document_id) as visit_count,
-                       SUM(ti.weight_kg) as total_kg,
-                       SUM(ti.value) as total_value,
-                       MAX(t.date) as last_visit
+                       COALESCE(stats.visit_count, 0) as visit_count,
+                       COALESCE(stats.total_kg, 0) as total_kg,
+                       COALESCE(stats.total_value, 0) as total_value,
+                       stats.last_visit
                 FROM partners p
-                JOIN transactions t ON p.cnp = t.cnp
-                JOIN transaction_items ti ON t.document_id = ti.document_id
-                JOIN waste_types wt ON ti.waste_type_id = wt.id
-                JOIN waste_categories wc ON wt.category_id = wc.id
+                LEFT JOIN (
+                    SELECT t.cnp,
+                           COUNT(DISTINCT t.document_id) as visit_count,
+                           COALESCE(SUM(ti.weight_kg), 0) as total_kg,
+                           COALESCE(SUM(t.gross_value), 0) as total_value,
+                           MAX(t.date) as last_visit
+                    FROM transactions t
+                    LEFT JOIN transaction_items ti ON t.document_id = ti.document_id
+                    GROUP BY t.cnp
+                ) stats ON p.cnp = stats.cnp
                 {where_sql}
-                {"AND" if where_clauses else "WHERE"} wc.name ILIKE %s
-                GROUP BY p.cnp, p.name, p.city, p.county, p.street, p.sex
             """
-            params.append(f'%{category}%')
+            having_sql = ""
+
+            # Sorting for show_all mode
+            sort_map = {
+                'value_desc': 'total_value DESC NULLS LAST',
+                'value_asc': 'total_value ASC NULLS LAST',
+                'visits_desc': 'visit_count DESC NULLS LAST',
+                'visits_asc': 'visit_count ASC NULLS LAST',
+                'name_asc': 'p.name ASC',
+                'name_desc': 'p.name DESC',
+                'last_visit_desc': 'last_visit DESC NULLS LAST',
+                'last_visit_asc': 'last_visit ASC NULLS LAST'
+            }
         else:
-            # No category filter - use gross_value
-            base_query = f"""
-                SELECT p.cnp, p.name, p.city, p.county, p.street, p.sex,
-                       COUNT(DISTINCT t.document_id) as visit_count,
-                       COALESCE(SUM(ti.weight_kg), 0) as total_kg,
-                       COALESCE(SUM(t.gross_value), 0) as total_value,
-                       MAX(t.date) as last_visit
-                FROM partners p
-                LEFT JOIN transactions t ON p.cnp = t.cnp
-                LEFT JOIN transaction_items ti ON t.document_id = ti.document_id
-                {where_sql}
-                GROUP BY p.cnp, p.name, p.city, p.county, p.street, p.sex
-            """
+            # Transaction-level filters (only when not show_all)
+            if date_from:
+                where_clauses.append("t.date >= %s")
+                params.append(date_from)
+            if date_to:
+                where_clauses.append("t.date <= %s")
+                params.append(date_to)
 
-        # Having clauses for aggregated filters
-        if min_visits > 0:
-            having_clauses.append(f"COUNT(DISTINCT t.document_id) >= {min_visits}")
-        if min_value > 0:
+            where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+
+            # Build query based on whether category filter is used
             if category:
-                having_clauses.append(f"SUM(ti.value) >= {min_value}")
+                # When category is specified, join transaction_items and filter by category
+                base_query = f"""
+                    SELECT p.cnp, p.name, p.city, p.county, p.street, p.sex,
+                           COUNT(DISTINCT t.document_id) as visit_count,
+                           SUM(ti.weight_kg) as total_kg,
+                           SUM(ti.value) as total_value,
+                           MAX(t.date) as last_visit
+                    FROM partners p
+                    JOIN transactions t ON p.cnp = t.cnp
+                    JOIN transaction_items ti ON t.document_id = ti.document_id
+                    JOIN waste_types wt ON ti.waste_type_id = wt.id
+                    JOIN waste_categories wc ON wt.category_id = wc.id
+                    {where_sql}
+                    {"AND" if where_clauses else "WHERE"} wc.name ILIKE %s
+                    GROUP BY p.cnp, p.name, p.city, p.county, p.street, p.sex
+                """
+                params.append(f'%{category}%')
             else:
-                having_clauses.append(f"COALESCE(SUM(t.gross_value), 0) >= {min_value}")
+                # No category filter - use gross_value
+                base_query = f"""
+                    SELECT p.cnp, p.name, p.city, p.county, p.street, p.sex,
+                           COUNT(DISTINCT t.document_id) as visit_count,
+                           COALESCE(SUM(ti.weight_kg), 0) as total_kg,
+                           COALESCE(SUM(t.gross_value), 0) as total_value,
+                           MAX(t.date) as last_visit
+                    FROM partners p
+                    LEFT JOIN transactions t ON p.cnp = t.cnp
+                    LEFT JOIN transaction_items ti ON t.document_id = ti.document_id
+                    {where_sql}
+                    GROUP BY p.cnp, p.name, p.city, p.county, p.street, p.sex
+                """
 
-        having_sql = "HAVING " + " AND ".join(having_clauses) if having_clauses else ""
+            # Having clauses for aggregated filters
+            if min_visits > 0:
+                having_clauses.append(f"COUNT(DISTINCT t.document_id) >= {min_visits}")
+            if min_value > 0:
+                if category:
+                    having_clauses.append(f"SUM(ti.value) >= {min_value}")
+                else:
+                    having_clauses.append(f"COALESCE(SUM(t.gross_value), 0) >= {min_value}")
 
-        # Sorting
-        sort_map = {
-            'value_desc': 'total_value DESC',
-            'value_asc': 'total_value ASC',
-            'visits_desc': 'visit_count DESC',
-            'visits_asc': 'visit_count ASC',
-            'name_asc': 'p.name ASC',
-            'name_desc': 'p.name DESC',
-            'last_visit_desc': 'last_visit DESC NULLS LAST',
-            'last_visit_asc': 'last_visit ASC NULLS LAST'
-        }
-        order_sql = f"ORDER BY {sort_map.get(sort, 'total_value DESC')}"
+            having_sql = "HAVING " + " AND ".join(having_clauses) if having_clauses else ""
+
+            # Sorting
+            sort_map = {
+                'value_desc': 'total_value DESC',
+                'value_asc': 'total_value ASC',
+                'visits_desc': 'visit_count DESC',
+                'visits_asc': 'visit_count ASC',
+                'name_asc': 'p.name ASC',
+                'name_desc': 'p.name DESC',
+                'last_visit_desc': 'last_visit DESC NULLS LAST',
+                'last_visit_asc': 'last_visit ASC NULLS LAST'
+            }
+
+        order_sql = f"ORDER BY {sort_map.get(sort, 'total_value DESC NULLS LAST')}"
 
         # Count total
         count_query = f"SELECT COUNT(*) as total FROM ({base_query} {having_sql}) as subq"
