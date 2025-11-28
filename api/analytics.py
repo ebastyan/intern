@@ -805,22 +805,32 @@ class handler(BaseHTTPRequestHandler):
         if not city:
             return {'error': 'City parameter required'}
 
-        # Basic stats
+        # Basic stats - use ILIKE for case-insensitive matching and SUM across all counties
         cur.execute("""
-            SELECT p.county,
-                   COUNT(DISTINCT p.cnp) as partners,
+            SELECT COUNT(DISTINCT p.cnp) as partners,
                    COUNT(DISTINCT t.document_id) as transactions,
                    SUM(ti.weight_kg) as total_kg,
                    SUM(ti.value) as total_value
             FROM partners p
             JOIN transactions t ON p.cnp = t.cnp
             JOIN transaction_items ti ON t.document_id = ti.document_id
-            WHERE p.city = %s
-            GROUP BY p.county
+            WHERE p.city ILIKE %s
         """, (city,))
         basic = cur.fetchone()
 
-        if not basic:
+        # Get the county (most common one for this city)
+        cur.execute("""
+            SELECT p.county, COUNT(*) as cnt
+            FROM partners p
+            WHERE p.city ILIKE %s AND p.county IS NOT NULL
+            GROUP BY p.county
+            ORDER BY cnt DESC
+            LIMIT 1
+        """, (city,))
+        county_row = cur.fetchone()
+        county = county_row['county'] if county_row else None
+
+        if not basic or basic['partners'] == 0:
             return {'error': f'City {city} not found'}
 
         # Breakdown by waste category
@@ -833,7 +843,7 @@ class handler(BaseHTTPRequestHandler):
             JOIN transaction_items ti ON t.document_id = ti.document_id
             JOIN waste_types wt ON ti.waste_type_id = wt.id
             JOIN waste_categories wc ON wt.category_id = wc.id
-            WHERE p.city = %s
+            WHERE p.city ILIKE %s
             GROUP BY wc.name
             ORDER BY total_kg DESC
         """, (city,))
@@ -844,7 +854,7 @@ class handler(BaseHTTPRequestHandler):
             SELECT p.cnp, p.name, COUNT(t.document_id) as visits, SUM(t.gross_value) as total_value
             FROM partners p
             JOIN transactions t ON p.cnp = t.cnp
-            WHERE p.city = %s
+            WHERE p.city ILIKE %s
             GROUP BY p.cnp, p.name
             ORDER BY visits DESC
             LIMIT 20
@@ -856,7 +866,7 @@ class handler(BaseHTTPRequestHandler):
             SELECT p.cnp, p.name, COUNT(t.document_id) as visits, SUM(t.gross_value) as total_value
             FROM partners p
             JOIN transactions t ON p.cnp = t.cnp
-            WHERE p.city = %s
+            WHERE p.city ILIKE %s
             GROUP BY p.cnp, p.name
             ORDER BY total_value DESC
             LIMIT 20
@@ -865,11 +875,11 @@ class handler(BaseHTTPRequestHandler):
 
         return {
             'city': city,
-            'county': basic['county'],
+            'county': county,
             'partners': basic['partners'],
             'transactions': basic['transactions'],
-            'total_kg': float(basic['total_kg']),
-            'total_value': float(basic['total_value']),
+            'total_kg': float(basic['total_kg']) if basic['total_kg'] else 0,
+            'total_value': float(basic['total_value']) if basic['total_value'] else 0,
             'by_category': by_category,
             'top_by_visits': top_by_visits,
             'top_by_value': top_by_value
