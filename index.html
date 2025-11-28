@@ -173,7 +173,7 @@
             </div>
             <div class="card">
                 <h2><span class="icon">📋</span> Comparatie Lunara Detaliata</h2>
-                <div class="scroll-table"><table><thead><tr><th>Luna</th><th class="text-right">2024 Rulaj</th><th class="text-right">2025 Rulaj</th><th class="text-right">Diferenta</th><th class="text-right">2024 Parteneri</th><th class="text-right">2025 Parteneri</th></tr></thead><tbody id="monthCompareBody"></tbody></table></div>
+                <div class="scroll-table"><table><thead><tr><th>Luna</th><th class="text-right">2024 Rulaj</th><th class="text-right">2025 Rulaj</th><th class="text-right">Dif. Rulaj</th><th class="text-right">2024 Parteneri</th><th class="text-right">2025 Parteneri</th><th class="text-right">Dif. Parteneri</th></tr></thead><tbody id="monthCompareBody"></tbody></table></div>
             </div>
             <div class="grid grid-3">
                 <div class="card"><h2><span class="icon">💡</span> Concluzii</h2><div id="compareInsights"></div></div>
@@ -253,9 +253,9 @@
 
             <div id="partnerTab-regulars" class="partner-tab" style="display:none;">
                 <div class="grid grid-3">
-                    <div class="card"><h2><span class="icon">📅</span> Vizitatori Saptamanali</h2><p style="color:#888;font-size:0.8em;margin-bottom:10px;"><strong>Definicie:</strong> Partnerek akik MIN 4 kulonbozo heten jottek 2024-ben ES 2025-ben is. (pl: valaki aki jan 1. het, jan 3. het, feb 2. het, mar 1. het jott 2024-ben ES ugyan igy 2025-ben is)</p><div class="scroll-table"><table><thead><tr><th>Nume</th><th class="text-right">Vizite</th><th class="text-right">Valoare</th></tr></thead><tbody id="weeklyRegulars"></tbody></table></div></div>
-                    <div class="card"><h2><span class="icon">📆</span> Vizitatori Lunari</h2><p style="color:#888;font-size:0.8em;margin-bottom:10px;"><strong>Definicie:</strong> Partnerek akik MIN 6 kulonbozo honapban jottek 2024-ben ES MIN 4 honapban 2025-ben. (pl: jan, mar, apr, mai, iun, iul 2024-ben ES jan, feb, mar, apr 2025-ben)</p><div class="scroll-table"><table><thead><tr><th>Nume</th><th class="text-right">Vizite</th><th class="text-right">Valoare</th></tr></thead><tbody id="monthlyRegulars"></tbody></table></div></div>
-                    <div class="card"><h2><span class="icon">🔄</span> Vizitatori Anuali</h2><p style="color:#888;font-size:0.8em;margin-bottom:10px;"><strong>Definicie:</strong> Partnerek akik MIND A KET evben (2024 ES 2025) aktivak voltak, legalabb 1-1 tranzakcioval. Ertek szerint rendezve.</p><div class="scroll-table"><table><thead><tr><th>Nume</th><th class="text-right">Vizite</th><th class="text-right">Valoare</th></tr></thead><tbody id="yearlyRegulars"></tbody></table></div></div>
+                    <div class="card"><h2><span class="icon">📅</span> Vizitatori Saptamanali</h2><p style="color:#888;font-size:0.8em;margin-bottom:10px;"><strong>Definitie:</strong> Parteneri care au venit in MIN 4 saptamani diferite in 2024 SI in 2025. (ex: cineva care a venit sapt 1 ian, sapt 3 ian, sapt 2 feb, sapt 1 mar in 2024 SI la fel in 2025)</p><div class="scroll-table"><table><thead><tr><th>Nume</th><th class="text-right">Vizite</th><th class="text-right">Valoare</th></tr></thead><tbody id="weeklyRegulars"></tbody></table></div></div>
+                    <div class="card"><h2><span class="icon">📆</span> Vizitatori Lunari</h2><p style="color:#888;font-size:0.8em;margin-bottom:10px;"><strong>Definitie:</strong> Parteneri care au venit in MIN 6 luni diferite in 2024 SI MIN 4 luni in 2025. (ex: ian, mar, apr, mai, iun, iul 2024 SI ian, feb, mar, apr 2025)</p><div class="scroll-table"><table><thead><tr><th>Nume</th><th class="text-right">Vizite</th><th class="text-right">Valoare</th></tr></thead><tbody id="monthlyRegulars"></tbody></table></div></div>
+                    <div class="card"><h2><span class="icon">🔄</span> Vizitatori Anuali</h2><p style="color:#888;font-size:0.8em;margin-bottom:10px;"><strong>Definitie:</strong> Parteneri care au fost activi in AMBII ani (2024 SI 2025), cu cel putin 1 tranzactie in fiecare an. Ordonati dupa valoare.</p><div class="scroll-table"><table><thead><tr><th>Nume</th><th class="text-right">Vizite</th><th class="text-right">Valoare</th></tr></thead><tbody id="yearlyRegulars"></tbody></table></div></div>
                 </div>
             </div>
 
@@ -347,50 +347,50 @@
             <div class="card"><h2><span class="icon">🚨</span> Alerte si Recomandari</h2><div id="alertsContainer"></div></div>
         </div>
 
-        <!-- STATISZTIKA -->
+        <!-- STATISTICI -->
         <div id="section-stats" class="section">
             <div class="grid grid-2">
                 <div class="card">
-                    <h2><span class="icon">🏆</span> TOP per Kategoria - Suly (kg)</h2>
-                    <p style="color:#888;font-size:0.8em;margin-bottom:10px;">A legtobb kg-ot beszallito partner kategoriankent</p>
-                    <div class="scroll-table"><table><thead><tr><th>Kategoria</th><th>Partner</th><th class="text-right">Ossz. kg</th></tr></thead><tbody id="topWeightTable"></tbody></table></div>
+                    <h2><span class="icon">🏆</span> TOP per Categorie - Greutate (kg)</h2>
+                    <p style="color:#888;font-size:0.8em;margin-bottom:10px;">Partenerul cu cele mai multe kg livrate per categorie</p>
+                    <div class="scroll-table"><table><thead><tr><th>Categorie</th><th>Partener</th><th class="text-right">Total kg</th></tr></thead><tbody id="topWeightTable"></tbody></table></div>
                 </div>
                 <div class="card">
-                    <h2><span class="icon">💰</span> TOP per Kategoria - Ertek (RON)</h2>
-                    <p style="color:#888;font-size:0.8em;margin-bottom:10px;">A legnagyobb ertek kategoriankent</p>
-                    <div class="scroll-table"><table><thead><tr><th>Kategoria</th><th>Partner</th><th class="text-right">Ossz. RON</th></tr></thead><tbody id="topValueTable"></tbody></table></div>
+                    <h2><span class="icon">💰</span> TOP per Categorie - Valoare (RON)</h2>
+                    <p style="color:#888;font-size:0.8em;margin-bottom:10px;">Cea mai mare valoare per categorie</p>
+                    <div class="scroll-table"><table><thead><tr><th>Categorie</th><th>Partener</th><th class="text-right">Total RON</th></tr></thead><tbody id="topValueTable"></tbody></table></div>
                 </div>
             </div>
             <div class="grid grid-2">
                 <div class="card">
-                    <h2><span class="icon">📉</span> Legkisebb Visszatero per Kategoria</h2>
-                    <p style="color:#888;font-size:0.8em;margin-bottom:10px;">Min 3 vizit, de legkisebb osszeg</p>
-                    <div class="scroll-table"><table><thead><tr><th>Kategoria</th><th>Partner</th><th class="text-right">Vizit</th><th class="text-right">Ossz. RON</th></tr></thead><tbody id="bottomValueTable"></tbody></table></div>
+                    <h2><span class="icon">📉</span> Cei Mai Mici Fideli per Categorie</h2>
+                    <p style="color:#888;font-size:0.8em;margin-bottom:10px;">Min 3 vizite, dar cea mai mica suma totala</p>
+                    <div class="scroll-table"><table><thead><tr><th>Categorie</th><th>Partener</th><th class="text-right">Vizite</th><th class="text-right">Total RON</th></tr></thead><tbody id="bottomValueTable"></tbody></table></div>
                 </div>
                 <div class="card">
-                    <h2><span class="icon">🎯</span> Konzisztens Partnerek</h2>
-                    <p style="color:#888;font-size:0.8em;margin-bottom:10px;">Mindig kb ugyan annyi kg-ot hoznak (alacsony szoras)</p>
-                    <div class="scroll-table"><table><thead><tr><th>Partner</th><th class="text-right">Vizit</th><th class="text-right">Atlag kg</th><th class="text-right">Szoras</th></tr></thead><tbody id="consistentTable"></tbody></table></div>
+                    <h2><span class="icon">🎯</span> Parteneri Consistenti</h2>
+                    <p style="color:#888;font-size:0.8em;margin-bottom:10px;">Aduc mereu aprox. aceeasi cantitate (deviatie standard mica)</p>
+                    <div class="scroll-table"><table><thead><tr><th>Partener</th><th class="text-right">Vizite</th><th class="text-right">Media kg</th><th class="text-right">Dev.Std</th></tr></thead><tbody id="consistentTable"></tbody></table></div>
                 </div>
             </div>
             <div class="grid grid-3">
                 <div class="card">
-                    <h2><span class="icon">📅</span> Legjobb Idoszak</h2>
+                    <h2><span class="icon">📅</span> Cea Mai Buna Perioada</h2>
                     <div id="bestPeriod" style="font-size:1.1em;"></div>
                 </div>
                 <div class="card">
-                    <h2><span class="icon">😄</span> Vicces Nevek</h2>
+                    <h2><span class="icon">😄</span> Nume Amuzante</h2>
                     <div id="funnyNames"></div>
                 </div>
                 <div class="card">
-                    <h2><span class="icon">🗺️</span> Furcsa Telepulesek</h2>
+                    <h2><span class="icon">🗺️</span> Localitati Ciudate</h2>
                     <div id="unusualCities"></div>
                 </div>
             </div>
             <div class="card">
-                <h2><span class="icon">🎄</span> Unnep Elemzes</h2>
-                <p style="color:#888;font-size:0.8em;margin-bottom:10px;">Ortodox Husvet, Karacsony, Mikulas kornyeken</p>
-                <div class="scroll-table"><table><thead><tr><th>Unnep</th><th>Idoszak</th><th class="text-right">Tranzakciok</th><th class="text-right">Ertek RON</th><th>Top Kategoriak</th></tr></thead><tbody id="holidaysTable"></tbody></table></div>
+                <h2><span class="icon">🎄</span> Analiza Sarbatori</h2>
+                <p style="color:#888;font-size:0.8em;margin-bottom:10px;">Paste Ortodox, Craciun, Mos Nicolae - comparatie inainte/dupa sarbatoare</p>
+                <div class="scroll-table"><table><thead><tr><th>Sarbatoare</th><th>Perioada</th><th class="text-right">Tranzactii</th><th class="text-right">Valoare RON</th><th class="text-right">vs Inainte</th><th>Top Categorii</th></tr></thead><tbody id="holidaysTable"></tbody></table></div>
             </div>
         </div>
     </div>
@@ -593,14 +593,13 @@
                 const m24 = monthly.years['2024']?.months[k], m25 = monthly.years['2025']?.months[k];
                 const v24 = m24?.summary.total_value || 0, v25 = m25?.summary.total_value || 0;
                 const p24 = m24?.summary.unique_partners || 0, p25 = m25?.summary.unique_partners || 0;
+                // Rulaj difference %
                 const ch = v24 && v25 ? ((v25-v24)/v24*100).toFixed(1) : '-';
                 const chClass = ch !== '-' ? (parseFloat(ch) >= 0 ? 'color:#00ff88' : 'color:#ff6b6b') : '';
-                // Partner difference
-                const pDiff = p24 && p25 ? p25 - p24 : 0;
+                // Partner difference % - separate column
                 const pDiffPct = p24 && p25 ? ((p25-p24)/p24*100).toFixed(1) : '-';
-                const pDiffClass = pDiff >= 0 ? 'color:#00ff88' : 'color:#ff6b6b';
-                const pDiffStr = p24 && p25 ? `<span style="${pDiffClass};font-size:0.8em;"> (${pDiff>=0?'+':''}${pDiff}, ${pDiff>=0?'+':''}${pDiffPct}%)</span>` : '';
-                tbody.innerHTML += `<tr><td>${monthNamesFull[i]}</td><td class="text-right">${v24 ? fmt(v24) : '-'}</td><td class="text-right">${v25 ? fmt(v25) : '-'}</td><td class="text-right" style="${chClass}">${ch !== '-' ? ch + '%' : '-'}</td><td class="text-right">${p24 || '-'}</td><td class="text-right">${p25 || '-'}${pDiffStr}</td></tr>`;
+                const pDiffClass = pDiffPct !== '-' ? (parseFloat(pDiffPct) >= 0 ? 'color:#00ff88' : 'color:#ff6b6b') : '';
+                tbody.innerHTML += `<tr><td>${monthNamesFull[i]}</td><td class="text-right">${v24 ? fmt(v24) : '-'}</td><td class="text-right">${v25 ? fmt(v25) : '-'}</td><td class="text-right" style="${chClass}">${ch !== '-' ? (parseFloat(ch) >= 0 ? '+' : '') + ch + '%' : '-'}</td><td class="text-right">${p24 || '-'}</td><td class="text-right">${p25 || '-'}</td><td class="text-right" style="${pDiffClass}">${pDiffPct !== '-' ? (parseFloat(pDiffPct) >= 0 ? '+' : '') + pDiffPct + '%' : '-'}</td></tr>`;
             }
 
             const y24 = monthly.years['2024']?.summary, y25 = monthly.years['2025']?.summary;
@@ -778,63 +777,73 @@
             const mar25Val = mar25?.value || 0;
             const apr25Val = apr25?.value || 0;
 
-            // REALISZTIKUS pattern: Jan/Feb GYENGE mindkét évben!
-            // Calculate year average for comparison
-            const avg2024 = data2024.reduce((a,d) => a + d.value, 0) / data2024.length;
-            const avg2025 = data2025.reduce((a,d) => a + d.value, 0) / data2025.length;
+            // YoY trend analysis - compare same months between years
+            // Get 2025 months from Aug onwards (most recent complete months)
+            const aug25 = data2025.find(d => d.month === 8);
+            const sep25 = data2025.find(d => d.month === 9);
+            const oct25 = data2025.find(d => d.month === 10);
+            const nov25 = data2025.find(d => d.month === 11);
 
-            // Jan/Feb as % of year average - they are WEAK months!
-            const jan24PctOfAvg = jan24Val / avg2024 * 100;
-            const feb24PctOfAvg = feb24Val / avg2024 * 100;
-            const jan25PctOfAvg = jan25Val / avg2025 * 100;
-            const feb25PctOfAvg = feb25Val / avg2025 * 100;
+            // Compare YoY for same months to get trend %
+            const aug24 = data2024.find(d => d.month === 8);
+            const sep24 = data2024.find(d => d.month === 9);
+            const oct24 = data2024.find(d => d.month === 10);
 
-            // Last 3 months trend
+            // Calculate YoY change % for recent months
+            const yoyChanges = [];
+            if (aug24?.value && aug25?.value) yoyChanges.push((aug25.value - aug24.value) / aug24.value * 100);
+            if (sep24?.value && sep25?.value) yoyChanges.push((sep25.value - sep24.value) / sep24.value * 100);
+            if (oct24?.value && oct25?.value) yoyChanges.push((oct25.value - oct24.value) / oct24.value * 100);
+            const avgYoY = yoyChanges.length > 0 ? yoyChanges.reduce((a,b) => a+b, 0) / yoyChanges.length : -10;
+
+            // Last 3 months trend within 2025
             const last3 = allData.slice(-3);
             const avgLast3 = last3.reduce((a,b) => a + b.value, 0) / 3;
-            const trend = last3.length >= 3 ? (last3[2].value - last3[0].value) / 2 : 0;
 
-            // Prediction Dec 2025: based on recent trend
-            const predDec = Math.max(2000000, avgLast3 * (1 + trend/avgLast3 * 0.3));
+            // Prediction Dec 2025: based on Dec 2024 + YoY trend
+            const predDec = dec24Val * (1 + avgYoY / 100);
 
-            // Jan 2026: GYENGE - use actual Jan patterns (they DROP after Dec!)
-            const avgJanPct = (jan24PctOfAvg + jan25PctOfAvg) / 2; // ~50-60% of average
-            const predJan = predDec * (avgJanPct / 100);
+            // Jan 2026: based on Jan 2025 + YoY trend (Jan is WEAK!)
+            const predJan = jan25Val * (1 + avgYoY / 100);
 
-            // Feb 2026: slightly better than Jan but still weak
-            const avgFebPct = (feb24PctOfAvg + feb25PctOfAvg) / 2;
-            const predFeb = predDec * (avgFebPct / 100);
+            // Feb 2026: based on Feb 2025 + YoY trend
+            const predFeb = feb25Val * (1 + avgYoY / 100);
+
+            // Mar 2026: based on Mar 2025 + YoY trend
+            const predMar = mar25Val * (1 + avgYoY / 100);
 
             // Q1 estimate
-            const predQ1 = predJan + predFeb + predFeb * 1.1;
+            const predQ1 = predJan + predFeb + predMar;
 
             document.getElementById('predDec').textContent = fmt(Math.round(predDec));
             document.getElementById('predTrans').textContent = fmt(Math.round(predDec / 2400));
             document.getElementById('predJan').textContent = fmt(Math.round(predJan));
             document.getElementById('predQ1').textContent = fmt(Math.round(predQ1));
 
+            // Calculate % change from Dec to Jan (historical pattern)
+            const decToJanDrop24 = dec24Val > 0 ? ((jan25Val - dec24Val) / dec24Val * 100).toFixed(1) : 0;
+
             document.getElementById('predictionMethodology').innerHTML = `
-                <p><strong style="color:#ff6b6b;">⚠️ ATENTIE: Ianuarie si Februarie sunt SLABE!</strong></p>
+                <p><strong style="color:#00d9ff;">Metodologie: Trend YoY (Aug-Oct 2025 vs 2024)</strong></p>
+                <p style="margin:8px 0;color:#888;">Media schimbare YoY: <strong style="color:${avgYoY >= 0 ? '#00ff88' : '#ff6b6b'};">${avgYoY >= 0 ? '+' : ''}${avgYoY.toFixed(1)}%</strong></p>
                 <table style="width:100%;margin:10px 0;font-size:0.85em;color:#aaa;border-collapse:collapse;">
-                    <tr style="border-bottom:1px solid rgba(255,255,255,0.1);"><th style="text-align:left;color:#00d9ff;padding:5px;">Luna</th><th style="text-align:right;padding:5px;">2024 (RON)</th><th style="text-align:right;padding:5px;">2025 (RON)</th><th style="text-align:right;padding:5px;">% din medie</th></tr>
-                    <tr><td style="padding:5px;">Decembrie</td><td style="text-align:right;padding:5px;">${fmt(dec24Val)}</td><td style="text-align:right;padding:5px;">-</td><td></td></tr>
-                    <tr style="background:rgba(255,107,107,0.1);"><td style="padding:5px;color:#ff6b6b;">Ianuarie ⬇️</td><td style="text-align:right;padding:5px;color:#ff6b6b;">${fmt(jan24Val)}</td><td style="text-align:right;padding:5px;color:#ff6b6b;">${fmt(jan25Val)}</td><td style="text-align:right;padding:5px;color:#ff6b6b;">${jan24PctOfAvg.toFixed(0)}% / ${jan25PctOfAvg.toFixed(0)}%</td></tr>
-                    <tr style="background:rgba(255,107,107,0.1);"><td style="padding:5px;color:#ff6b6b;">Februarie ⬇️</td><td style="text-align:right;padding:5px;color:#ff6b6b;">${fmt(feb24Val)}</td><td style="text-align:right;padding:5px;color:#ff6b6b;">${fmt(feb25Val)}</td><td style="text-align:right;padding:5px;color:#ff6b6b;">${feb24PctOfAvg.toFixed(0)}% / ${feb25PctOfAvg.toFixed(0)}%</td></tr>
-                    <tr style="background:rgba(0,255,136,0.1);"><td style="padding:5px;color:#00ff88;">Martie ⬆️</td><td style="text-align:right;padding:5px;color:#00ff88;">${fmt(mar24Val)}</td><td style="text-align:right;padding:5px;color:#00ff88;">${fmt(mar25Val)}</td><td style="text-align:right;padding:5px;">Creste!</td></tr>
-                    <tr style="background:rgba(0,255,136,0.1);"><td style="padding:5px;color:#00ff88;">Aprilie ⬆️</td><td style="text-align:right;padding:5px;color:#00ff88;">${fmt(apr24Val)}</td><td style="text-align:right;padding:5px;color:#00ff88;">${fmt(apr25Val)}</td><td style="text-align:right;padding:5px;">Varful!</td></tr>
+                    <tr style="border-bottom:1px solid rgba(255,255,255,0.1);"><th style="text-align:left;color:#00d9ff;padding:5px;">Luna</th><th style="text-align:right;padding:5px;">2024</th><th style="text-align:right;padding:5px;">2025</th><th style="text-align:right;padding:5px;">Predictie 2026</th></tr>
+                    <tr><td style="padding:5px;">Decembrie</td><td style="text-align:right;padding:5px;">${fmt(dec24Val)}</td><td style="text-align:right;padding:5px;">-</td><td style="text-align:right;padding:5px;color:#feca57;">${fmt(Math.round(predDec))}</td></tr>
+                    <tr style="background:rgba(255,107,107,0.1);"><td style="padding:5px;color:#ff6b6b;">Ianuarie ⬇️</td><td style="text-align:right;padding:5px;">${fmt(jan24Val)}</td><td style="text-align:right;padding:5px;">${fmt(jan25Val)}</td><td style="text-align:right;padding:5px;color:#ff6b6b;">${fmt(Math.round(predJan))}</td></tr>
+                    <tr style="background:rgba(255,107,107,0.1);"><td style="padding:5px;color:#ff6b6b;">Februarie</td><td style="text-align:right;padding:5px;">${fmt(feb24Val)}</td><td style="text-align:right;padding:5px;">${fmt(feb25Val)}</td><td style="text-align:right;padding:5px;color:#ff6b6b;">${fmt(Math.round(predFeb))}</td></tr>
+                    <tr style="background:rgba(0,255,136,0.1);"><td style="padding:5px;color:#00ff88;">Martie ⬆️</td><td style="text-align:right;padding:5px;">${fmt(mar24Val)}</td><td style="text-align:right;padding:5px;">${fmt(mar25Val)}</td><td style="text-align:right;padding:5px;color:#00ff88;">${fmt(Math.round(predMar))}</td></tr>
                 </table>
-                <p style="margin-top:10px;"><strong>Predictie Dec 2025:</strong> ${fmt(Math.round(predDec))} RON (bazat pe ultimele 3 luni)</p>
-                <p><strong>Predictie Ian 2026:</strong> ${fmt(Math.round(predJan))} RON (${avgJanPct.toFixed(0)}% din Dec - SCADE!)</p>
-                <p><strong>Predictie Feb 2026:</strong> ${fmt(Math.round(predFeb))} RON (${avgFebPct.toFixed(0)}% din Dec - inca slab)</p>
-                <p style="color:#feca57;margin-top:10px;"><strong>Concluzie:</strong> Ian/Feb sunt cele mai slabe luni! Pregateste-te pentru scadere dupa Decembrie.</p>`;
+                <p style="margin-top:10px;"><strong>Formula:</strong> Valoare luna 2025 × (1 + ${avgYoY.toFixed(1)}%)</p>
+                <p style="color:#ff6b6b;margin-top:8px;"><strong>⚠️ Atentie:</strong> Dec→Ian scade cu ~${Math.abs(decToJanDrop24)}% (istoric)</p>
+                <p style="color:#feca57;margin-top:10px;"><strong>Q1 2026 Total:</strong> ${fmt(Math.round(predQ1))} RON</p>`;
 
-            document.getElementById('decAlert').innerHTML = `<div class="alert-card ${trend < 0 ? 'warning' : 'info'}"><div class="icon">${trend < 0 ? '📉' : '📊'}</div><div class="content"><div class="title">${trend < 0 ? 'Tendinta descendenta' : 'Tendinta stabila'}</div><div class="desc">Ultimele 3 luni: ${last3.map(d=>fmt(d.value)).join(' → ')} RON</div></div></div>`;
-            document.getElementById('janAlert').innerHTML = `<div class="alert-card danger"><div class="icon">⚠️</div><div class="content"><div class="title">Ianuarie = Luna SLABA!</div><div class="desc">2024: ${fmt(jan24Val)} | 2025: ${fmt(jan25Val)} RON</div></div></div>`;
+            document.getElementById('decAlert').innerHTML = `<div class="alert-card info"><div class="icon">📊</div><div class="content"><div class="title">Trend YoY: ${avgYoY >= 0 ? '+' : ''}${avgYoY.toFixed(1)}%</div><div class="desc">Bazat pe Aug-Oct 2025 vs 2024</div></div></div>`;
+            document.getElementById('janAlert').innerHTML = `<div class="alert-card danger"><div class="icon">⚠️</div><div class="content"><div class="title">Ianuarie = Luna SLABA!</div><div class="desc">2024: ${fmt(jan24Val)} | 2025: ${fmt(jan25Val)} → 2026: ~${fmt(Math.round(predJan))} RON</div></div></div>`;
 
-            const labels = [...allData.map(d => d.label), "Dec'25", "Ian'26", "Feb'26"];
-            const actualData = [...allData.map(d => d.value), null, null, null];
+            const labels = [...allData.map(d => d.label), "Dec'25", "Ian'26", "Feb'26", "Mar'26"];
+            const actualData = [...allData.map(d => d.value), null, null, null, null];
             const predData = new Array(allData.length - 1).fill(null);
-            predData.push(allData[allData.length-1].value, predDec, predJan, predFeb);
+            predData.push(allData[allData.length-1].value, predDec, predJan, predFeb, predMar);
 
             new Chart(document.getElementById('predictionChart'), {
                 type: 'line', data: { labels, datasets: [
@@ -902,28 +911,30 @@
                         .map(p => `<tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;"><td style="color:#00d9ff;">${p.name}</td><td class="text-right">${p.visits}</td><td class="text-right">${p.avg_weight.toFixed(1)}</td><td class="text-right">${p.std_weight.toFixed(2)}</td></tr>`).join('');
                 }
 
-                // Best period
+                // Best period - show AVERAGE per day, not total!
                 let periodHtml = '';
-                if (tops.best_month) periodHtml += `<p><strong>Legjobb honap:</strong> ${tops.best_month.month} (${fmt(tops.best_month.value)} RON)</p>`;
-                if (tops.best_weekday) periodHtml += `<p><strong>Legjobb nap:</strong> ${tops.best_weekday.day} (${fmt(tops.best_weekday.value)} RON)</p>`;
-                document.getElementById('bestPeriod').innerHTML = periodHtml || 'Nincs adat';
+                if (tops.best_month) periodHtml += `<p><strong>Cea mai buna luna:</strong> ${tops.best_month.month} (media: ${fmt(tops.best_month.avg_per_day)} RON/zi)</p>`;
+                if (tops.best_weekday) periodHtml += `<p><strong>Cea mai buna zi:</strong> ${tops.best_weekday.day} (media: ${fmt(tops.best_weekday.avg_per_day)} RON/zi)</p>`;
+                document.getElementById('bestPeriod').innerHTML = periodHtml || 'Nu sunt date';
 
                 // Funny names
                 document.getElementById('funnyNames').innerHTML = tops.funny_names?.length
-                    ? tops.funny_names.map(n => `<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.1);" onclick="showPartnerProfile('${n.cnp}')" class="cursor:pointer;">${n.name} <span style="color:#888;font-size:0.85em;">(${n.city || '?'})</span></div>`).join('')
-                    : '<p style="color:#888;">Nem talaltam vicces neveket</p>';
+                    ? tops.funny_names.map(n => `<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.1);cursor:pointer;" onclick="showPartnerProfile('${n.cnp}')">${n.name} <span style="color:#888;font-size:0.85em;">(${n.city || '?'})</span></div>`).join('')
+                    : '<p style="color:#888;">Nu am gasit nume amuzante</p>';
 
                 // Unusual cities
                 document.getElementById('unusualCities').innerHTML = tops.unusual_cities?.length
                     ? tops.unusual_cities.map(c => `<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${c}</div>`).join('')
-                    : '<p style="color:#888;">Nem talaltam furcsa telepuleseket</p>';
+                    : '<p style="color:#888;">Nu am gasit localitati ciudate</p>';
 
-                // Holidays
+                // Holidays with before/after comparison
                 if (holidays.holidays) {
                     document.getElementById('holidaysTable').innerHTML = Object.values(holidays.holidays)
                         .map(h => {
                             const topCats = h.top_categories?.map(c => `${c.name}: ${fmt(c.kg)} kg`).join(', ') || '-';
-                            return `<tr><td>${h.name}</td><td>${h.period}</td><td class="text-right">${h.transactions}</td><td class="text-right">${fmt(h.total_value)}</td><td style="font-size:0.85em;">${topCats}</td></tr>`;
+                            const vsBeforeHtml = h.vs_before ?
+                                `<span style="color:${h.vs_before.diff_pct >= 0 ? '#00ff88' : '#ff6b6b'}">${h.vs_before.diff_pct >= 0 ? '+' : ''}${h.vs_before.diff_pct.toFixed(1)}%</span>` : '-';
+                            return `<tr><td>${h.name}</td><td>${h.period}</td><td class="text-right">${h.transactions}</td><td class="text-right">${fmt(h.total_value)}</td><td class="text-right">${vsBeforeHtml}</td><td style="font-size:0.85em;">${topCats}</td></tr>`;
                         }).join('');
                 }
             } catch (e) {

@@ -435,8 +435,8 @@ class handler(BaseHTTPRequestHandler):
         }
 
     def get_top_stats(self, cur):
-        """Get various top statistics for the Statisztika tab"""
-        # Top by weight per category
+        """Get various top statistics for the Statistici tab"""
+        # Top by weight per category - get ALL categories
         cur.execute("""
             SELECT wc.name as category, p.name, p.cnp, SUM(ti.weight_kg) as total_kg
             FROM transaction_items ti
@@ -456,7 +456,7 @@ class handler(BaseHTTPRequestHandler):
             if cat not in top_by_weight:
                 top_by_weight[cat] = {'name': row['name'], 'cnp': row['cnp'], 'total_kg': float(row['total_kg'])}
 
-        # Top by value per category
+        # Top by value per category - SORT by value DESC for display
         cur.execute("""
             SELECT wc.name as category, p.name, p.cnp, SUM(ti.value) as total_value
             FROM transaction_items ti
@@ -474,6 +474,9 @@ class handler(BaseHTTPRequestHandler):
             cat = row['category']
             if cat not in top_by_value:
                 top_by_value[cat] = {'name': row['name'], 'cnp': row['cnp'], 'total_value': float(row['total_value'])}
+
+        # Sort top_by_value by total_value descending for display
+        top_by_value = dict(sorted(top_by_value.items(), key=lambda x: x[1]['total_value'], reverse=True))
 
         # Bottom by value per category (smallest total among returning partners)
         cur.execute("""
@@ -495,13 +498,16 @@ class handler(BaseHTTPRequestHandler):
             if cat not in bottom_by_value:
                 bottom_by_value[cat] = {'name': row['name'], 'cnp': row['cnp'], 'total_value': float(row['total_value']), 'visits': row['visits']}
 
-        # Funny/unusual names (containing unusual patterns)
+        # Funny/unusual names - search for Hungarian/Romanian funny patterns
         cur.execute("""
             SELECT name, cnp, city FROM partners
-            WHERE name ~* '(xxx|zzz|aaa|eee|ooo|uuu|iii)'
-               OR LENGTH(name) <= 5
+            WHERE name ~* '(futy|fut|fasz|pul|kur|szar|poop|cac|pipi|xxx|zzz|aaa|eee|ooo|uuu|iii)'
+               OR name ~* '(buzi|bolond|hulye|prost|nebun|tampla)'
+               OR LENGTH(name) <= 4
                OR name ~* '^[A-Z]{1,2} [A-Z]{1,2}$'
-            LIMIT 10
+               OR name ~* '([a-z])\\1{3,}'
+            ORDER BY LENGTH(name), name
+            LIMIT 20
         """)
         funny_names = [{'name': r['name'], 'cnp': r['cnp'], 'city': r['city']} for r in cur.fetchall()]
 
@@ -509,7 +515,7 @@ class handler(BaseHTTPRequestHandler):
         cur.execute("""
             SELECT DISTINCT city FROM partners
             WHERE city IS NOT NULL
-              AND (LENGTH(city) <= 3 OR city ~* '[0-9]' OR city ~* '(xxx|zzz|test)')
+              AND (LENGTH(city) <= 3 OR city ~* '[0-9]' OR city ~* '(xxx|zzz|test|asd)')
             LIMIT 10
         """)
         unusual_cities = [r['city'] for r in cur.fetchall()]
@@ -530,23 +536,29 @@ class handler(BaseHTTPRequestHandler):
         """)
         consistent_partners = [{'name': r['name'], 'cnp': r['cnp'], 'visits': r['visits'], 'avg_weight': float(r['avg_weight']), 'std_weight': float(r['std_weight']) if r['std_weight'] else 0} for r in cur.fetchall()]
 
-        # Best month overall
+        # Best month overall - AVERAGE per day, not total!
         cur.execute("""
-            SELECT EXTRACT(MONTH FROM date)::int as month, SUM(gross_value) as total
+            SELECT EXTRACT(MONTH FROM date)::int as month,
+                   SUM(gross_value) as total,
+                   COUNT(DISTINCT date) as days_count,
+                   SUM(gross_value) / COUNT(DISTINCT date) as avg_per_day
             FROM transactions
             GROUP BY EXTRACT(MONTH FROM date)
-            ORDER BY total DESC
+            ORDER BY avg_per_day DESC
             LIMIT 1
         """)
         best_month = cur.fetchone()
         month_names = ['', 'Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie', 'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie']
 
-        # Best weekday
+        # Best weekday - AVERAGE per day, not total!
         cur.execute("""
-            SELECT EXTRACT(DOW FROM date)::int as dow, SUM(gross_value) as total
+            SELECT EXTRACT(DOW FROM date)::int as dow,
+                   SUM(gross_value) as total,
+                   COUNT(DISTINCT date) as days_count,
+                   SUM(gross_value) / COUNT(DISTINCT date) as avg_per_day
             FROM transactions
             GROUP BY EXTRACT(DOW FROM date)
-            ORDER BY total DESC
+            ORDER BY avg_per_day DESC
             LIMIT 1
         """)
         best_dow = cur.fetchone()
@@ -559,25 +571,27 @@ class handler(BaseHTTPRequestHandler):
             'funny_names': funny_names,
             'unusual_cities': unusual_cities,
             'consistent_partners': consistent_partners,
-            'best_month': {'month': month_names[best_month['month']], 'value': float(best_month['total'])} if best_month else None,
-            'best_weekday': {'day': dow_names[best_dow['dow']], 'value': float(best_dow['total'])} if best_dow else None
+            'best_month': {'month': month_names[best_month['month']], 'value': float(best_month['total']), 'avg_per_day': float(best_month['avg_per_day']), 'days': best_month['days_count']} if best_month else None,
+            'best_weekday': {'day': dow_names[best_dow['dow']], 'value': float(best_dow['total']), 'avg_per_day': float(best_dow['avg_per_day']), 'days': best_dow['days_count']} if best_dow else None
         }
 
     def get_holiday_analysis(self, cur):
-        """Analyze performance around holidays"""
+        """Analyze performance around holidays with before/after comparison"""
         # Orthodox Easter 2024: May 5, 2025: April 20
         # Christmas: Dec 25
         # St Nicholas: Dec 6
+        from datetime import datetime, timedelta
 
         holidays = {
-            'paste_2024': {'start': '2024-04-28', 'end': '2024-05-12', 'name': 'Paste 2024'},
-            'paste_2025': {'start': '2025-04-13', 'end': '2025-04-27', 'name': 'Paste 2025'},
-            'craciun_2024': {'start': '2024-12-20', 'end': '2024-12-31', 'name': 'Craciun 2024'},
-            'mos_nicolae_2024': {'start': '2024-12-01', 'end': '2024-12-08', 'name': 'Mos Nicolae 2024'}
+            'paste_2024': {'start': '2024-04-28', 'end': '2024-05-12', 'name': 'Paste 2024', 'before_start': '2024-04-14', 'before_end': '2024-04-27'},
+            'paste_2025': {'start': '2025-04-13', 'end': '2025-04-27', 'name': 'Paste 2025', 'before_start': '2025-03-30', 'before_end': '2025-04-12'},
+            'craciun_2024': {'start': '2024-12-20', 'end': '2024-12-31', 'name': 'Craciun 2024', 'before_start': '2024-12-06', 'before_end': '2024-12-19'},
+            'mos_nicolae_2024': {'start': '2024-12-01', 'end': '2024-12-08', 'name': 'Mos Nicolae 2024', 'before_start': '2024-11-17', 'before_end': '2024-11-30'}
         }
 
         results = {}
         for key, h in holidays.items():
+            # Get data for holiday period
             cur.execute("""
                 SELECT COUNT(*) as transactions,
                        COALESCE(SUM(gross_value), 0) as total_value,
@@ -586,6 +600,16 @@ class handler(BaseHTTPRequestHandler):
                 WHERE date BETWEEN %s AND %s
             """, (h['start'], h['end']))
             data = cur.fetchone()
+
+            # Get data for BEFORE period (same length)
+            cur.execute("""
+                SELECT COUNT(*) as transactions,
+                       COALESCE(SUM(gross_value), 0) as total_value,
+                       COUNT(DISTINCT cnp) as partners
+                FROM transactions
+                WHERE date BETWEEN %s AND %s
+            """, (h['before_start'], h['before_end']))
+            before_data = cur.fetchone()
 
             # Get top category during this period
             cur.execute("""
@@ -601,13 +625,23 @@ class handler(BaseHTTPRequestHandler):
             """, (h['start'], h['end']))
             top_cats = cur.fetchall()
 
+            # Calculate before/after difference
+            before_val = float(before_data['total_value']) if before_data['total_value'] else 0
+            holiday_val = float(data['total_value']) if data['total_value'] else 0
+            diff_pct = ((holiday_val - before_val) / before_val * 100) if before_val > 0 else 0
+
             results[key] = {
                 'name': h['name'],
                 'period': f"{h['start']} - {h['end']}",
                 'transactions': data['transactions'],
-                'total_value': float(data['total_value']),
+                'total_value': holiday_val,
                 'partners': data['partners'],
-                'top_categories': [{'name': c['name'], 'kg': float(c['total_kg']), 'value': float(c['total_value'])} for c in top_cats]
+                'top_categories': [{'name': c['name'], 'kg': float(c['total_kg']), 'value': float(c['total_value'])} for c in top_cats],
+                'vs_before': {
+                    'before_period': f"{h['before_start']} - {h['before_end']}",
+                    'before_value': before_val,
+                    'diff_pct': diff_pct
+                }
             }
 
         return {'holidays': results}
