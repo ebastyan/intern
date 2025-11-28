@@ -219,6 +219,7 @@
                 <button class="tab-btn" onclick="showPartnerTab('inactive')">Inactivi (60+ zile)</button>
                 <button class="tab-btn" onclick="showPartnerTab('family')">Familii/Adresa</button>
                 <button class="tab-btn" onclick="showPartnerTab('big')">Mari Furnizori</button>
+                <button class="tab-btn" onclick="showPartnerTab('lista')">Lista Completa</button>
             </div>
 
             <div id="partnerTab-vip" class="partner-tab">
@@ -310,6 +311,120 @@
                     <button onclick="loadBigSuppliers()">Cauta</button>
                 </div>
                 <div class="card"><h2><span class="icon">💎</span> Mari Furnizori</h2><div class="scroll-table"><table><thead><tr><th>Nume</th><th>Oras</th><th>Judet</th><th class="text-right">Total kg</th><th class="text-right">Vizite</th><th class="text-right">Pret Mediu</th><th class="text-right">Valoare</th></tr></thead><tbody id="bigSuppliersTable"></tbody></table></div></div>
+            </div>
+
+            <div id="partnerTab-lista" class="partner-tab" style="display:none;">
+                <div class="card" style="margin-bottom:15px;">
+                    <h2><span class="icon">🔎</span> Filtru Complet</h2>
+                    <div class="filter-row" style="flex-wrap:wrap;gap:10px;">
+                        <div style="display:flex;align-items:center;gap:5px;">
+                            <label>Nume:</label>
+                            <input type="text" id="listaName" placeholder="Cauta dupa nume..." style="width:150px;">
+                        </div>
+                        <div style="display:flex;align-items:center;gap:5px;">
+                            <label>CNP:</label>
+                            <input type="text" id="listaCnp" placeholder="CNP..." style="width:120px;">
+                        </div>
+                        <div style="display:flex;align-items:center;gap:5px;">
+                            <label>Judet:</label>
+                            <select id="listaCounty"><option value="">Toate</option></select>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:5px;">
+                            <label>Oras:</label>
+                            <input type="text" id="listaCity" placeholder="Oras..." style="width:120px;">
+                        </div>
+                        <div style="display:flex;align-items:center;gap:5px;">
+                            <label>Strada:</label>
+                            <input type="text" id="listaStreet" placeholder="Strada..." style="width:120px;">
+                        </div>
+                    </div>
+                    <div class="filter-row" style="flex-wrap:wrap;gap:10px;margin-top:10px;">
+                        <div style="display:flex;align-items:center;gap:5px;">
+                            <label>De la:</label>
+                            <input type="date" id="listaDateFrom" value="2024-01-01">
+                        </div>
+                        <div style="display:flex;align-items:center;gap:5px;">
+                            <label>Pana la:</label>
+                            <input type="date" id="listaDateTo" value="2025-12-31">
+                        </div>
+                        <div style="display:flex;align-items:center;gap:5px;">
+                            <label>Categorie:</label>
+                            <select id="listaCategory">
+                                <option value="">Toate</option>
+                                <option value="Cupru">Cupru</option>
+                                <option value="Alama">Alama</option>
+                                <option value="Aluminiu">Aluminiu</option>
+                                <option value="Fier">Fier</option>
+                                <option value="Inox">Inox</option>
+                                <option value="DEEE">DEEE</option>
+                                <option value="Acumulatori">Acumulatori</option>
+                                <option value="Carton">Carton</option>
+                                <option value="Hartie">Hartie</option>
+                                <option value="Sticla">Sticla</option>
+                                <option value="Plastic">Plastic</option>
+                            </select>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:5px;">
+                            <label>Min vizite:</label>
+                            <input type="number" id="listaMinVisits" value="0" min="0" style="width:60px;">
+                        </div>
+                        <div style="display:flex;align-items:center;gap:5px;">
+                            <label>Min valoare:</label>
+                            <input type="number" id="listaMinValue" value="0" min="0" style="width:80px;">
+                        </div>
+                        <div style="display:flex;align-items:center;gap:5px;">
+                            <label>Sex:</label>
+                            <select id="listaSex">
+                                <option value="">Toti</option>
+                                <option value="M">Barbat</option>
+                                <option value="F">Femeie</option>
+                            </select>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:5px;">
+                            <label>Sortare:</label>
+                            <select id="listaSort">
+                                <option value="value_desc">Valoare (desc)</option>
+                                <option value="value_asc">Valoare (asc)</option>
+                                <option value="visits_desc">Vizite (desc)</option>
+                                <option value="visits_asc">Vizite (asc)</option>
+                                <option value="name_asc">Nume (A-Z)</option>
+                                <option value="name_desc">Nume (Z-A)</option>
+                                <option value="last_visit_desc">Ultima vizita (recent)</option>
+                                <option value="last_visit_asc">Ultima vizita (vechi)</option>
+                            </select>
+                        </div>
+                        <button onclick="loadPartnerList(1)" style="background:#00d9ff;color:#000;font-weight:bold;padding:8px 20px;">Cauta</button>
+                        <button onclick="resetPartnerListFilters()" style="background:#444;">Reset</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                        <h2 style="margin:0;"><span class="icon">📋</span> Lista Parteneri (<span id="listaTotal">0</span>)</h2>
+                        <div id="listaPagination" style="display:flex;gap:5px;align-items:center;"></div>
+                    </div>
+                    <div class="scroll-table" style="max-height:600px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Nume</th>
+                                    <th>CNP</th>
+                                    <th>Oras</th>
+                                    <th>Judet</th>
+                                    <th>Strada</th>
+                                    <th>Sex</th>
+                                    <th class="text-right">Vizite</th>
+                                    <th class="text-right">Total kg</th>
+                                    <th class="text-right">Valoare</th>
+                                    <th>Ultima Vizita</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="listaTable"></tbody>
+                        </table>
+                    </div>
+                    <div id="listaPaginationBottom" style="display:flex;justify-content:center;gap:5px;margin-top:15px;"></div>
+                </div>
             </div>
         </div>
 
@@ -1022,15 +1137,17 @@
                     return `<tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;"><td>${p.name}</td><td>${p.city||'-'}</td><td>${p.last_visit}</td><td class="text-right">${daysText}</td><td class="text-right">${fmt(p.total_value)}</td><td><button onclick="event.stopPropagation();showPartnerProfile('${p.cnp}')" style="background:#00d9ff;border:none;color:#000;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:0.75em;">Profil</button></td></tr>`;
                 }).join('');
             });
-            // Load counties for big suppliers filter AND family filter
+            // Load counties for big suppliers filter AND family filter AND lista filter
             fetch('/api/analytics?type=county').then(r => r.json()).then(d => {
                 if (d.by_county) {
                     const selBig = document.getElementById('bigCounty');
                     const selFamily = document.getElementById('familyCounty');
+                    const selLista = document.getElementById('listaCounty');
                     d.by_county.forEach(c => {
                         if (c.county) {
                             selBig.innerHTML += `<option value="${c.county}">${c.county}</option>`;
                             selFamily.innerHTML += `<option value="${c.county}">${c.county}</option>`;
+                            selLista.innerHTML += `<option value="${c.county}">${c.county}</option>`;
                         }
                     });
                 }
@@ -1042,6 +1159,8 @@
             loadOnetimeVisitors();
             // Load initial big suppliers
             loadBigSuppliers();
+            // Load initial partner list
+            loadPartnerList(1);
         }
 
         async function loadBigSuppliers() {
@@ -1101,6 +1220,125 @@
                     }).join('');
                 }
             });
+        }
+
+        // ===== PARTNER LIST (LISTA COMPLETA) =====
+        let listaCurrentPage = 1;
+        async function loadPartnerList(page = 1) {
+            listaCurrentPage = page;
+            const name = document.getElementById('listaName').value;
+            const cnp = document.getElementById('listaCnp').value;
+            const county = document.getElementById('listaCounty').value;
+            const city = document.getElementById('listaCity').value;
+            const street = document.getElementById('listaStreet').value;
+            const dateFrom = document.getElementById('listaDateFrom').value;
+            const dateTo = document.getElementById('listaDateTo').value;
+            const category = document.getElementById('listaCategory').value;
+            const minVisits = document.getElementById('listaMinVisits').value;
+            const minValue = document.getElementById('listaMinValue').value;
+            const sex = document.getElementById('listaSex').value;
+            const sort = document.getElementById('listaSort').value;
+
+            let url = `/api/partners?list=1&page=${page}&limit=25`;
+            if (name) url += '&name=' + encodeURIComponent(name);
+            if (cnp) url += '&cnp_search=' + encodeURIComponent(cnp);
+            if (county) url += '&county=' + encodeURIComponent(county);
+            if (city) url += '&city=' + encodeURIComponent(city);
+            if (street) url += '&street=' + encodeURIComponent(street);
+            if (dateFrom) url += '&date_from=' + dateFrom;
+            if (dateTo) url += '&date_to=' + dateTo;
+            if (category) url += '&category=' + encodeURIComponent(category);
+            if (minVisits && minVisits > 0) url += '&min_visits=' + minVisits;
+            if (minValue && minValue > 0) url += '&min_value=' + minValue;
+            if (sex) url += '&sex=' + sex;
+            if (sort) url += '&sort=' + sort;
+
+            document.getElementById('listaTable').innerHTML = '<tr><td colspan="12" style="text-align:center;color:#888;">Se incarca...</td></tr>';
+
+            try {
+                const d = await fetch(url).then(r => r.json());
+                document.getElementById('listaTotal').textContent = d.total || 0;
+
+                if (d.partners && d.partners.length > 0) {
+                    const startNum = (page - 1) * 25;
+                    document.getElementById('listaTable').innerHTML = d.partners.map((p, i) => `
+                        <tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;">
+                            <td>${startNum + i + 1}</td>
+                            <td style="color:#00d9ff;">${p.name}</td>
+                            <td style="font-size:0.85em;color:#888;">${p.cnp || '-'}</td>
+                            <td>${p.city || '-'}</td>
+                            <td>${p.county || '-'}</td>
+                            <td style="font-size:0.85em;">${p.street || '-'}</td>
+                            <td style="color:${p.sex === 'M' ? '#54a0ff' : (p.sex === 'F' ? '#ff6b9d' : '#888')};">${p.sex || '-'}</td>
+                            <td class="text-right">${p.visit_count || 0}</td>
+                            <td class="text-right">${fmt(p.total_kg || 0)}</td>
+                            <td class="text-right">${fmt(p.total_value || 0)}</td>
+                            <td>${p.last_visit || '-'}</td>
+                            <td><button onclick="event.stopPropagation();showPartnerProfile('${p.cnp}')" style="background:#00d9ff;border:none;color:#000;padding:3px 8px;border-radius:3px;cursor:pointer;font-size:0.8em;">Profil</button></td>
+                        </tr>
+                    `).join('');
+                } else {
+                    document.getElementById('listaTable').innerHTML = '<tr><td colspan="12" style="text-align:center;color:#666;">Niciun rezultat</td></tr>';
+                }
+
+                // Pagination
+                renderListaPagination(d.total || 0, page, d.total_pages || 1);
+            } catch (e) {
+                console.error('Partner list error:', e);
+                document.getElementById('listaTable').innerHTML = '<tr><td colspan="12" style="text-align:center;color:#ff6b6b;">Eroare la incarcare</td></tr>';
+            }
+        }
+
+        function renderListaPagination(total, currentPage, totalPages) {
+            if (totalPages <= 1) {
+                document.getElementById('listaPagination').innerHTML = '';
+                document.getElementById('listaPaginationBottom').innerHTML = '';
+                return;
+            }
+
+            let html = `<span style="color:#888;margin-right:10px;">Pagina ${currentPage} din ${totalPages}</span>`;
+
+            // Previous
+            if (currentPage > 1) {
+                html += `<button onclick="loadPartnerList(${currentPage - 1})" style="background:#333;border:1px solid #444;color:#fff;padding:5px 10px;border-radius:4px;cursor:pointer;">&laquo; Prev</button>`;
+            }
+
+            // Page numbers (show max 7 pages)
+            let startPage = Math.max(1, currentPage - 3);
+            let endPage = Math.min(totalPages, startPage + 6);
+            if (endPage - startPage < 6) startPage = Math.max(1, endPage - 6);
+
+            for (let p = startPage; p <= endPage; p++) {
+                if (p === currentPage) {
+                    html += `<button style="background:#00d9ff;border:none;color:#000;padding:5px 12px;border-radius:4px;font-weight:bold;">${p}</button>`;
+                } else {
+                    html += `<button onclick="loadPartnerList(${p})" style="background:#333;border:1px solid #444;color:#fff;padding:5px 10px;border-radius:4px;cursor:pointer;">${p}</button>`;
+                }
+            }
+
+            // Next
+            if (currentPage < totalPages) {
+                html += `<button onclick="loadPartnerList(${currentPage + 1})" style="background:#333;border:1px solid #444;color:#fff;padding:5px 10px;border-radius:4px;cursor:pointer;">Next &raquo;</button>`;
+            }
+
+            document.getElementById('listaPagination').innerHTML = html;
+            document.getElementById('listaPaginationBottom').innerHTML = html;
+        }
+
+        function resetPartnerListFilters() {
+            document.getElementById('listaName').value = '';
+            document.getElementById('listaCnp').value = '';
+            document.getElementById('listaCounty').value = '';
+            document.getElementById('listaCity').value = '';
+            document.getElementById('listaStreet').value = '';
+            document.getElementById('listaDateFrom').value = '2024-01-01';
+            document.getElementById('listaDateTo').value = '2025-12-31';
+            document.getElementById('listaCategory').value = '';
+            document.getElementById('listaMinVisits').value = '0';
+            document.getElementById('listaMinValue').value = '0';
+            document.getElementById('listaSex').value = '';
+            document.getElementById('listaSort').value = 'value_desc';
+            loadPartnerList(1);
         }
 
         async function searchPartners() {

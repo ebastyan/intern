@@ -105,8 +105,27 @@ class handler(BaseHTTPRequestHandler):
                 city = params.get('city', [None])[0]
                 result = self.get_big_suppliers(cur, category, min_kg, min_visits, year, county, city)
 
+            # Full partner list with filters and pagination
+            elif 'list' in params:
+                page = int(params.get('page', [1])[0])
+                limit = int(params.get('limit', [25])[0])
+                name = params.get('name', [None])[0]
+                cnp_search = params.get('cnp_search', [None])[0]
+                county = params.get('county', [None])[0]
+                city = params.get('city', [None])[0]
+                street = params.get('street', [None])[0]
+                date_from = params.get('date_from', [None])[0]
+                date_to = params.get('date_to', [None])[0]
+                category = params.get('category', [None])[0]
+                min_visits = int(params.get('min_visits', [0])[0])
+                min_value = float(params.get('min_value', [0])[0])
+                sex = params.get('sex', [None])[0]
+                sort = params.get('sort', ['value_desc'])[0]
+                result = self.get_partner_list(cur, page, limit, name, cnp_search, county, city, street,
+                                               date_from, date_to, category, min_visits, min_value, sex, sort)
+
             else:
-                result = {'error': 'Specify ?q=search, ?cnp=XXX, ?inactive=days, ?top=N, ?onetime, ?filter, ?regulars, ?same_address, ?same_family, or ?big_suppliers'}
+                result = {'error': 'Specify ?q=search, ?cnp=XXX, ?inactive=days, ?top=N, ?onetime, ?filter, ?regulars, ?same_address, ?same_family, ?big_suppliers, or ?list=1'}
 
             cur.close()
             conn.close()
@@ -747,5 +766,131 @@ class handler(BaseHTTPRequestHandler):
                 'avg_price': float(p['avg_price']) if p['avg_price'] else 0,
                 'first_visit': str(p['first_visit']),
                 'last_visit': str(p['last_visit'])
+            } for p in partners]
+        }
+
+    def get_partner_list(self, cur, page=1, limit=25, name=None, cnp_search=None, county=None, city=None, street=None,
+                         date_from=None, date_to=None, category=None, min_visits=0, min_value=0, sex=None, sort='value_desc'):
+        """Get paginated partner list with advanced filtering"""
+        offset = (page - 1) * limit
+        params = []
+        where_clauses = []
+        having_clauses = []
+
+        # Partner-level filters
+        if name:
+            where_clauses.append("p.name ILIKE %s")
+            params.append(f'%{name}%')
+        if cnp_search:
+            where_clauses.append("p.cnp LIKE %s")
+            params.append(f'%{cnp_search}%')
+        if county:
+            where_clauses.append("p.county ILIKE %s")
+            params.append(f'%{county}%')
+        if city:
+            where_clauses.append("p.city ILIKE %s")
+            params.append(f'%{city}%')
+        if street:
+            where_clauses.append("p.street ILIKE %s")
+            params.append(f'%{street}%')
+        if sex:
+            where_clauses.append("p.sex = %s")
+            params.append(sex)
+
+        # Transaction-level filters
+        if date_from:
+            where_clauses.append("t.date >= %s")
+            params.append(date_from)
+        if date_to:
+            where_clauses.append("t.date <= %s")
+            params.append(date_to)
+
+        where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+
+        # Build query based on whether category filter is used
+        if category:
+            # When category is specified, join transaction_items and filter by category
+            base_query = f"""
+                SELECT p.cnp, p.name, p.city, p.county, p.street, p.sex,
+                       COUNT(DISTINCT t.document_id) as visit_count,
+                       SUM(ti.weight_kg) as total_kg,
+                       SUM(ti.value) as total_value,
+                       MAX(t.date) as last_visit
+                FROM partners p
+                JOIN transactions t ON p.cnp = t.cnp
+                JOIN transaction_items ti ON t.document_id = ti.document_id
+                JOIN waste_types wt ON ti.waste_type_id = wt.id
+                JOIN waste_categories wc ON wt.category_id = wc.id
+                {where_sql}
+                {"AND" if where_clauses else "WHERE"} wc.name ILIKE %s
+                GROUP BY p.cnp, p.name, p.city, p.county, p.street, p.sex
+            """
+            params.append(f'%{category}%')
+        else:
+            # No category filter - use gross_value
+            base_query = f"""
+                SELECT p.cnp, p.name, p.city, p.county, p.street, p.sex,
+                       COUNT(DISTINCT t.document_id) as visit_count,
+                       COALESCE(SUM(ti.weight_kg), 0) as total_kg,
+                       COALESCE(SUM(t.gross_value), 0) as total_value,
+                       MAX(t.date) as last_visit
+                FROM partners p
+                LEFT JOIN transactions t ON p.cnp = t.cnp
+                LEFT JOIN transaction_items ti ON t.document_id = ti.document_id
+                {where_sql}
+                GROUP BY p.cnp, p.name, p.city, p.county, p.street, p.sex
+            """
+
+        # Having clauses for aggregated filters
+        if min_visits > 0:
+            having_clauses.append(f"COUNT(DISTINCT t.document_id) >= {min_visits}")
+        if min_value > 0:
+            if category:
+                having_clauses.append(f"SUM(ti.value) >= {min_value}")
+            else:
+                having_clauses.append(f"COALESCE(SUM(t.gross_value), 0) >= {min_value}")
+
+        having_sql = "HAVING " + " AND ".join(having_clauses) if having_clauses else ""
+
+        # Sorting
+        sort_map = {
+            'value_desc': 'total_value DESC',
+            'value_asc': 'total_value ASC',
+            'visits_desc': 'visit_count DESC',
+            'visits_asc': 'visit_count ASC',
+            'name_asc': 'p.name ASC',
+            'name_desc': 'p.name DESC',
+            'last_visit_desc': 'last_visit DESC NULLS LAST',
+            'last_visit_asc': 'last_visit ASC NULLS LAST'
+        }
+        order_sql = f"ORDER BY {sort_map.get(sort, 'total_value DESC')}"
+
+        # Count total
+        count_query = f"SELECT COUNT(*) as total FROM ({base_query} {having_sql}) as subq"
+        cur.execute(count_query, params)
+        total = cur.fetchone()['total']
+        total_pages = (total + limit - 1) // limit if total > 0 else 1
+
+        # Get page data
+        full_query = f"{base_query} {having_sql} {order_sql} LIMIT %s OFFSET %s"
+        cur.execute(full_query, params + [limit, offset])
+        partners = cur.fetchall()
+
+        return {
+            'total': total,
+            'page': page,
+            'limit': limit,
+            'total_pages': total_pages,
+            'partners': [{
+                'cnp': p['cnp'],
+                'name': p['name'],
+                'city': p['city'],
+                'county': p['county'],
+                'street': p['street'],
+                'sex': p['sex'],
+                'visit_count': p['visit_count'],
+                'total_kg': float(p['total_kg']) if p['total_kg'] else 0,
+                'total_value': float(p['total_value']) if p['total_value'] else 0,
+                'last_visit': str(p['last_visit']) if p['last_visit'] else None
             } for p in partners]
         }
