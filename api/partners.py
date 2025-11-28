@@ -508,21 +508,24 @@ class handler(BaseHTTPRequestHandler):
 
     def get_same_address_partners(self, cur, search=None, category=None, date_from=None, date_to=None):
         """Find partners with same city + street (potential duplicates/family)"""
+        # Build params separately for stats query and where clause
+        stats_params = []
+        where_params = []
+
         where_clause = "WHERE p.city IS NOT NULL AND p.street IS NOT NULL AND LENGTH(p.street) > 3"
-        params = []
 
         if search:
             where_clause += " AND (p.city ILIKE %s OR p.street ILIKE %s OR p.name ILIKE %s)"
-            params.extend([f'%{search}%', f'%{search}%', f'%{search}%'])
+            where_params.extend([f'%{search}%', f'%{search}%', f'%{search}%'])
 
         # Build the stats subquery based on whether category filter is used
         date_filter = ""
         if date_from:
             date_filter += " AND t.date >= %s"
-            params.append(date_from)
+            stats_params.append(date_from)
         if date_to:
             date_filter += " AND t.date <= %s"
-            params.append(date_to)
+            stats_params.append(date_to)
 
         if category:
             # When category is specified, sum only the value from that category
@@ -536,7 +539,7 @@ class handler(BaseHTTPRequestHandler):
                 GROUP BY t.cnp
                 HAVING SUM(ti.value) > 0
             """
-            params.insert(0, f'%{category}%')  # Category param goes first
+            stats_params.insert(0, f'%{category}%')  # Category param goes first in stats
         else:
             # No category filter - sum all gross_value
             stats_query = f"""
@@ -545,6 +548,9 @@ class handler(BaseHTTPRequestHandler):
                 WHERE 1=1 {date_filter}
                 GROUP BY t.cnp
             """
+
+        # Combine params: stats_params first, then where_params
+        all_params = stats_params + where_params
 
         cur.execute(f"""
             SELECT p.city, p.street, p.county,
@@ -561,7 +567,7 @@ class handler(BaseHTTPRequestHandler):
             HAVING COUNT(*) >= 2
             ORDER BY combined_value DESC
             LIMIT 50
-        """, params)
+        """, all_params)
 
         groups = cur.fetchall()
         current_year = 2025
@@ -583,21 +589,24 @@ class handler(BaseHTTPRequestHandler):
 
     def get_same_family_partners(self, cur, search=None, category=None, date_from=None, date_to=None):
         """Find partners with same family name (first word) + same city"""
+        # Build params separately for where clause and stats query
+        where_params = []
+        stats_params = []
+
         where_clause = "WHERE name IS NOT NULL AND city IS NOT NULL"
-        params = []
 
         if search:
             where_clause += " AND (city ILIKE %s OR street ILIKE %s OR name ILIKE %s)"
-            params.extend([f'%{search}%', f'%{search}%', f'%{search}%'])
+            where_params.extend([f'%{search}%', f'%{search}%', f'%{search}%'])
 
         # Build the stats subquery based on whether category filter is used
         date_filter = ""
         if date_from:
             date_filter += " AND t.date >= %s"
-            params.append(date_from)
+            stats_params.append(date_from)
         if date_to:
             date_filter += " AND t.date <= %s"
-            params.append(date_to)
+            stats_params.append(date_to)
 
         if category:
             # When category is specified, sum only the value from that category
@@ -611,7 +620,7 @@ class handler(BaseHTTPRequestHandler):
                 GROUP BY t.cnp
                 HAVING SUM(ti.value) > 0
             """
-            params.insert(0, f'%{category}%')  # Category param goes first
+            stats_params.insert(0, f'%{category}%')  # Category param goes first in stats
         else:
             # No category filter - sum all gross_value
             stats_query = f"""
@@ -620,6 +629,9 @@ class handler(BaseHTTPRequestHandler):
                 WHERE 1=1 {date_filter}
                 GROUP BY t.cnp
             """
+
+        # Params order: where_params first (for WITH CTE), then stats_params (for JOIN subquery)
+        all_params = where_params + stats_params
 
         cur.execute(f"""
             WITH family_names AS (
@@ -642,7 +654,7 @@ class handler(BaseHTTPRequestHandler):
             HAVING COUNT(*) >= 2
             ORDER BY combined_value DESC
             LIMIT 50
-        """, params)
+        """, all_params)
 
         groups = cur.fetchall()
         current_year = 2025
