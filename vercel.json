@@ -17,6 +17,10 @@
   "routes": [
     { "src": "/api/data", "dest": "/api/data.py" },
     { "src": "/api/monthly", "dest": "/api/monthly.py" },
+    { "src": "/api/partners", "dest": "/api/partners.py" },
+    { "src": "/api/transactions", "dest": "/api/transactions.py" },
+    { "src": "/api/analytics", "dest": "/api/analytics.py" },
+    { "src": "/api/waste", "dest": "/api/waste.py" },
     { "src": "/(.*\\.html)", "dest": "/$1" },
     { "src": "/(.*\\.json)", "dest": "/$1" },
     { "src": "/", "dest": "/index.html" }
