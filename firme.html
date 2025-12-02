@@ -245,7 +245,7 @@
                             <tr>
                                 <th>An</th>
                                 <th>Luna</th>
-                                <th class="text-right">Vanzari</th>
+                                <th class="text-right">Tranzakciok</th>
                                 <th class="text-right">Firme</th>
                                 <th class="text-right">Total kg</th>
                                 <th class="text-right">Valoare</th>
@@ -270,22 +270,44 @@
                     <option value="2023">2023</option>
                     <option value="2022">2022</option>
                 </select>
-                <label>Luna:</label>
-                <select id="deseuriMonth" onchange="loadDeseuriData()">
-                    <option value="">Toate</option>
-                    <option value="1">Ianuarie</option>
-                    <option value="2">Februarie</option>
-                    <option value="3">Martie</option>
-                    <option value="4">Aprilie</option>
+                <label>De la:</label>
+                <select id="deseuriMonthFrom" onchange="loadDeseuriData()">
+                    <option value="">-</option>
+                    <option value="1">Ian</option>
+                    <option value="2">Feb</option>
+                    <option value="3">Mar</option>
+                    <option value="4">Apr</option>
                     <option value="5">Mai</option>
-                    <option value="6">Iunie</option>
-                    <option value="7">Iulie</option>
-                    <option value="8">August</option>
-                    <option value="9">Septembrie</option>
-                    <option value="10">Octombrie</option>
-                    <option value="11">Noiembrie</option>
-                    <option value="12">Decembrie</option>
+                    <option value="6">Iun</option>
+                    <option value="7">Iul</option>
+                    <option value="8">Aug</option>
+                    <option value="9">Sep</option>
+                    <option value="10">Oct</option>
+                    <option value="11">Nov</option>
+                    <option value="12">Dec</option>
                 </select>
+                <label>Pana la:</label>
+                <select id="deseuriMonthTo" onchange="loadDeseuriData()">
+                    <option value="">-</option>
+                    <option value="1">Ian</option>
+                    <option value="2">Feb</option>
+                    <option value="3">Mar</option>
+                    <option value="4">Apr</option>
+                    <option value="5">Mai</option>
+                    <option value="6">Iun</option>
+                    <option value="7">Iul</option>
+                    <option value="8">Aug</option>
+                    <option value="9">Sep</option>
+                    <option value="10">Oct</option>
+                    <option value="11">Nov</option>
+                    <option value="12">Dec</option>
+                </select>
+                <label>Tip Deseu:</label>
+                <select id="deseuriTipFilter" onchange="loadDeseuriData()" style="min-width:150px;">
+                    <option value="">Toate</option>
+                </select>
+                <input type="text" id="deseuriSearch" placeholder="Cauta tip deseu..." style="width:150px;" onkeyup="filterDeseuriTable()">
+                <button class="secondary" onclick="resetDeseuriFilters()">Reset</button>
             </div>
             <div class="grid grid-2">
                 <div class="card"><h2><span class="icon">🥧</span> Distributie dupa Valoare</h2><div class="chart-container"><canvas id="deseuriPieChart"></canvas></div></div>
@@ -432,7 +454,7 @@
                 <div class="stat-card green"><h4>Atlag Profit</h4><div class="value green" id="statAvgProfit">...</div><div class="sub">RON/vanzare</div></div>
                 <div class="stat-card purple"><h4>Atlag Marja</h4><div class="value purple" id="statAvgMargin">...</div><div class="sub">%</div></div>
                 <div class="stat-card cyan"><h4>Novekedesi Rata</h4><div class="value cyan" id="statGrowth">...</div><div class="sub">% YoY</div></div>
-                <div class="stat-card yellow"><h4>Top Ceg Aranya</h4><div class="value yellow" id="statTopShare">...</div><div class="sub">% forgalombol</div></div>
+                <div class="stat-card yellow"><h4>Top 5 Ceg Aranya</h4><div class="value yellow" id="statTopShare">...</div><div class="sub" id="statTopShareSub">% forgalombol</div></div>
                 <div class="stat-card red"><h4>Aktiv Cegek</h4><div class="value red" id="statActiveFirms">...</div><div class="sub">utobbi 6 honap</div></div>
             </div>
 
@@ -627,8 +649,8 @@
                     data: {
                         labels: overview.by_year.map(y => y.year),
                         datasets: [{
-                            label: 'Rulaj (M RON)',
-                            data: overview.by_year.map(y => y.valoare_ron / 1e6),
+                            label: 'Rulaj RON',
+                            data: overview.by_year.map(y => y.valoare_ron),
                             backgroundColor: 'rgba(255,159,64,0.7)',
                             borderRadius: 6
                         }]
@@ -638,8 +660,9 @@
                         maintainAspectRatio: false,
                         plugins: {
                             legend: { display: false },
-                            tooltip: { callbacks: { label: ctx => fmt(ctx.raw * 1e6) + ' RON' } }
-                        }
+                            tooltip: { callbacks: { label: ctx => fmt(ctx.raw) + ' RON' } }
+                        },
+                        scales: { y: { ticks: { callback: v => fmt(v) } } }
                     }
                 });
 
@@ -648,14 +671,18 @@
                     data: {
                         labels: overview.by_year.map(y => y.year),
                         datasets: [
-                            { label: 'Rulaj (M)', data: overview.by_year.map(y => y.valoare_ron / 1e6), backgroundColor: 'rgba(255,159,64,0.7)', borderRadius: 6 },
-                            { label: 'Profit (M)', data: overview.by_year.map(y => y.profit_ron / 1e6), backgroundColor: 'rgba(0,255,136,0.7)', borderRadius: 6 }
+                            { label: 'Rulaj', data: overview.by_year.map(y => y.valoare_ron), backgroundColor: 'rgba(255,159,64,0.7)', borderRadius: 6 },
+                            { label: 'Profit', data: overview.by_year.map(y => y.profit_ron), backgroundColor: 'rgba(0,255,136,0.7)', borderRadius: 6 }
                         ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: { legend: { labels: { color: '#fff' } } }
+                        plugins: {
+                            legend: { labels: { color: '#fff' } },
+                            tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmt(ctx.raw) + ' RON' } }
+                        },
+                        scales: { y: { ticks: { callback: v => fmt(v) } } }
                     }
                 });
             }
@@ -825,7 +852,7 @@
 
                 document.getElementById('monthlyTotals').innerHTML = `
                     <div class="total-item"><span class="total-label">Luni</span><span class="total-value">${data.months.length}</span></div>
-                    <div class="total-item"><span class="total-label">Vanzari</span><span class="total-value">${fmt(totalVanz)}</span></div>
+                    <div class="total-item"><span class="total-label">Tranzakciok</span><span class="total-value">${fmt(totalVanz)}</span></div>
                     <div class="total-item"><span class="total-label">Total kg</span><span class="total-value">${fmt(totalKg)}</span></div>
                     <div class="total-item"><span class="total-label">Valoare</span><span class="total-value">${fmt(totalVal)} RON</span></div>
                     <div class="total-item"><span class="total-label">Profit</span><span class="total-value">${fmt(totalProf)} RON</span></div>
@@ -833,68 +860,110 @@
             } catch (e) { console.error('Error loading monthly:', e); }
         }
 
+        let allDeseuriData = null;
+        let allTipDeseuList = [];
+
         async function loadDeseuriData() {
             const year = document.getElementById('deseuriYear').value;
-            const month = document.getElementById('deseuriMonth').value;
+            const monthFrom = document.getElementById('deseuriMonthFrom').value;
+            const monthTo = document.getElementById('deseuriMonthTo').value;
+            const tipFilter = document.getElementById('deseuriTipFilter').value;
             let url = '/api/firme?type=deseuri';
             if (year) url += `&year=${year}`;
-            if (month) url += `&month=${month}`;
+            if (monthFrom) url += `&month_from=${monthFrom}`;
+            if (monthTo) url += `&month_to=${monthTo}`;
+            if (tipFilter) url += `&tip_deseu=${encodeURIComponent(tipFilter)}`;
 
             try {
                 const data = await fetch(url).then(r => r.json());
+                allDeseuriData = data.deseuri || [];
 
-                if (deseuriPieInstance) deseuriPieInstance.destroy();
-                if (profitPieInstance) profitPieInstance.destroy();
+                // Populate tip_deseu filter dropdown (only once or when reset)
+                if (allTipDeseuList.length === 0) {
+                    const allData = await fetch('/api/firme?type=deseuri').then(r => r.json());
+                    allTipDeseuList = (allData.deseuri || []).map(d => d.tip_deseu).filter(t => t);
+                    const select = document.getElementById('deseuriTipFilter');
+                    select.innerHTML = '<option value="">Toate</option>' + allTipDeseuList.map(t => `<option value="${t}">${t}</option>`).join('');
+                }
 
-                const colors = ['#ff6384', '#ff9f40', '#00ff88', '#00d9ff', '#9966ff', '#ffce56', '#4bc0c0', '#e7e9ed', '#ff6b6b', '#feca57'];
-
-                deseuriPieInstance = new Chart(document.getElementById('deseuriPieChart'), {
-                    type: 'doughnut',
-                    data: {
-                        labels: data.deseuri.slice(0, 8).map(d => d.tip_deseu || 'N/A'),
-                        datasets: [{ data: data.deseuri.slice(0, 8).map(d => d.total_valoare), backgroundColor: colors, borderWidth: 0 }]
-                    },
-                    options: {
-                        responsive: true, maintainAspectRatio: false,
-                        plugins: { legend: { position: 'right', labels: { color: '#fff', font: { size: 10 } } }, tooltip: { callbacks: { label: ctx => ctx.label + ': ' + fmt(ctx.raw) + ' RON' } } }
-                    }
-                });
-
-                profitPieInstance = new Chart(document.getElementById('profitPieChart'), {
-                    type: 'doughnut',
-                    data: {
-                        labels: data.deseuri.slice(0, 8).map(d => d.tip_deseu || 'N/A'),
-                        datasets: [{ data: data.deseuri.slice(0, 8).map(d => d.total_profit), backgroundColor: colors, borderWidth: 0 }]
-                    },
-                    options: {
-                        responsive: true, maintainAspectRatio: false,
-                        plugins: { legend: { position: 'right', labels: { color: '#fff', font: { size: 10 } } }, tooltip: { callbacks: { label: ctx => ctx.label + ': ' + fmt(ctx.raw) + ' RON' } } }
-                    }
-                });
-
-                let totalKg = 0, totalVal = 0, totalProf = 0;
-                const tbody = document.getElementById('deseuriTable');
-                tbody.innerHTML = data.deseuri.map(d => {
-                    totalKg += d.total_kg || 0;
-                    totalVal += d.total_valoare || 0;
-                    totalProf += d.total_profit || 0;
-                    return `<tr>
-                        <td>${d.tip_deseu || 'N/A'}</td>
-                        <td class="text-right">${fmt(d.total_kg)}</td>
-                        <td class="text-right">${fmt(d.total_valoare)}</td>
-                        <td class="text-right profit-positive">${fmt(d.total_profit)}</td>
-                        <td class="text-right">${fmtDec(d.procent_vanzari)}%</td>
-                        <td class="text-right">${fmtDec(d.procent_profit)}%</td>
-                    </tr>`;
-                }).join('');
-
-                document.getElementById('deseuriTotals').innerHTML = `
-                    <div class="total-item"><span class="total-label">Categorii</span><span class="total-value">${data.deseuri.length}</span></div>
-                    <div class="total-item"><span class="total-label">Total kg</span><span class="total-value">${fmt(totalKg)}</span></div>
-                    <div class="total-item"><span class="total-label">Valoare</span><span class="total-value">${fmt(totalVal)} RON</span></div>
-                    <div class="total-item"><span class="total-label">Profit</span><span class="total-value">${fmt(totalProf)} RON</span></div>
-                `;
+                renderDeseuriCharts(allDeseuriData);
+                filterDeseuriTable();
             } catch (e) { console.error('Error loading deseuri:', e); }
+        }
+
+        function filterDeseuriTable() {
+            if (!allDeseuriData) return;
+            const search = document.getElementById('deseuriSearch').value.toLowerCase();
+            let filtered = allDeseuriData;
+            if (search) {
+                filtered = filtered.filter(d => (d.tip_deseu || '').toLowerCase().includes(search));
+            }
+            renderDeseuriTable(filtered);
+        }
+
+        function renderDeseuriCharts(data) {
+            if (deseuriPieInstance) deseuriPieInstance.destroy();
+            if (profitPieInstance) profitPieInstance.destroy();
+
+            const colors = ['#ff6384', '#ff9f40', '#00ff88', '#00d9ff', '#9966ff', '#ffce56', '#4bc0c0', '#e7e9ed', '#ff6b6b', '#feca57'];
+
+            deseuriPieInstance = new Chart(document.getElementById('deseuriPieChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: data.slice(0, 8).map(d => d.tip_deseu || 'N/A'),
+                    datasets: [{ data: data.slice(0, 8).map(d => d.total_valoare), backgroundColor: colors, borderWidth: 0 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right', labels: { color: '#fff', font: { size: 10 } } }, tooltip: { callbacks: { label: ctx => ctx.label + ': ' + fmt(ctx.raw) + ' RON' } } }
+                }
+            });
+
+            profitPieInstance = new Chart(document.getElementById('profitPieChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: data.slice(0, 8).map(d => d.tip_deseu || 'N/A'),
+                    datasets: [{ data: data.slice(0, 8).map(d => d.total_profit), backgroundColor: colors, borderWidth: 0 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right', labels: { color: '#fff', font: { size: 10 } } }, tooltip: { callbacks: { label: ctx => ctx.label + ': ' + fmt(ctx.raw) + ' RON' } } }
+                }
+            });
+        }
+
+        function renderDeseuriTable(data) {
+            let totalKg = 0, totalVal = 0, totalProf = 0;
+            const tbody = document.getElementById('deseuriTable');
+            tbody.innerHTML = data.map(d => {
+                totalKg += d.total_kg || 0;
+                totalVal += d.total_valoare || 0;
+                totalProf += d.total_profit || 0;
+                return `<tr>
+                    <td>${d.tip_deseu || 'N/A'}</td>
+                    <td class="text-right">${fmt(d.total_kg)}</td>
+                    <td class="text-right">${fmt(d.total_valoare)}</td>
+                    <td class="text-right profit-positive">${fmt(d.total_profit)}</td>
+                    <td class="text-right">${fmtDec(d.procent_vanzari)}%</td>
+                    <td class="text-right">${fmtDec(d.procent_profit)}%</td>
+                </tr>`;
+            }).join('');
+
+            document.getElementById('deseuriTotals').innerHTML = `
+                <div class="total-item"><span class="total-label">Categorii</span><span class="total-value">${data.length}</span></div>
+                <div class="total-item"><span class="total-label">Total kg</span><span class="total-value">${fmt(totalKg)}</span></div>
+                <div class="total-item"><span class="total-label">Valoare</span><span class="total-value">${fmt(totalVal)} RON</span></div>
+                <div class="total-item"><span class="total-label">Profit</span><span class="total-value">${fmt(totalProf)} RON</span></div>
+            `;
+        }
+
+        function resetDeseuriFilters() {
+            document.getElementById('deseuriYear').value = '';
+            document.getElementById('deseuriMonthFrom').value = '';
+            document.getElementById('deseuriMonthTo').value = '';
+            document.getElementById('deseuriTipFilter').value = '';
+            document.getElementById('deseuriSearch').value = '';
+            loadDeseuriData();
         }
 
         async function loadCompareData() {
@@ -962,27 +1031,71 @@
                 </tr>
             `).join('');
 
-            // Insights
+            // Insights - improved YoY display
             let insights = '';
             if (years.length >= 2) {
-                const y1 = years[years.length - 2];
-                const y2 = years[years.length - 1];
-                const yoy = ((y2.total_valoare - y1.total_valoare) / y1.total_valoare * 100).toFixed(1);
-                const profitYoy = ((y2.total_profit - y1.total_profit) / y1.total_profit * 100).toFixed(1);
-                insights += `<div class="insight-box"><strong>${y2.year} vs ${y1.year}:</strong> Rulaj ${yoy >= 0 ? '+' : ''}${yoy}%, Profit ${profitYoy >= 0 ? '+' : ''}${profitYoy}%</div>`;
+                const y1 = years[years.length - 2]; // older year (e.g. 2023)
+                const y2 = years[years.length - 1]; // newer year (e.g. 2024)
+                const valDiff = y2.total_valoare - y1.total_valoare;
+                const profitDiff = y2.total_profit - y1.total_profit;
+                const yoyPct = ((valDiff) / y1.total_valoare * 100).toFixed(1);
+                const profitYoyPct = ((profitDiff) / y1.total_profit * 100).toFixed(1);
+
+                // Clear explanation: newer year grew compared to older year
+                const valTrend = valDiff >= 0 ? 'nott' : 'csokk';
+                const valColor = valDiff >= 0 ? '#00ff88' : '#ff6b6b';
+                const profitColor = profitDiff >= 0 ? '#00ff88' : '#ff6b6b';
+
+                insights += `<div class="insight-box">
+                    <strong>Eves Novekedes (${y1.year} -> ${y2.year}):</strong><br>
+                    Rulaj: <span style="color:${valColor};">${valDiff >= 0 ? '+' : ''}${fmt(valDiff)} RON (${valDiff >= 0 ? '+' : ''}${yoyPct}%)</span><br>
+                    Profit: <span style="color:${profitColor};">${profitDiff >= 0 ? '+' : ''}${fmt(profitDiff)} RON (${profitDiff >= 0 ? '+' : ''}${profitYoyPct}%)</span>
+                </div>`;
 
                 const bestYear = years.reduce((a, b) => a.total_valoare > b.total_valoare ? a : b);
-                insights += `<div class="insight-box"><strong>Cel mai bun an:</strong> ${bestYear.year} cu ${fmt(bestYear.total_valoare)} RON</div>`;
+                insights += `<div class="insight-box"><strong>Legjobb ev:</strong> ${bestYear.year} - ${fmt(bestYear.total_valoare)} RON rulaj, ${fmt(bestYear.total_profit)} RON profit</div>`;
+
+                // Monthly best comparison
+                let bestMonth2024 = null, bestMonth2023 = null;
+                if (monthly[y2.year]) {
+                    const months2 = Object.entries(monthly[y2.year]);
+                    if (months2.length > 0) {
+                        const best2 = months2.reduce((a, b) => (a[1]?.valoare || 0) > (b[1]?.valoare || 0) ? a : b);
+                        bestMonth2024 = { month: monthNames[parseInt(best2[0]) - 1], valoare: best2[1]?.valoare || 0 };
+                    }
+                }
+                if (monthly[y1.year]) {
+                    const months1 = Object.entries(monthly[y1.year]);
+                    if (months1.length > 0) {
+                        const best1 = months1.reduce((a, b) => (a[1]?.valoare || 0) > (b[1]?.valoare || 0) ? a : b);
+                        bestMonth2023 = { month: monthNames[parseInt(best1[0]) - 1], valoare: best1[1]?.valoare || 0 };
+                    }
+                }
+
+                if (bestMonth2024 && bestMonth2023) {
+                    insights += `<div class="insight-box"><strong>Legjobb honapok:</strong><br>${y2.year}: ${bestMonth2024.month} (${fmt(bestMonth2024.valoare)} RON)<br>${y1.year}: ${bestMonth2023.month} (${fmt(bestMonth2023.valoare)} RON)</div>`;
+                }
             }
             document.getElementById('compareInsights').innerHTML = insights || '<p style="color:#888;">Nu sunt suficiente date pentru analiza.</p>';
 
-            // Trends
+            // Trends - more details
             let trends = '';
             if (years.length >= 2) {
                 const avgMargin = years.reduce((s, y) => s + y.profit_margin, 0) / years.length;
-                trends += `<div class="insight-box"><strong>Marja medie:</strong> ${avgMargin.toFixed(1)}%</div>`;
+                trends += `<div class="insight-box"><strong>Atlag marja:</strong> ${avgMargin.toFixed(1)}%</div>`;
+
                 const totalFirme = new Set(allFirmeList.map(f => f.name)).size;
-                trends += `<div class="insight-box"><strong>Firme unice:</strong> ${totalFirme}</div>`;
+                trends += `<div class="insight-box"><strong>Osszes ceg:</strong> ${totalFirme} egyedi ceg</div>`;
+
+                // Average per transaction
+                const totalTrx = years.reduce((s, y) => s + y.nr_vanzari, 0);
+                const totalVal = years.reduce((s, y) => s + y.total_valoare, 0);
+                const avgPerTrx = totalTrx > 0 ? totalVal / totalTrx : 0;
+                trends += `<div class="insight-box"><strong>Atlag / tranzakcio:</strong> ${fmt(avgPerTrx)} RON</div>`;
+
+                // Total kg processed
+                const totalKg = years.reduce((s, y) => s + y.total_kg, 0);
+                trends += `<div class="insight-box"><strong>Osszes feldolgozott:</strong> ${fmt(totalKg)} kg</div>`;
             }
             document.getElementById('compareTrends').innerHTML = trends || '';
         }
@@ -1159,7 +1272,9 @@
                 }
 
                 // Top 5 companies share
-                const topShare = top.top_by_value ? (top.top_by_value.slice(0, 5).reduce((s, f) => s + f.total_valoare, 0) / totalValoare * 100) : 0;
+                const top5 = top.top_by_value ? top.top_by_value.slice(0, 5) : [];
+                const topShare = top5.length > 0 ? (top5.reduce((s, f) => s + f.total_valoare, 0) / totalValoare * 100) : 0;
+                const top5Names = top5.map(f => f.name.split(' ')[0]).join(', ');
 
                 // Active firms (last 6 months)
                 const sixMonthsAgo = new Date();
@@ -1172,6 +1287,7 @@
                 document.getElementById('statAvgMargin').textContent = avgMargin.toFixed(1);
                 document.getElementById('statGrowth').textContent = (growth >= 0 ? '+' : '') + growth.toFixed(1);
                 document.getElementById('statTopShare').textContent = topShare.toFixed(1);
+                document.getElementById('statTopShareSub').textContent = top5Names || '% forgalombol';
                 document.getElementById('statActiveFirms').textContent = activeFirms;
 
                 // Top profit table
@@ -1189,25 +1305,42 @@
                     ).join('');
                 }
 
-                // Best month info
+                // Best month info - show best for each year
                 if (monthly.months && monthly.months.length > 0) {
                     const best = monthly.months.reduce((a, b) => (a.total_valoare || 0) > (b.total_valoare || 0) ? a : b);
                     const worst = monthly.months.filter(m => m.total_valoare > 0).reduce((a, b) => (a.total_valoare || Infinity) < (b.total_valoare || Infinity) ? a : b, monthly.months[0]);
-                    document.getElementById('bestMonthInfo').innerHTML = `
-                        <div class="insight-box" style="margin-bottom:10px;"><strong>Legjobb:</strong> ${best.month_name} ${best.year}<br>
-                        ${fmt(best.total_valoare)} RON (${fmt(best.total_profit)} profit)</div>
-                        <div class="insight-box warning"><strong>Leggyengebb:</strong> ${worst.month_name} ${worst.year}<br>
-                        ${fmt(worst.total_valoare)} RON</div>
-                    `;
+
+                    // Group by year and find best month per year
+                    const byYear = {};
+                    monthly.months.forEach(m => {
+                        if (!byYear[m.year]) byYear[m.year] = [];
+                        byYear[m.year].push(m);
+                    });
+
+                    let bestMonthHtml = `<div class="insight-box" style="margin-bottom:10px;"><strong>Osszes ido legjobb:</strong> ${best.month_name} ${best.year}<br>${fmt(best.total_valoare)} RON rulaj, ${fmt(best.total_profit)} RON profit</div>`;
+
+                    // Best per year
+                    bestMonthHtml += '<div class="insight-box"><strong>Legjobb honap evente:</strong><br>';
+                    Object.keys(byYear).sort().reverse().forEach(year => {
+                        const yearBest = byYear[year].reduce((a, b) => (a.total_valoare || 0) > (b.total_valoare || 0) ? a : b);
+                        bestMonthHtml += `${year}: ${yearBest.month_name} - ${fmt(yearBest.total_valoare)} RON<br>`;
+                    });
+                    bestMonthHtml += '</div>';
+
+                    bestMonthHtml += `<div class="insight-box" style="border-left-color:#ff6b6b;"><strong>Leggyengebb:</strong> ${worst.month_name} ${worst.year}<br>${fmt(worst.total_valoare)} RON</div>`;
+
+                    document.getElementById('bestMonthInfo').innerHTML = bestMonthHtml;
                 }
 
-                // Margin chart by waste type
+                // Margin chart by waste type - show ALL materials
                 if (marginChartInstance) marginChartInstance.destroy();
                 if (deseuri.deseuri && deseuri.deseuri.length > 0) {
                     const marje = deseuri.deseuri.filter(d => d.total_valoare > 0).map(d => ({
                         tip: d.tip_deseu,
-                        margin: (d.total_profit / d.total_valoare * 100)
-                    })).sort((a, b) => b.margin - a.margin).slice(0, 8);
+                        margin: (d.total_profit / d.total_valoare * 100),
+                        valoare: d.total_valoare,
+                        profit: d.total_profit
+                    })).sort((a, b) => b.margin - a.margin);
 
                     marginChartInstance = new Chart(document.getElementById('marginChart'), {
                         type: 'bar',
@@ -1218,27 +1351,51 @@
                         options: {
                             responsive: true, maintainAspectRatio: false,
                             indexAxis: 'y',
-                            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.raw.toFixed(1) + '%' } } }
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: ctx => {
+                                            const item = marje[ctx.dataIndex];
+                                            return [`Marja: ${ctx.raw.toFixed(1)}%`, `Valoare: ${fmt(item.valoare)} RON`, `Profit: ${fmt(item.profit)} RON`];
+                                        }
+                                    }
+                                }
+                            }
                         }
                     });
                 }
 
-                // Profit trend chart
+                // Profit trend chart - show BOTH lines on hover
                 if (profitTrendInstance) profitTrendInstance.destroy();
                 if (monthly.months && monthly.months.length > 0) {
                     const labels = monthly.months.map(m => monthNames[m.month - 1] + "'" + String(m.year).slice(2));
+                    const profitData = monthly.months.map(m => m.total_profit);
+                    const marginData = monthly.months.map(m => m.profit_margin);
+
                     profitTrendInstance = new Chart(document.getElementById('profitTrendChart'), {
                         type: 'line',
                         data: {
                             labels: labels,
                             datasets: [
-                                { label: 'Profit', data: monthly.months.map(m => m.total_profit), borderColor: '#00ff88', backgroundColor: 'rgba(0,255,136,0.1)', fill: true, tension: 0.3, yAxisID: 'y' },
-                                { label: 'Marja %', data: monthly.months.map(m => m.profit_margin), borderColor: '#9966ff', borderDash: [5, 5], tension: 0.3, yAxisID: 'y1' }
+                                { label: 'Profit', data: profitData, borderColor: '#00ff88', backgroundColor: 'rgba(0,255,136,0.1)', fill: true, tension: 0.3, yAxisID: 'y' },
+                                { label: 'Marja %', data: marginData, borderColor: '#9966ff', borderDash: [5, 5], tension: 0.3, yAxisID: 'y1' }
                             ]
                         },
                         options: {
                             responsive: true, maintainAspectRatio: false,
-                            plugins: { legend: { labels: { color: '#fff' } } },
+                            interaction: { mode: 'index', intersect: false },
+                            plugins: {
+                                legend: { labels: { color: '#fff' } },
+                                tooltip: {
+                                    callbacks: {
+                                        label: ctx => {
+                                            if (ctx.datasetIndex === 0) return 'Profit: ' + fmt(ctx.raw) + ' RON';
+                                            return 'Marja: ' + ctx.raw.toFixed(1) + '%';
+                                        }
+                                    }
+                                }
+                            },
                             scales: {
                                 y: { type: 'linear', position: 'left', ticks: { callback: v => fmt(v) } },
                                 y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: v => v + '%' } }

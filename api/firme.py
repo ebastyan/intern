@@ -62,8 +62,10 @@ class handler(BaseHTTPRequestHandler):
                 result = self.get_monthly_summary(cur, year)
             elif query_type == 'deseuri':
                 year = params.get('year', [None])[0]
-                month = params.get('month', [None])[0]
-                result = self.get_deseuri_summary(cur, year, month)
+                month_from = params.get('month_from', [None])[0]
+                month_to = params.get('month_to', [None])[0]
+                tip_deseu = params.get('tip_deseu', [None])[0]
+                result = self.get_deseuri_summary(cur, year, month_from, month_to, tip_deseu)
             elif query_type == 'top':
                 year = params.get('year', [None])[0]
                 limit = int(params.get('limit', [10])[0])
@@ -386,29 +388,41 @@ class handler(BaseHTTPRequestHandler):
             } for m in months]
         }
 
-    def get_deseuri_summary(self, cur, year=None, month=None):
+    def get_deseuri_summary(self, cur, year=None, month_from=None, month_to=None, tip_deseu=None):
         """Get waste type summary - computed from vanzari for consistency"""
+        # Build filter conditions
+        conditions = ["tip_deseu IS NOT NULL"]
+        params = []
+
+        if year:
+            conditions.append("year = %s")
+            params.append(int(year))
+        if month_from:
+            conditions.append("month >= %s")
+            params.append(int(month_from))
+        if month_to:
+            conditions.append("month <= %s")
+            params.append(int(month_to))
+        if tip_deseu:
+            conditions.append("tip_deseu = %s")
+            params.append(tip_deseu)
+
+        where_clause = " AND ".join(conditions)
+
         # First get totals for percentage calculation
-        total_query = """
+        total_query = f"""
             SELECT COALESCE(SUM(valoare_ron), 0) as total_val,
                    COALESCE(SUM(adaos_final), 0) as total_profit
-            FROM vanzari WHERE tip_deseu IS NOT NULL
+            FROM vanzari WHERE {where_clause}
         """
-        total_params = []
-        if year:
-            total_query += " AND year = %s"
-            total_params.append(int(year))
-        if month:
-            total_query += " AND month = %s"
-            total_params.append(int(month))
 
-        cur.execute(total_query, total_params)
+        cur.execute(total_query, params)
         totals = cur.fetchone()
         grand_total_val = float(totals['total_val']) if totals['total_val'] else 1
         grand_total_profit = float(totals['total_profit']) if totals['total_profit'] else 1
 
         # Now get breakdown by tip_deseu
-        query = """
+        query = f"""
             SELECT tip_deseu,
                    COALESCE(SUM(cantitate_receptionata), 0) as total_kg,
                    COALESCE(SUM(valoare_ron), 0) as total_valoare,
@@ -416,21 +430,28 @@ class handler(BaseHTTPRequestHandler):
             FROM vanzari
             WHERE tip_deseu IS NOT NULL AND tip_deseu != ''
         """
-        params = []
+
+        detail_params = []
         if year:
             query += " AND year = %s"
-            params.append(int(year))
-        if month:
-            query += " AND month = %s"
-            params.append(int(month))
+            detail_params.append(int(year))
+        if month_from:
+            query += " AND month >= %s"
+            detail_params.append(int(month_from))
+        if month_to:
+            query += " AND month <= %s"
+            detail_params.append(int(month_to))
+        if tip_deseu:
+            query += " AND tip_deseu = %s"
+            detail_params.append(tip_deseu)
 
         query += " GROUP BY tip_deseu ORDER BY total_valoare DESC"
 
-        cur.execute(query, params)
+        cur.execute(query, detail_params)
         deseuri = cur.fetchall()
 
         return {
-            'filters': {'year': year, 'month': month},
+            'filters': {'year': year, 'month_from': month_from, 'month_to': month_to, 'tip_deseu': tip_deseu},
             'totals': {
                 'total_valoare': grand_total_val,
                 'total_profit': grand_total_profit
