@@ -575,12 +575,20 @@
     <script>
         function checkPassword() {
             if (document.getElementById('passwordInput').value === 'war') {
+                sessionStorage.setItem('paju_auth', 'true');
                 document.getElementById('loginScreen').classList.add('hidden');
                 document.getElementById('mainContent').classList.add('visible');
                 loadAllData();
             } else {
                 document.getElementById('loginError').style.display = 'block';
             }
+        }
+
+        // Check if already logged in
+        if (sessionStorage.getItem('paju_auth') === 'true') {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainContent').classList.add('visible');
+            document.addEventListener('DOMContentLoaded', loadAllData);
         }
 
         let monthlyData = null, wasteData = null, weekdayChart = null;

@@ -66,6 +66,8 @@
         th { color: #ff9f40; font-weight: 600; font-size: 0.75em; text-transform: uppercase; position: sticky; top: 0; background: #1a1a2e; z-index: 10; }
         tr:hover { background: rgba(255,255,255,0.02); }
         tr.clickable { cursor: pointer; }
+        tr.total-row { background: rgba(255,159,64,0.1); font-weight: bold; }
+        tr.total-row td { border-top: 2px solid #ff9f40; }
         .text-right { text-align: right; }
         .scroll-table { max-height: 320px; overflow-y: auto; }
         .scroll-table::-webkit-scrollbar { width: 5px; }
@@ -76,10 +78,13 @@
         .category-bar .bar-bg { flex: 1; height: 20px; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; margin: 0 10px; }
         .category-bar .bar { height: 100%; border-radius: 10px; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; font-size: 0.85em; font-weight: 600; }
         .category-bar .value { width: 100px; text-align: right; color: #888; }
-        .search-box { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px 16px; display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
-        .search-box input, .search-box select { flex: 1; min-width: 120px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 12px; color: #fff; font-size: 0.9em; }
+        .search-box { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px 16px; display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; align-items: center; }
+        .search-box input, .search-box select { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 12px; color: #fff; font-size: 0.9em; }
+        .search-box input { min-width: 150px; }
         .search-box input::placeholder { color: #666; }
         .search-box button { background: linear-gradient(135deg, #ff9f40, #ff6b6b); border: none; border-radius: 6px; padding: 8px 20px; color: #fff; font-weight: 600; cursor: pointer; }
+        .search-box button.secondary { background: rgba(255,255,255,0.1); }
+        .search-box label { color: #888; font-size: 0.85em; }
         .filter-row { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; align-items: center; }
         .filter-row label { color: #888; font-size: 0.8em; }
         .filter-row input, .filter-row select { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 6px 10px; color: #fff; font-size: 0.85em; }
@@ -107,6 +112,12 @@
         .tab-btn.active { background: rgba(255,159,64,0.15); color: #ff9f40; }
         .profit-positive { color: #00ff88; }
         .profit-negative { color: #ff6b6b; }
+        .insight-box { background: linear-gradient(135deg, rgba(255,159,64,0.08), rgba(255,107,107,0.05)); border-left: 3px solid #ff9f40; border-radius: 0 10px 10px 0; padding: 14px; margin-bottom: 10px; font-size: 0.85em; }
+        .insight-box strong { color: #ff9f40; }
+        .totals-bar { background: rgba(255,159,64,0.1); border: 1px solid rgba(255,159,64,0.3); border-radius: 8px; padding: 12px 16px; margin-top: 10px; display: flex; gap: 20px; flex-wrap: wrap; }
+        .totals-bar .total-item { display: flex; flex-direction: column; }
+        .totals-bar .total-label { font-size: 0.7em; color: #888; text-transform: uppercase; }
+        .totals-bar .total-value { font-size: 1.1em; font-weight: bold; color: #ff9f40; }
     </style>
 </head>
 <body>
@@ -129,6 +140,7 @@
             <button class="nav-tab" onclick="showSection('deseuri')">Deseuri</button>
             <button class="nav-tab" onclick="showSection('compare')">Comparatie</button>
             <button class="nav-tab" onclick="showSection('transport')">Transport</button>
+            <button class="nav-tab" onclick="showSection('stats')">Statistici</button>
         </div>
         <a href="index.html" class="switch-btn">Persoane Fizice</a>
     </nav>
@@ -150,15 +162,33 @@
             </div>
             <div class="grid grid-2">
                 <div class="card"><h2><span class="icon">🏆</span> Top 10 Firme dupa Valoare</h2><div class="scroll-table"><table><thead><tr><th>#</th><th>Firma</th><th class="text-right">Valoare</th><th class="text-right">Profit</th><th class="text-right">Marja</th></tr></thead><tbody id="topFirmeTable"></tbody></table></div></div>
-                <div class="card"><h2><span class="icon">📦</span> Top Deseuri dupa Valoare</h2><div id="deseuri Bars"></div></div>
+                <div class="card"><h2><span class="icon">📦</span> Top Deseuri dupa Valoare</h2><div id="deseuriBars"></div></div>
             </div>
         </div>
 
         <!-- FIRME LIST -->
         <div id="section-firme" class="section">
             <div class="search-box">
-                <input type="text" id="firmaSearch" placeholder="Cauta firma...">
+                <input type="text" id="firmaSearch" placeholder="Cauta firma..." onkeypress="if(event.key==='Enter')searchFirme()">
+                <label>An:</label>
+                <select id="firmaYear" onchange="searchFirme()">
+                    <option value="">Toti anii</option>
+                    <option value="2024">2024</option>
+                    <option value="2023">2023</option>
+                    <option value="2022">2022</option>
+                </select>
+                <label>Min valoare:</label>
+                <input type="number" id="firmaMinValue" value="0" style="width:100px;">
+                <label>Sortare:</label>
+                <select id="firmaSort" onchange="searchFirme()">
+                    <option value="value_desc">Valoare (desc)</option>
+                    <option value="value_asc">Valoare (asc)</option>
+                    <option value="profit_desc">Profit (desc)</option>
+                    <option value="name_asc">Nume (A-Z)</option>
+                    <option value="visits_desc">Vanzari (desc)</option>
+                </select>
                 <button onclick="searchFirme()">Cauta</button>
+                <button class="secondary" onclick="resetFirmaFilters()">Reset</button>
             </div>
             <div class="card">
                 <h2><span class="icon">🏢</span> Lista Firme (<span id="firmeCount">0</span>)</h2>
@@ -179,12 +209,13 @@
                         <tbody id="firmeTable"></tbody>
                     </table>
                 </div>
+                <div class="totals-bar" id="firmeTotals"></div>
             </div>
         </div>
 
         <!-- MONTHLY -->
         <div id="section-monthly" class="section">
-            <div class="filter-row">
+            <div class="search-box">
                 <label>An:</label>
                 <select id="monthlyYear" onchange="loadMonthlyData()">
                     <option value="">Toti anii</option>
@@ -216,18 +247,35 @@
                         <tbody id="monthlyTable"></tbody>
                     </table>
                 </div>
+                <div class="totals-bar" id="monthlyTotals"></div>
             </div>
         </div>
 
         <!-- DESEURI -->
         <div id="section-deseuri" class="section">
-            <div class="filter-row">
+            <div class="search-box">
                 <label>An:</label>
                 <select id="deseuriYear" onchange="loadDeseuriData()">
                     <option value="">Toti anii</option>
                     <option value="2024">2024</option>
                     <option value="2023">2023</option>
                     <option value="2022">2022</option>
+                </select>
+                <label>Luna:</label>
+                <select id="deseuriMonth" onchange="loadDeseuriData()">
+                    <option value="">Toate</option>
+                    <option value="1">Ianuarie</option>
+                    <option value="2">Februarie</option>
+                    <option value="3">Martie</option>
+                    <option value="4">Aprilie</option>
+                    <option value="5">Mai</option>
+                    <option value="6">Iunie</option>
+                    <option value="7">Iulie</option>
+                    <option value="8">August</option>
+                    <option value="9">Septembrie</option>
+                    <option value="10">Octombrie</option>
+                    <option value="11">Noiembrie</option>
+                    <option value="12">Decembrie</option>
                 </select>
             </div>
             <div class="grid grid-2">
@@ -251,6 +299,7 @@
                         <tbody id="deseuriTable"></tbody>
                     </table>
                 </div>
+                <div class="totals-bar" id="deseuriTotals"></div>
             </div>
         </div>
 
@@ -280,11 +329,21 @@
                     </table>
                 </div>
             </div>
+            <div class="grid grid-2">
+                <div class="card">
+                    <h2><span class="icon">💡</span> Analiza</h2>
+                    <div id="compareInsights"></div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">📈</span> Tendinte</h2>
+                    <div id="compareTrends"></div>
+                </div>
+            </div>
         </div>
 
         <!-- TRANSPORT -->
         <div id="section-transport" class="section">
-            <div class="filter-row">
+            <div class="search-box">
                 <label>An:</label>
                 <select id="transportYear" onchange="loadTransportData()">
                     <option value="">Toti anii</option>
@@ -292,6 +351,28 @@
                     <option value="2023">2023</option>
                     <option value="2022">2022</option>
                 </select>
+                <label>Luna:</label>
+                <select id="transportMonth" onchange="loadTransportData()">
+                    <option value="">Toate</option>
+                    <option value="1">Ianuarie</option>
+                    <option value="2">Februarie</option>
+                    <option value="3">Martie</option>
+                    <option value="4">Aprilie</option>
+                    <option value="5">Mai</option>
+                    <option value="6">Iunie</option>
+                    <option value="7">Iulie</option>
+                    <option value="8">August</option>
+                    <option value="9">Septembrie</option>
+                    <option value="10">Octombrie</option>
+                    <option value="11">Noiembrie</option>
+                    <option value="12">Decembrie</option>
+                </select>
+                <label>Destinatie:</label>
+                <input type="text" id="transportDest" placeholder="Cauta destinatie..." style="width:150px;">
+                <label>Firma:</label>
+                <input type="text" id="transportFirma" placeholder="Cauta firma..." style="width:150px;">
+                <button onclick="loadTransportData()">Filtreaza</button>
+                <button class="secondary" onclick="resetTransportFilters()">Reset</button>
             </div>
             <div class="card">
                 <h2><span class="icon">🚚</span> Costuri Transport Lunare</h2>
@@ -317,6 +398,39 @@
                         <tbody id="transportTable"></tbody>
                     </table>
                 </div>
+                <div class="totals-bar" id="transportTotals"></div>
+            </div>
+        </div>
+
+        <!-- STATS -->
+        <div id="section-stats" class="section">
+            <div class="grid grid-3">
+                <div class="card">
+                    <h2><span class="icon">🏆</span> Top 5 Firme - Profit</h2>
+                    <div class="scroll-table"><table><thead><tr><th>Firma</th><th class="text-right">Profit</th><th class="text-right">Marja</th></tr></thead><tbody id="topProfitTable"></tbody></table></div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">📦</span> Top 5 Firme - Cantitate</h2>
+                    <div class="scroll-table"><table><thead><tr><th>Firma</th><th class="text-right">Total kg</th><th class="text-right">Vanzari</th></tr></thead><tbody id="topKgTable"></tbody></table></div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">⚡</span> Cea mai buna luna</h2>
+                    <div id="bestMonthInfo"></div>
+                </div>
+            </div>
+            <div class="grid grid-2">
+                <div class="card">
+                    <h2><span class="icon">📊</span> Marje pe Categorii</h2>
+                    <div class="chart-container"><canvas id="marginChart"></canvas></div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">📈</span> Evolutie Profit %</h2>
+                    <div class="chart-container"><canvas id="profitTrendChart"></canvas></div>
+                </div>
+            </div>
+            <div class="card">
+                <h2><span class="icon">🔍</span> Firme Inactive (ultimele 6 luni)</h2>
+                <div class="scroll-table"><table><thead><tr><th>Firma</th><th>Ultima Vanzare</th><th class="text-right">Valoare Totala</th><th class="text-right">Zile Inactive</th></tr></thead><tbody id="inactiveTable"></tbody></table></div>
             </div>
         </div>
     </div>
@@ -345,6 +459,13 @@
             }
         }
 
+        // Check if already logged in from index.html
+        if (sessionStorage.getItem('paju_auth') === 'true') {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainContent').classList.add('visible');
+            document.addEventListener('DOMContentLoaded', loadAllData);
+        }
+
         const monthNames = ['Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun', 'Iul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const monthNamesFull = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie', 'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'];
         Chart.defaults.color = '#888';
@@ -353,10 +474,13 @@
         let firmeData = null;
         let overviewData = null;
         let yearlyData = null;
+        let allFirmeList = [];
         let monthlyChartInstance = null;
         let deseuriPieInstance = null;
         let profitPieInstance = null;
         let transportChartInstance = null;
+        let marginChartInstance = null;
+        let profitTrendInstance = null;
 
         function fmt(n) { return n ? n.toLocaleString('ro-RO', {maximumFractionDigits: 0}) : '0'; }
         function fmtDec(n) { return n ? n.toLocaleString('ro-RO', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00'; }
@@ -371,6 +495,7 @@
             if (id === 'deseuri') loadDeseuriData();
             if (id === 'transport') loadTransportData();
             if (id === 'compare') loadCompareData();
+            if (id === 'stats') loadStatsData();
         }
 
         async function loadAllData() {
@@ -384,7 +509,11 @@
 
                 overviewData = overview;
                 firmeData = firme;
+                allFirmeList = firme.firme || [];
                 yearlyData = yearly;
+
+                // Set session auth
+                sessionStorage.setItem('paju_auth', 'true');
 
                 initOverview(overview, top, yearly);
                 initFirmeList(firme);
@@ -421,11 +550,7 @@
                         maintainAspectRatio: false,
                         plugins: {
                             legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    label: ctx => fmt(ctx.raw * 1e6) + ' RON'
-                                }
-                            }
+                            tooltip: { callbacks: { label: ctx => fmt(ctx.raw * 1e6) + ' RON' } }
                         }
                     }
                 });
@@ -435,26 +560,14 @@
                     data: {
                         labels: overview.by_year.map(y => y.year),
                         datasets: [
-                            {
-                                label: 'Rulaj (M)',
-                                data: overview.by_year.map(y => y.valoare_ron / 1e6),
-                                backgroundColor: 'rgba(255,159,64,0.7)',
-                                borderRadius: 6
-                            },
-                            {
-                                label: 'Profit (M)',
-                                data: overview.by_year.map(y => y.profit_ron / 1e6),
-                                backgroundColor: 'rgba(0,255,136,0.7)',
-                                borderRadius: 6
-                            }
+                            { label: 'Rulaj (M)', data: overview.by_year.map(y => y.valoare_ron / 1e6), backgroundColor: 'rgba(255,159,64,0.7)', borderRadius: 6 },
+                            { label: 'Profit (M)', data: overview.by_year.map(y => y.profit_ron / 1e6), backgroundColor: 'rgba(0,255,136,0.7)', borderRadius: 6 }
                         ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: {
-                            legend: { labels: { color: '#fff' } }
-                        }
+                        plugins: { legend: { labels: { color: '#fff' } } }
                     }
                 });
             }
@@ -474,7 +587,6 @@
                 }).join('');
             }
 
-            // Top deseuri - load async
             loadTopDeseuri();
         }
 
@@ -482,7 +594,7 @@
             try {
                 const deseuri = await fetch('/api/firme?type=deseuri').then(r => r.json());
                 if (deseuri.deseuri && deseuri.deseuri.length > 0) {
-                    const container = document.getElementById('deseuri Bars');
+                    const container = document.getElementById('deseuriBars');
                     const max = deseuri.deseuri[0]?.total_valoare || 1;
                     const colors = ['#ff6384', '#ff9f40', '#00ff88', '#00d9ff', '#9966ff', '#ffce56', '#4bc0c0', '#e7e9ed'];
                     container.innerHTML = deseuri.deseuri.slice(0, 8).map((d, i) => `
@@ -507,8 +619,14 @@
 
         function renderFirmeTable(list) {
             const tbody = document.getElementById('firmeTable');
+            let totalValoare = 0, totalProfit = 0, totalKg = 0, totalVanzari = 0;
+
             tbody.innerHTML = list.map((f, i) => {
                 const margin = f.total_valoare > 0 ? (f.total_profit / f.total_valoare * 100).toFixed(1) : 0;
+                totalValoare += f.total_valoare || 0;
+                totalProfit += f.total_profit || 0;
+                totalKg += f.total_kg || 0;
+                totalVanzari += f.nr_vanzari || 0;
                 return `<tr class="clickable" onclick="showFirmaProfile(${f.id})">
                     <td>${i + 1}</td>
                     <td>${f.name}</td>
@@ -520,14 +638,51 @@
                     <td>${f.last_sale || '-'}</td>
                 </tr>`;
             }).join('');
+
+            document.getElementById('firmeTotals').innerHTML = `
+                <div class="total-item"><span class="total-label">Firme</span><span class="total-value">${list.length}</span></div>
+                <div class="total-item"><span class="total-label">Vanzari</span><span class="total-value">${fmt(totalVanzari)}</span></div>
+                <div class="total-item"><span class="total-label">Total kg</span><span class="total-value">${fmt(totalKg)}</span></div>
+                <div class="total-item"><span class="total-label">Valoare</span><span class="total-value">${fmt(totalValoare)} RON</span></div>
+                <div class="total-item"><span class="total-label">Profit</span><span class="total-value">${fmt(totalProfit)} RON</span></div>
+                <div class="total-item"><span class="total-label">Marja</span><span class="total-value">${totalValoare > 0 ? (totalProfit/totalValoare*100).toFixed(1) : 0}%</span></div>
+            `;
         }
 
         function searchFirme() {
             const query = document.getElementById('firmaSearch').value.toLowerCase();
-            if (!firmeData) return;
-            const filtered = firmeData.firme.filter(f => f.name.toLowerCase().includes(query));
+            const year = document.getElementById('firmaYear').value;
+            const minValue = parseFloat(document.getElementById('firmaMinValue').value) || 0;
+            const sort = document.getElementById('firmaSort').value;
+
+            let filtered = [...allFirmeList];
+
+            if (query) {
+                filtered = filtered.filter(f => f.name.toLowerCase().includes(query));
+            }
+            if (minValue > 0) {
+                filtered = filtered.filter(f => f.total_valoare >= minValue);
+            }
+
+            // Sort
+            switch(sort) {
+                case 'value_asc': filtered.sort((a,b) => a.total_valoare - b.total_valoare); break;
+                case 'profit_desc': filtered.sort((a,b) => b.total_profit - a.total_profit); break;
+                case 'name_asc': filtered.sort((a,b) => a.name.localeCompare(b.name)); break;
+                case 'visits_desc': filtered.sort((a,b) => b.nr_vanzari - a.nr_vanzari); break;
+                default: filtered.sort((a,b) => b.total_valoare - a.total_valoare);
+            }
+
             document.getElementById('firmeCount').textContent = filtered.length;
             renderFirmeTable(filtered);
+        }
+
+        function resetFirmaFilters() {
+            document.getElementById('firmaSearch').value = '';
+            document.getElementById('firmaYear').value = '';
+            document.getElementById('firmaMinValue').value = '0';
+            document.getElementById('firmaSort').value = 'value_desc';
+            searchFirme();
         }
 
         async function loadMonthlyData() {
@@ -537,151 +692,113 @@
             try {
                 const data = await fetch(url).then(r => r.json());
 
-                // Destroy existing chart
                 if (monthlyChartInstance) monthlyChartInstance.destroy();
 
-                // Chart
                 const labels = data.months.map(m => monthNames[m.month - 1] + "'" + String(m.year).slice(2));
                 monthlyChartInstance = new Chart(document.getElementById('monthlyChart'), {
                     type: 'line',
                     data: {
                         labels: labels,
                         datasets: [
-                            {
-                                label: 'Rulaj',
-                                data: data.months.map(m => m.total_valoare),
-                                borderColor: '#ff9f40',
-                                backgroundColor: 'rgba(255,159,64,0.1)',
-                                fill: true,
-                                tension: 0.3,
-                                yAxisID: 'y'
-                            },
-                            {
-                                label: 'Profit',
-                                data: data.months.map(m => m.total_profit),
-                                borderColor: '#00ff88',
-                                backgroundColor: 'rgba(0,255,136,0.1)',
-                                fill: true,
-                                tension: 0.3,
-                                yAxisID: 'y'
-                            }
+                            { label: 'Rulaj', data: data.months.map(m => m.total_valoare), borderColor: '#ff9f40', backgroundColor: 'rgba(255,159,64,0.1)', fill: true, tension: 0.3, yAxisID: 'y' },
+                            { label: 'Profit', data: data.months.map(m => m.total_profit), borderColor: '#00ff88', backgroundColor: 'rgba(0,255,136,0.1)', fill: true, tension: 0.3, yAxisID: 'y' }
                         ]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
+                        responsive: true, maintainAspectRatio: false,
                         interaction: { mode: 'index', intersect: false },
-                        plugins: {
-                            legend: { labels: { color: '#fff' } },
-                            tooltip: {
-                                callbacks: {
-                                    label: ctx => ctx.dataset.label + ': ' + fmt(ctx.raw) + ' RON'
-                                }
-                            }
-                        },
-                        scales: {
-                            y: { ticks: { callback: v => fmt(v) } }
-                        }
+                        plugins: { legend: { labels: { color: '#fff' } }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmt(ctx.raw) + ' RON' } } },
+                        scales: { y: { ticks: { callback: v => fmt(v) } } }
                     }
                 });
 
-                // Table
+                let totalVal = 0, totalProf = 0, totalKg = 0, totalVanz = 0;
                 const tbody = document.getElementById('monthlyTable');
-                tbody.innerHTML = data.months.map(m => `
-                    <tr>
-                        <td>${m.year}</td>
-                        <td>${m.month_name}</td>
-                        <td class="text-right">${m.nr_vanzari}</td>
-                        <td class="text-right">${m.nr_firme}</td>
-                        <td class="text-right">${fmt(m.total_kg)}</td>
-                        <td class="text-right">${fmt(m.total_valoare)}</td>
-                        <td class="text-right profit-positive">${fmt(m.total_profit)}</td>
-                        <td class="text-right">${fmtDec(m.profit_margin)}%</td>
-                    </tr>
-                `).join('');
-            } catch (e) {
-                console.error('Error loading monthly:', e);
-            }
+                tbody.innerHTML = data.months.map(m => {
+                    totalVal += m.total_valoare || 0;
+                    totalProf += m.total_profit || 0;
+                    totalKg += m.total_kg || 0;
+                    totalVanz += m.nr_vanzari || 0;
+                    return `<tr>
+                        <td>${m.year}</td><td>${m.month_name}</td>
+                        <td class="text-right">${m.nr_vanzari}</td><td class="text-right">${m.nr_firme}</td>
+                        <td class="text-right">${fmt(m.total_kg)}</td><td class="text-right">${fmt(m.total_valoare)}</td>
+                        <td class="text-right profit-positive">${fmt(m.total_profit)}</td><td class="text-right">${fmtDec(m.profit_margin)}%</td>
+                    </tr>`;
+                }).join('');
+
+                document.getElementById('monthlyTotals').innerHTML = `
+                    <div class="total-item"><span class="total-label">Luni</span><span class="total-value">${data.months.length}</span></div>
+                    <div class="total-item"><span class="total-label">Vanzari</span><span class="total-value">${fmt(totalVanz)}</span></div>
+                    <div class="total-item"><span class="total-label">Total kg</span><span class="total-value">${fmt(totalKg)}</span></div>
+                    <div class="total-item"><span class="total-label">Valoare</span><span class="total-value">${fmt(totalVal)} RON</span></div>
+                    <div class="total-item"><span class="total-label">Profit</span><span class="total-value">${fmt(totalProf)} RON</span></div>
+                `;
+            } catch (e) { console.error('Error loading monthly:', e); }
         }
 
         async function loadDeseuriData() {
             const year = document.getElementById('deseuriYear').value;
-            const url = year ? `/api/firme?type=deseuri&year=${year}` : '/api/firme?type=deseuri';
+            const month = document.getElementById('deseuriMonth').value;
+            let url = '/api/firme?type=deseuri';
+            if (year) url += `&year=${year}`;
+            if (month) url += `&month=${month}`;
 
             try {
                 const data = await fetch(url).then(r => r.json());
 
-                // Destroy existing charts
                 if (deseuriPieInstance) deseuriPieInstance.destroy();
                 if (profitPieInstance) profitPieInstance.destroy();
 
                 const colors = ['#ff6384', '#ff9f40', '#00ff88', '#00d9ff', '#9966ff', '#ffce56', '#4bc0c0', '#e7e9ed', '#ff6b6b', '#feca57'];
 
-                // Value pie
                 deseuriPieInstance = new Chart(document.getElementById('deseuriPieChart'), {
                     type: 'doughnut',
                     data: {
                         labels: data.deseuri.slice(0, 8).map(d => d.tip_deseu || 'N/A'),
-                        datasets: [{
-                            data: data.deseuri.slice(0, 8).map(d => d.total_valoare),
-                            backgroundColor: colors,
-                            borderWidth: 0
-                        }]
+                        datasets: [{ data: data.deseuri.slice(0, 8).map(d => d.total_valoare), backgroundColor: colors, borderWidth: 0 }]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { position: 'right', labels: { color: '#fff', font: { size: 10 } } },
-                            tooltip: {
-                                callbacks: {
-                                    label: ctx => ctx.label + ': ' + fmt(ctx.raw) + ' RON'
-                                }
-                            }
-                        }
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { position: 'right', labels: { color: '#fff', font: { size: 10 } } }, tooltip: { callbacks: { label: ctx => ctx.label + ': ' + fmt(ctx.raw) + ' RON' } } }
                     }
                 });
 
-                // Profit pie
                 profitPieInstance = new Chart(document.getElementById('profitPieChart'), {
                     type: 'doughnut',
                     data: {
                         labels: data.deseuri.slice(0, 8).map(d => d.tip_deseu || 'N/A'),
-                        datasets: [{
-                            data: data.deseuri.slice(0, 8).map(d => d.total_profit),
-                            backgroundColor: colors,
-                            borderWidth: 0
-                        }]
+                        datasets: [{ data: data.deseuri.slice(0, 8).map(d => d.total_profit), backgroundColor: colors, borderWidth: 0 }]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { position: 'right', labels: { color: '#fff', font: { size: 10 } } },
-                            tooltip: {
-                                callbacks: {
-                                    label: ctx => ctx.label + ': ' + fmt(ctx.raw) + ' RON'
-                                }
-                            }
-                        }
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { position: 'right', labels: { color: '#fff', font: { size: 10 } } }, tooltip: { callbacks: { label: ctx => ctx.label + ': ' + fmt(ctx.raw) + ' RON' } } }
                     }
                 });
 
-                // Table
+                let totalKg = 0, totalVal = 0, totalProf = 0;
                 const tbody = document.getElementById('deseuriTable');
-                tbody.innerHTML = data.deseuri.map(d => `
-                    <tr>
+                tbody.innerHTML = data.deseuri.map(d => {
+                    totalKg += d.total_kg || 0;
+                    totalVal += d.total_valoare || 0;
+                    totalProf += d.total_profit || 0;
+                    return `<tr>
                         <td>${d.tip_deseu || 'N/A'}</td>
                         <td class="text-right">${fmt(d.total_kg)}</td>
                         <td class="text-right">${fmt(d.total_valoare)}</td>
                         <td class="text-right profit-positive">${fmt(d.total_profit)}</td>
                         <td class="text-right">${fmtDec(d.procent_vanzari)}%</td>
                         <td class="text-right">${fmtDec(d.procent_profit)}%</td>
-                    </tr>
-                `).join('');
-            } catch (e) {
-                console.error('Error loading deseuri:', e);
-            }
+                    </tr>`;
+                }).join('');
+
+                document.getElementById('deseuriTotals').innerHTML = `
+                    <div class="total-item"><span class="total-label">Categorii</span><span class="total-value">${data.deseuri.length}</span></div>
+                    <div class="total-item"><span class="total-label">Total kg</span><span class="total-value">${fmt(totalKg)}</span></div>
+                    <div class="total-item"><span class="total-label">Valoare</span><span class="total-value">${fmt(totalVal)} RON</span></div>
+                    <div class="total-item"><span class="total-label">Profit</span><span class="total-value">${fmt(totalProf)} RON</span></div>
+                `;
+            } catch (e) { console.error('Error loading deseuri:', e); }
         }
 
         async function loadCompareData() {
@@ -692,17 +809,15 @@
             const years = yearlyData.years;
             const monthly = yearlyData.monthly_by_year;
 
-            // Value comparison chart
-            const datasets = [];
             const colors = ['#ff9f40', '#00ff88', '#00d9ff'];
+            const datasets = [];
             Object.keys(monthly).forEach((year, i) => {
                 datasets.push({
                     label: year,
                     data: monthNames.map((_, mi) => monthly[year][mi + 1]?.valoare || null),
                     borderColor: colors[i % colors.length],
                     backgroundColor: colors[i % colors.length] + '20',
-                    fill: true,
-                    tension: 0.3
+                    fill: true, tension: 0.3
                 });
             });
 
@@ -710,21 +825,12 @@
                 type: 'line',
                 data: { labels: monthNames, datasets },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     interaction: { mode: 'index', intersect: false },
-                    plugins: {
-                        legend: { labels: { color: '#fff' } },
-                        tooltip: {
-                            callbacks: {
-                                label: ctx => ctx.dataset.label + ': ' + fmt(ctx.raw) + ' RON'
-                            }
-                        }
-                    }
+                    plugins: { legend: { labels: { color: '#fff' } }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmt(ctx.raw) + ' RON' } } }
                 }
             });
 
-            // Profit comparison chart
             const profitDatasets = [];
             Object.keys(monthly).forEach((year, i) => {
                 profitDatasets.push({
@@ -732,8 +838,7 @@
                     data: monthNames.map((_, mi) => monthly[year][mi + 1]?.profit || null),
                     borderColor: colors[i % colors.length],
                     backgroundColor: colors[i % colors.length] + '20',
-                    fill: true,
-                    tension: 0.3
+                    fill: true, tension: 0.3
                 });
             });
 
@@ -741,21 +846,12 @@
                 type: 'line',
                 data: { labels: monthNames, datasets: profitDatasets },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     interaction: { mode: 'index', intersect: false },
-                    plugins: {
-                        legend: { labels: { color: '#fff' } },
-                        tooltip: {
-                            callbacks: {
-                                label: ctx => ctx.dataset.label + ': ' + fmt(ctx.raw) + ' RON'
-                            }
-                        }
-                    }
+                    plugins: { legend: { labels: { color: '#fff' } }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmt(ctx.raw) + ' RON' } } }
                 }
             });
 
-            // Yearly summary table
             const tbody = document.getElementById('yearlyTable');
             tbody.innerHTML = years.map(y => `
                 <tr>
@@ -769,67 +865,189 @@
                     <td class="text-right">${fmt(y.avg_per_month)}</td>
                 </tr>
             `).join('');
+
+            // Insights
+            let insights = '';
+            if (years.length >= 2) {
+                const y1 = years[years.length - 2];
+                const y2 = years[years.length - 1];
+                const yoy = ((y2.total_valoare - y1.total_valoare) / y1.total_valoare * 100).toFixed(1);
+                const profitYoy = ((y2.total_profit - y1.total_profit) / y1.total_profit * 100).toFixed(1);
+                insights += `<div class="insight-box"><strong>${y2.year} vs ${y1.year}:</strong> Rulaj ${yoy >= 0 ? '+' : ''}${yoy}%, Profit ${profitYoy >= 0 ? '+' : ''}${profitYoy}%</div>`;
+
+                const bestYear = years.reduce((a, b) => a.total_valoare > b.total_valoare ? a : b);
+                insights += `<div class="insight-box"><strong>Cel mai bun an:</strong> ${bestYear.year} cu ${fmt(bestYear.total_valoare)} RON</div>`;
+            }
+            document.getElementById('compareInsights').innerHTML = insights || '<p style="color:#888;">Nu sunt suficiente date pentru analiza.</p>';
+
+            // Trends
+            let trends = '';
+            if (years.length >= 2) {
+                const avgMargin = years.reduce((s, y) => s + y.profit_margin, 0) / years.length;
+                trends += `<div class="insight-box"><strong>Marja medie:</strong> ${avgMargin.toFixed(1)}%</div>`;
+                const totalFirme = new Set(allFirmeList.map(f => f.name)).size;
+                trends += `<div class="insight-box"><strong>Firme unice:</strong> ${totalFirme}</div>`;
+            }
+            document.getElementById('compareTrends').innerHTML = trends || '';
         }
 
         async function loadTransportData() {
             const year = document.getElementById('transportYear').value;
-            const url = year ? `/api/firme?type=transporturi&year=${year}` : '/api/firme?type=transporturi';
+            const month = document.getElementById('transportMonth').value;
+            const dest = document.getElementById('transportDest').value.toLowerCase();
+            const firma = document.getElementById('transportFirma').value.toLowerCase();
+
+            let url = '/api/firme?type=transporturi';
+            if (year) url += `&year=${year}`;
 
             try {
                 const data = await fetch(url).then(r => r.json());
 
-                document.getElementById('transportCount').textContent = data.count;
+                let filtered = data.transporturi || [];
+                if (month) filtered = filtered.filter(t => t.month == month);
+                if (dest) filtered = filtered.filter(t => (t.destinatie || '').toLowerCase().includes(dest));
+                if (firma) filtered = filtered.filter(t => (t.firma_name || '').toLowerCase().includes(firma));
 
-                // Destroy existing chart
+                document.getElementById('transportCount').textContent = filtered.length;
+
                 if (transportChartInstance) transportChartInstance.destroy();
 
-                // Monthly totals chart
                 if (data.monthly_totals && data.monthly_totals.length > 0) {
                     const labels = data.monthly_totals.map(t => monthNames[t.month - 1] + "'" + String(t.year).slice(2));
                     transportChartInstance = new Chart(document.getElementById('transportChart'), {
                         type: 'bar',
                         data: {
                             labels: labels,
-                            datasets: [{
-                                label: 'Cost Transport',
-                                data: data.monthly_totals.map(t => t.total_cost),
-                                backgroundColor: 'rgba(255,107,107,0.7)',
-                                borderRadius: 6
-                            }]
+                            datasets: [{ label: 'Cost Transport', data: data.monthly_totals.map(t => t.total_cost), backgroundColor: 'rgba(255,107,107,0.7)', borderRadius: 6 }]
                         },
                         options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: { display: false },
-                                tooltip: {
-                                    callbacks: {
-                                        label: ctx => fmt(ctx.raw) + ' RON'
-                                    }
-                                }
-                            }
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) + ' RON' } } }
                         }
                     });
                 }
 
-                // Table
+                let totalFaraTva = 0, totalTva = 0, totalCost = 0;
                 const tbody = document.getElementById('transportTable');
-                tbody.innerHTML = data.transporturi.map(t => `
-                    <tr>
-                        <td>${t.year}</td>
-                        <td>${monthNames[t.month - 1]}</td>
-                        <td>${t.destinatie || '-'}</td>
-                        <td>${t.firma_name || '-'}</td>
-                        <td>${t.descriere || '-'}</td>
-                        <td class="text-right">${fmt(t.suma_fara_tva)}</td>
-                        <td class="text-right">${fmt(t.tva)}</td>
-                        <td class="text-right"><strong>${fmt(t.total)}</strong></td>
-                        <td>${t.transportator || '-'}</td>
-                    </tr>
-                `).join('');
-            } catch (e) {
-                console.error('Error loading transport:', e);
-            }
+                tbody.innerHTML = filtered.map(t => {
+                    totalFaraTva += t.suma_fara_tva || 0;
+                    totalTva += t.tva || 0;
+                    totalCost += t.total || 0;
+                    return `<tr>
+                        <td>${t.year}</td><td>${monthNames[t.month - 1]}</td>
+                        <td>${t.destinatie || '-'}</td><td>${t.firma_name || '-'}</td><td>${t.descriere || '-'}</td>
+                        <td class="text-right">${fmt(t.suma_fara_tva)}</td><td class="text-right">${fmt(t.tva)}</td>
+                        <td class="text-right"><strong>${fmt(t.total)}</strong></td><td>${t.transportator || '-'}</td>
+                    </tr>`;
+                }).join('');
+
+                document.getElementById('transportTotals').innerHTML = `
+                    <div class="total-item"><span class="total-label">Transporturi</span><span class="total-value">${filtered.length}</span></div>
+                    <div class="total-item"><span class="total-label">Fara TVA</span><span class="total-value">${fmt(totalFaraTva)} RON</span></div>
+                    <div class="total-item"><span class="total-label">TVA</span><span class="total-value">${fmt(totalTva)} RON</span></div>
+                    <div class="total-item"><span class="total-label">Total</span><span class="total-value">${fmt(totalCost)} RON</span></div>
+                `;
+            } catch (e) { console.error('Error loading transport:', e); }
+        }
+
+        function resetTransportFilters() {
+            document.getElementById('transportYear').value = '';
+            document.getElementById('transportMonth').value = '';
+            document.getElementById('transportDest').value = '';
+            document.getElementById('transportFirma').value = '';
+            loadTransportData();
+        }
+
+        async function loadStatsData() {
+            try {
+                const [top, deseuri, monthly] = await Promise.all([
+                    fetch('/api/firme?type=top&limit=5').then(r => r.json()),
+                    fetch('/api/firme?type=deseuri').then(r => r.json()),
+                    fetch('/api/firme?type=monthly').then(r => r.json())
+                ]);
+
+                // Top profit
+                if (top.top_by_profit) {
+                    document.getElementById('topProfitTable').innerHTML = top.top_by_profit.map(f => {
+                        const margin = f.total_valoare > 0 ? (f.total_profit / f.total_valoare * 100).toFixed(1) : 0;
+                        return `<tr><td>${f.name}</td><td class="text-right profit-positive">${fmt(f.total_profit)}</td><td class="text-right">${margin}%</td></tr>`;
+                    }).join('');
+                }
+
+                // Top kg
+                if (top.top_by_kg) {
+                    document.getElementById('topKgTable').innerHTML = top.top_by_kg.map(f =>
+                        `<tr><td>${f.name}</td><td class="text-right">${fmt(f.total_kg)}</td><td class="text-right">${f.nr_vanzari}</td></tr>`
+                    ).join('');
+                }
+
+                // Best month
+                if (monthly.months && monthly.months.length > 0) {
+                    const best = monthly.months.reduce((a, b) => (a.total_valoare || 0) > (b.total_valoare || 0) ? a : b);
+                    document.getElementById('bestMonthInfo').innerHTML = `
+                        <div class="insight-box"><strong>${best.month_name} ${best.year}</strong><br>
+                        Valoare: ${fmt(best.total_valoare)} RON<br>
+                        Profit: ${fmt(best.total_profit)} RON<br>
+                        Marja: ${fmtDec(best.profit_margin)}%</div>
+                    `;
+                }
+
+                // Margin chart
+                if (marginChartInstance) marginChartInstance.destroy();
+                if (deseuri.deseuri && deseuri.deseuri.length > 0) {
+                    const marje = deseuri.deseuri.filter(d => d.total_valoare > 0).map(d => ({
+                        tip: d.tip_deseu,
+                        margin: (d.total_profit / d.total_valoare * 100)
+                    })).sort((a, b) => b.margin - a.margin).slice(0, 8);
+
+                    marginChartInstance = new Chart(document.getElementById('marginChart'), {
+                        type: 'bar',
+                        data: {
+                            labels: marje.map(m => m.tip),
+                            datasets: [{ label: 'Marja %', data: marje.map(m => m.margin), backgroundColor: 'rgba(0,217,255,0.7)', borderRadius: 6 }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            indexAxis: 'y',
+                            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.raw.toFixed(1) + '%' } } }
+                        }
+                    });
+                }
+
+                // Profit trend
+                if (profitTrendInstance) profitTrendInstance.destroy();
+                if (monthly.months && monthly.months.length > 0) {
+                    const labels = monthly.months.map(m => monthNames[m.month - 1] + "'" + String(m.year).slice(2));
+                    profitTrendInstance = new Chart(document.getElementById('profitTrendChart'), {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{ label: 'Marja %', data: monthly.months.map(m => m.profit_margin), borderColor: '#9966ff', backgroundColor: 'rgba(153,102,255,0.1)', fill: true, tension: 0.3 }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.raw.toFixed(1) + '%' } } }
+                        }
+                    });
+                }
+
+                // Inactive firms
+                const sixMonthsAgo = new Date();
+                sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+                const inactive = allFirmeList.filter(f => {
+                    if (!f.last_sale) return false;
+                    return new Date(f.last_sale) < sixMonthsAgo;
+                }).sort((a, b) => new Date(a.last_sale) - new Date(b.last_sale));
+
+                document.getElementById('inactiveTable').innerHTML = inactive.slice(0, 20).map(f => {
+                    const days = Math.floor((new Date() - new Date(f.last_sale)) / (1000*60*60*24));
+                    return `<tr class="clickable" onclick="showFirmaProfile(${f.id})">
+                        <td>${f.name}</td><td>${f.last_sale}</td>
+                        <td class="text-right">${fmt(f.total_valoare)}</td>
+                        <td class="text-right" style="color:#ff6b6b;">${days} zile</td>
+                    </tr>`;
+                }).join('');
+            } catch (e) { console.error('Error loading stats:', e); }
         }
 
         async function showFirmaProfile(firmaId) {
@@ -853,53 +1071,22 @@
                     <p style="color:#888;margin-bottom:15px;">Prima vanzare: ${f.first_sale || '-'} | Ultima vanzare: ${f.last_sale || '-'}</p>
                 `;
 
-                // Monthly breakdown
                 if (data.monthly && data.monthly.length > 0) {
-                    html += `
-                        <h4 style="color:#ff9f40;margin-bottom:10px;">Evolutie Lunara</h4>
+                    html += `<h4 style="color:#ff9f40;margin-bottom:10px;">Evolutie Lunara</h4>
                         <div class="scroll-table" style="max-height:200px;margin-bottom:20px;">
-                            <table>
-                                <thead><tr><th>An</th><th>Luna</th><th class="text-right">Vanzari</th><th class="text-right">kg</th><th class="text-right">Valoare</th><th class="text-right">Profit</th></tr></thead>
-                                <tbody>
-                                    ${data.monthly.map(m => `
-                                        <tr>
-                                            <td>${m.year}</td>
-                                            <td>${monthNames[m.month - 1]}</td>
-                                            <td class="text-right">${m.nr_vanzari}</td>
-                                            <td class="text-right">${fmt(m.kg)}</td>
-                                            <td class="text-right">${fmt(m.valoare)}</td>
-                                            <td class="text-right profit-positive">${fmt(m.profit)}</td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
+                            <table><thead><tr><th>An</th><th>Luna</th><th class="text-right">Vanzari</th><th class="text-right">kg</th><th class="text-right">Valoare</th><th class="text-right">Profit</th></tr></thead>
+                            <tbody>${data.monthly.map(m => `<tr><td>${m.year}</td><td>${monthNames[m.month - 1]}</td><td class="text-right">${m.nr_vanzari}</td><td class="text-right">${fmt(m.kg)}</td><td class="text-right">${fmt(m.valoare)}</td><td class="text-right profit-positive">${fmt(m.profit)}</td></tr>`).join('')}</tbody>
                             </table>
-                        </div>
-                    `;
+                        </div>`;
                 }
 
-                // Recent vanzari
                 if (data.recent_vanzari && data.recent_vanzari.length > 0) {
-                    html += `
-                        <h4 style="color:#ff9f40;margin-bottom:10px;">Ultimele Vanzari</h4>
+                    html += `<h4 style="color:#ff9f40;margin-bottom:10px;">Ultimele Vanzari</h4>
                         <div class="scroll-table" style="max-height:250px;">
-                            <table>
-                                <thead><tr><th>Data</th><th>Aviz</th><th>Tip Deseu</th><th class="text-right">Livrat</th><th class="text-right">Receptat</th><th class="text-right">Valoare</th><th class="text-right">Adaos</th></tr></thead>
-                                <tbody>
-                                    ${data.recent_vanzari.map(v => `
-                                        <tr>
-                                            <td>${v.data}</td>
-                                            <td>${v.numar_aviz || '-'}</td>
-                                            <td>${v.tip_deseu || '-'}</td>
-                                            <td class="text-right">${fmt(v.cantitate_livrata)} kg</td>
-                                            <td class="text-right">${fmt(v.cantitate_receptionata)} kg</td>
-                                            <td class="text-right">${fmt(v.valoare_ron)}</td>
-                                            <td class="text-right profit-positive">${fmt(v.adaos_final)}</td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
+                            <table><thead><tr><th>Data</th><th>Aviz</th><th>Tip Deseu</th><th class="text-right">Livrat</th><th class="text-right">Receptat</th><th class="text-right">Valoare</th><th class="text-right">Adaos</th></tr></thead>
+                            <tbody>${data.recent_vanzari.map(v => `<tr><td>${v.data}</td><td>${v.numar_aviz || '-'}</td><td>${v.tip_deseu || '-'}</td><td class="text-right">${fmt(v.cantitate_livrata)} kg</td><td class="text-right">${fmt(v.cantitate_receptionata)} kg</td><td class="text-right">${fmt(v.valoare_ron)}</td><td class="text-right profit-positive">${fmt(v.adaos_final)}</td></tr>`).join('')}</tbody>
                             </table>
-                        </div>
-                    `;
+                        </div>`;
                 }
 
                 document.getElementById('modalContent').innerHTML = html;
@@ -912,12 +1099,10 @@
             document.getElementById('firmaModal').classList.remove('active');
         }
 
-        // Close modal on outside click
         document.getElementById('firmaModal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
         });
 
-        // Close on ESC
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') closeModal();
         });
