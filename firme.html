@@ -352,54 +352,67 @@
 
         <!-- TRANSPORT -->
         <div id="section-transport" class="section">
+            <!-- Summary cards -->
+            <div class="big-stats" id="transportStats">
+                <div class="stat-card orange"><h4>Total Transport</h4><div class="value orange" id="transportTotal">...</div><div class="sub">RON</div></div>
+                <div class="stat-card green"><h4>Belfold</h4><div class="value green" id="transportDomestic">...</div><div class="sub">RON</div></div>
+                <div class="stat-card purple"><h4>Kulfold</h4><div class="value purple" id="transportForeign">...</div><div class="sub">RON</div></div>
+                <div class="stat-card cyan"><h4>Nr. Szallitas</h4><div class="value cyan" id="transportCountTotal">...</div></div>
+            </div>
+
             <div class="search-box">
                 <label>An:</label>
                 <select id="transportYear" onchange="loadTransportData()">
                     <option value="">Toti anii</option>
                     <option value="2024">2024</option>
                     <option value="2023">2023</option>
-                    <option value="2022">2022</option>
                 </select>
-                <label>Luna:</label>
-                <select id="transportMonth" onchange="loadTransportData()">
+                <label>Tip:</label>
+                <select id="transportType" onchange="filterTransportTable()">
                     <option value="">Toate</option>
-                    <option value="1">Ianuarie</option>
-                    <option value="2">Februarie</option>
-                    <option value="3">Martie</option>
-                    <option value="4">Aprilie</option>
-                    <option value="5">Mai</option>
-                    <option value="6">Iunie</option>
-                    <option value="7">Iulie</option>
-                    <option value="8">August</option>
-                    <option value="9">Septembrie</option>
-                    <option value="10">Octombrie</option>
-                    <option value="11">Noiembrie</option>
-                    <option value="12">Decembrie</option>
+                    <option value="domestic">Belfold</option>
+                    <option value="foreign">Kulfold</option>
                 </select>
                 <label>Destinatie:</label>
-                <input type="text" id="transportDest" placeholder="Cauta destinatie..." style="width:150px;">
+                <input type="text" id="transportDest" placeholder="Cauta destinatie..." style="width:150px;" onkeyup="filterTransportTable()">
                 <label>Firma:</label>
-                <input type="text" id="transportFirma" placeholder="Cauta firma..." style="width:150px;">
-                <button onclick="loadTransportData()">Filtreaza</button>
+                <input type="text" id="transportFirma" placeholder="Cauta firma..." style="width:150px;" onkeyup="filterTransportTable()">
                 <button class="secondary" onclick="resetTransportFilters()">Reset</button>
             </div>
-            <div class="card">
-                <h2><span class="icon">🚚</span> Costuri Transport Lunare</h2>
-                <div class="chart-container"><canvas id="transportChart"></canvas></div>
+
+            <div class="grid grid-2">
+                <div class="card">
+                    <h2><span class="icon">📊</span> Eves Osszehasonlitas</h2>
+                    <div class="chart-container"><canvas id="transportYearChart"></canvas></div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">🌍</span> Belfold vs Kulfold</h2>
+                    <div class="chart-container"><canvas id="transportTypeChart"></canvas></div>
+                </div>
             </div>
+
+            <div class="grid grid-2">
+                <div class="card">
+                    <h2><span class="icon">🚚</span> Havonkenti Koltsegek</h2>
+                    <div class="chart-container"><canvas id="transportChart"></canvas></div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">📍</span> Top Destinaciok</h2>
+                    <div id="transportDestBars"></div>
+                </div>
+            </div>
+
             <div class="card">
-                <h2><span class="icon">📋</span> Detalii Transporturi (<span id="transportCount">0</span>)</h2>
-                <div class="scroll-table" style="max-height:500px;">
+                <h2><span class="icon">📋</span> Reszletes Lista (<span id="transportCount">0</span>)</h2>
+                <div class="scroll-table" style="max-height:400px;">
                     <table>
                         <thead>
                             <tr>
                                 <th>An</th>
                                 <th>Luna</th>
                                 <th>Destinatie</th>
+                                <th>Tipus</th>
                                 <th>Firma</th>
-                                <th>Descriere</th>
-                                <th class="text-right">Fara TVA</th>
-                                <th class="text-right">TVA</th>
                                 <th class="text-right">Total</th>
                                 <th>Transportator</th>
                             </tr>
@@ -413,14 +426,24 @@
 
         <!-- STATS -->
         <div id="section-stats" class="section">
+            <!-- Key metrics -->
+            <div class="big-stats">
+                <div class="stat-card orange"><h4>Atlag Vanzare</h4><div class="value orange" id="statAvgSale">...</div><div class="sub">RON/vanzare</div></div>
+                <div class="stat-card green"><h4>Atlag Profit</h4><div class="value green" id="statAvgProfit">...</div><div class="sub">RON/vanzare</div></div>
+                <div class="stat-card purple"><h4>Atlag Marja</h4><div class="value purple" id="statAvgMargin">...</div><div class="sub">%</div></div>
+                <div class="stat-card cyan"><h4>Novekedesi Rata</h4><div class="value cyan" id="statGrowth">...</div><div class="sub">% YoY</div></div>
+                <div class="stat-card yellow"><h4>Top Ceg Aranya</h4><div class="value yellow" id="statTopShare">...</div><div class="sub">% forgalombol</div></div>
+                <div class="stat-card red"><h4>Aktiv Cegek</h4><div class="value red" id="statActiveFirms">...</div><div class="sub">utobbi 6 honap</div></div>
+            </div>
+
             <div class="grid grid-3">
                 <div class="card">
-                    <h2><span class="icon">🏆</span> Top 5 Firme - Profit</h2>
-                    <div class="scroll-table"><table><thead><tr><th>Firma</th><th class="text-right">Profit</th><th class="text-right">Marja</th></tr></thead><tbody id="topProfitTable"></tbody></table></div>
+                    <h2><span class="icon">🏆</span> Top 10 Firme - Profit</h2>
+                    <div class="scroll-table"><table><thead><tr><th>#</th><th>Firma</th><th class="text-right">Profit</th><th class="text-right">Marja</th></tr></thead><tbody id="topProfitTable"></tbody></table></div>
                 </div>
                 <div class="card">
-                    <h2><span class="icon">📦</span> Top 5 Firme - Cantitate</h2>
-                    <div class="scroll-table"><table><thead><tr><th>Firma</th><th class="text-right">Total kg</th><th class="text-right">Vanzari</th></tr></thead><tbody id="topKgTable"></tbody></table></div>
+                    <h2><span class="icon">📦</span> Top 10 Firme - Cantitate</h2>
+                    <div class="scroll-table"><table><thead><tr><th>#</th><th>Firma</th><th class="text-right">Total kg</th><th class="text-right">Vanzari</th></tr></thead><tbody id="topKgTable"></tbody></table></div>
                 </div>
                 <div class="card">
                     <h2><span class="icon">⚡</span> Cea mai buna luna</h2>
@@ -429,17 +452,35 @@
             </div>
             <div class="grid grid-2">
                 <div class="card">
-                    <h2><span class="icon">📊</span> Marje pe Categorii</h2>
+                    <h2><span class="icon">📊</span> Marje pe Kategoriak</h2>
                     <div class="chart-container"><canvas id="marginChart"></canvas></div>
                 </div>
                 <div class="card">
-                    <h2><span class="icon">📈</span> Evolutie Profit %</h2>
+                    <h2><span class="icon">📈</span> Havonkenti Profit Trend</h2>
                     <div class="chart-container"><canvas id="profitTrendChart"></canvas></div>
                 </div>
             </div>
-            <div class="card">
-                <h2><span class="icon">🔍</span> Firme Inactive (ultimele 6 luni)</h2>
-                <div class="scroll-table"><table><thead><tr><th>Firma</th><th>Ultima Vanzare</th><th class="text-right">Valoare Totala</th><th class="text-right">Zile Inactive</th></tr></thead><tbody id="inactiveTable"></tbody></table></div>
+
+            <div class="grid grid-2">
+                <div class="card">
+                    <h2><span class="icon">🔄</span> Eves Osszehasonlitas</h2>
+                    <div id="yearCompareInfo"></div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">📉</span> Szezonalitas</h2>
+                    <div class="chart-container short"><canvas id="seasonalChart"></canvas></div>
+                </div>
+            </div>
+
+            <div class="grid grid-2">
+                <div class="card">
+                    <h2><span class="icon">🔍</span> Inaktiv Cegek (6 honap)</h2>
+                    <div class="scroll-table"><table><thead><tr><th>Firma</th><th>Utolso Vanzare</th><th class="text-right">Osszes Ertek</th><th class="text-right">Inaktiv Nap</th></tr></thead><tbody id="inactiveTable"></tbody></table></div>
+                </div>
+                <div class="card">
+                    <h2><span class="icon">⭐</span> Uj Cegek (12 honap)</h2>
+                    <div class="scroll-table"><table><thead><tr><th>Firma</th><th>Elso Vanzare</th><th class="text-right">Osszes Ertek</th><th class="text-right">Vanzari</th></tr></thead><tbody id="newFirmsTable"></tbody></table></div>
+                </div>
             </div>
         </div>
     </div>
@@ -946,108 +987,221 @@
             document.getElementById('compareTrends').innerHTML = trends || '';
         }
 
+        let allTransportData = null;
+        let transportYearChartInstance = null;
+        let transportTypeChartInstance = null;
+
         async function loadTransportData() {
             const year = document.getElementById('transportYear').value;
-            const month = document.getElementById('transportMonth').value;
-            const dest = document.getElementById('transportDest').value.toLowerCase();
-            const firma = document.getElementById('transportFirma').value.toLowerCase();
-
             let url = '/api/firme?type=transporturi';
             if (year) url += `&year=${year}`;
 
             try {
                 const data = await fetch(url).then(r => r.json());
+                allTransportData = data;
 
-                let filtered = data.transporturi || [];
-                if (month) filtered = filtered.filter(t => t.month == month);
-                if (dest) filtered = filtered.filter(t => (t.destinatie || '').toLowerCase().includes(dest));
-                if (firma) filtered = filtered.filter(t => (t.firma_name || '').toLowerCase().includes(firma));
+                // Update summary cards
+                const summary = data.summary || {total_cost: 0, domestic: {count: 0, total: 0}, foreign: {count: 0, total: 0}};
+                document.getElementById('transportTotal').textContent = fmt(summary.total_cost);
+                document.getElementById('transportDomestic').textContent = fmt(summary.domestic.total);
+                document.getElementById('transportForeign').textContent = fmt(summary.foreign.total);
+                document.getElementById('transportCountTotal').textContent = data.count || 0;
 
-                document.getElementById('transportCount').textContent = filtered.length;
-
-                if (transportChartInstance) transportChartInstance.destroy();
-
-                if (data.monthly_totals && data.monthly_totals.length > 0) {
-                    const labels = data.monthly_totals.map(t => monthNames[t.month - 1] + "'" + String(t.year).slice(2));
-                    transportChartInstance = new Chart(document.getElementById('transportChart'), {
+                // Year comparison chart
+                if (transportYearChartInstance) transportYearChartInstance.destroy();
+                if (data.by_year && data.by_year.length > 0) {
+                    transportYearChartInstance = new Chart(document.getElementById('transportYearChart'), {
                         type: 'bar',
                         data: {
-                            labels: labels,
-                            datasets: [{ label: 'Cost Transport', data: data.monthly_totals.map(t => t.total_cost), backgroundColor: 'rgba(255,107,107,0.7)', borderRadius: 6 }]
+                            labels: data.by_year.map(y => y.year),
+                            datasets: [{
+                                label: 'Koltseg',
+                                data: data.by_year.map(y => y.total_cost),
+                                backgroundColor: ['rgba(255,107,107,0.8)', 'rgba(255,159,64,0.8)'],
+                                borderRadius: 8
+                            }]
                         },
                         options: {
                             responsive: true, maintainAspectRatio: false,
-                            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) + ' RON' } } }
+                            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) + ' RON' } } },
+                            scales: { y: { ticks: { callback: v => fmt(v) } } }
                         }
                     });
                 }
 
-                let totalFaraTva = 0, totalTva = 0, totalCost = 0;
-                const tbody = document.getElementById('transportTable');
-                tbody.innerHTML = filtered.map(t => {
-                    totalFaraTva += t.suma_fara_tva || 0;
-                    totalTva += t.tva || 0;
-                    totalCost += t.total || 0;
-                    return `<tr>
-                        <td>${t.year}</td><td>${monthNames[t.month - 1]}</td>
-                        <td>${t.destinatie || '-'}</td><td>${t.firma_name || '-'}</td><td>${t.descriere || '-'}</td>
-                        <td class="text-right">${fmt(t.suma_fara_tva)}</td><td class="text-right">${fmt(t.tva)}</td>
-                        <td class="text-right"><strong>${fmt(t.total)}</strong></td><td>${t.transportator || '-'}</td>
-                    </tr>`;
-                }).join('');
+                // Domestic vs Foreign pie chart
+                if (transportTypeChartInstance) transportTypeChartInstance.destroy();
+                transportTypeChartInstance = new Chart(document.getElementById('transportTypeChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Belfold', 'Kulfold'],
+                        datasets: [{
+                            data: [summary.domestic.total, summary.foreign.total],
+                            backgroundColor: ['rgba(0,255,136,0.8)', 'rgba(153,102,255,0.8)'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'right', labels: { color: '#fff' } },
+                            tooltip: { callbacks: { label: ctx => fmt(ctx.raw) + ' RON (' + (ctx.raw / summary.total_cost * 100).toFixed(1) + '%)' } }
+                        }
+                    }
+                });
 
-                document.getElementById('transportTotals').innerHTML = `
-                    <div class="total-item"><span class="total-label">Transporturi</span><span class="total-value">${filtered.length}</span></div>
-                    <div class="total-item"><span class="total-label">Fara TVA</span><span class="total-value">${fmt(totalFaraTva)} RON</span></div>
-                    <div class="total-item"><span class="total-label">TVA</span><span class="total-value">${fmt(totalTva)} RON</span></div>
-                    <div class="total-item"><span class="total-label">Total</span><span class="total-value">${fmt(totalCost)} RON</span></div>
-                `;
+                // Monthly chart
+                if (transportChartInstance) transportChartInstance.destroy();
+                if (data.monthly_totals && data.monthly_totals.length > 0) {
+                    const labels = data.monthly_totals.map(t => monthNames[t.month - 1] + "'" + String(t.year).slice(2));
+                    transportChartInstance = new Chart(document.getElementById('transportChart'), {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{ label: 'Cost Transport', data: data.monthly_totals.map(t => t.total_cost), borderColor: '#ff6b6b', backgroundColor: 'rgba(255,107,107,0.2)', fill: true, tension: 0.3 }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) + ' RON' } } },
+                            scales: { y: { ticks: { callback: v => fmt(v) } } }
+                        }
+                    });
+                }
+
+                // Destination bars
+                const maxDest = data.by_destination?.[0]?.total_cost || 1;
+                document.getElementById('transportDestBars').innerHTML = (data.by_destination || []).slice(0, 10).map(d => {
+                    const pct = (d.total_cost / maxDest * 100).toFixed(0);
+                    const color = d.is_foreign ? '#9966ff' : '#00ff88';
+                    const badge = d.is_foreign ? '<span class="badge purple" style="margin-left:5px;">Kulfold</span>' : '<span class="badge green" style="margin-left:5px;">Belfold</span>';
+                    return `<div class="category-bar">
+                        <span class="name">${d.destinatie}${badge}</span>
+                        <div class="bar-bg"><div class="bar" style="width:${pct}%;background:${color};">${fmt(d.total_cost)}</div></div>
+                        <span class="kg">${d.count} db</span>
+                    </div>`;
+                }).join('') || '<p style="color:#888;">Nincs adat</p>';
+
+                // Filter and render table
+                filterTransportTable();
             } catch (e) { console.error('Error loading transport:', e); }
+        }
+
+        function filterTransportTable() {
+            if (!allTransportData) return;
+
+            const transportType = document.getElementById('transportType').value;
+            const dest = document.getElementById('transportDest').value.toLowerCase();
+            const firma = document.getElementById('transportFirma').value.toLowerCase();
+
+            let filtered = allTransportData.transporturi || [];
+            if (transportType === 'domestic') filtered = filtered.filter(t => !t.is_foreign);
+            if (transportType === 'foreign') filtered = filtered.filter(t => t.is_foreign);
+            if (dest) filtered = filtered.filter(t => (t.destinatie || '').toLowerCase().includes(dest));
+            if (firma) filtered = filtered.filter(t => (t.firma_name || '').toLowerCase().includes(firma));
+
+            document.getElementById('transportCount').textContent = filtered.length;
+
+            let totalCost = 0;
+            const tbody = document.getElementById('transportTable');
+            tbody.innerHTML = filtered.map(t => {
+                totalCost += t.total || 0;
+                const typeBadge = t.is_foreign
+                    ? '<span class="badge purple">Kulfold</span>'
+                    : '<span class="badge green">Belfold</span>';
+                return `<tr>
+                    <td>${t.year}</td><td>${monthNames[t.month - 1]}</td>
+                    <td>${t.destinatie || '-'}</td><td>${typeBadge}</td>
+                    <td>${t.firma_name || '-'}</td>
+                    <td class="text-right"><strong>${fmt(t.total)}</strong></td>
+                    <td>${t.transportator || '-'}</td>
+                </tr>`;
+            }).join('');
+
+            document.getElementById('transportTotals').innerHTML = `
+                <div class="total-item"><span class="total-label">Szallitasok</span><span class="total-value">${filtered.length}</span></div>
+                <div class="total-item"><span class="total-label">Osszes Koltseg</span><span class="total-value">${fmt(totalCost)} RON</span></div>
+            `;
         }
 
         function resetTransportFilters() {
             document.getElementById('transportYear').value = '';
-            document.getElementById('transportMonth').value = '';
+            document.getElementById('transportType').value = '';
             document.getElementById('transportDest').value = '';
             document.getElementById('transportFirma').value = '';
             loadTransportData();
         }
 
+        let seasonalChartInstance = null;
+
         async function loadStatsData() {
             try {
-                const [top, deseuri, monthly] = await Promise.all([
-                    fetch('/api/firme?type=top&limit=5').then(r => r.json()),
+                const [top, deseuri, monthly, yearly] = await Promise.all([
+                    fetch('/api/firme?type=top&limit=10').then(r => r.json()),
                     fetch('/api/firme?type=deseuri').then(r => r.json()),
-                    fetch('/api/firme?type=monthly').then(r => r.json())
+                    fetch('/api/firme?type=monthly').then(r => r.json()),
+                    fetch('/api/firme?type=yearly').then(r => r.json())
                 ]);
 
-                // Top profit
+                // Calculate key metrics
+                const totalVanzari = monthly.months?.reduce((s, m) => s + m.nr_vanzari, 0) || 0;
+                const totalValoare = monthly.months?.reduce((s, m) => s + m.total_valoare, 0) || 0;
+                const totalProfit = monthly.months?.reduce((s, m) => s + m.total_profit, 0) || 0;
+                const avgSale = totalVanzari > 0 ? totalValoare / totalVanzari : 0;
+                const avgProfit = totalVanzari > 0 ? totalProfit / totalVanzari : 0;
+                const avgMargin = totalValoare > 0 ? (totalProfit / totalValoare * 100) : 0;
+
+                // YoY growth calculation
+                let growth = 0;
+                if (yearly.years && yearly.years.length >= 2) {
+                    const y1 = yearly.years.find(y => y.year === 2023);
+                    const y2 = yearly.years.find(y => y.year === 2024);
+                    if (y1 && y2) growth = ((y2.total_valoare - y1.total_valoare) / y1.total_valoare * 100);
+                }
+
+                // Top 5 companies share
+                const topShare = top.top_by_value ? (top.top_by_value.slice(0, 5).reduce((s, f) => s + f.total_valoare, 0) / totalValoare * 100) : 0;
+
+                // Active firms (last 6 months)
+                const sixMonthsAgo = new Date();
+                sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+                const activeFirms = allFirmeList.filter(f => f.last_sale && new Date(f.last_sale) >= sixMonthsAgo).length;
+
+                // Update stat cards
+                document.getElementById('statAvgSale').textContent = fmt(avgSale);
+                document.getElementById('statAvgProfit').textContent = fmt(avgProfit);
+                document.getElementById('statAvgMargin').textContent = avgMargin.toFixed(1);
+                document.getElementById('statGrowth').textContent = (growth >= 0 ? '+' : '') + growth.toFixed(1);
+                document.getElementById('statTopShare').textContent = topShare.toFixed(1);
+                document.getElementById('statActiveFirms').textContent = activeFirms;
+
+                // Top profit table
                 if (top.top_by_profit) {
-                    document.getElementById('topProfitTable').innerHTML = top.top_by_profit.map(f => {
+                    document.getElementById('topProfitTable').innerHTML = top.top_by_profit.map((f, i) => {
                         const margin = f.total_valoare > 0 ? (f.total_profit / f.total_valoare * 100).toFixed(1) : 0;
-                        return `<tr><td>${f.name}</td><td class="text-right profit-positive">${fmt(f.total_profit)}</td><td class="text-right">${margin}%</td></tr>`;
+                        return `<tr class="clickable" onclick="showFirmaProfile(${f.id})"><td>${i+1}</td><td>${f.name}</td><td class="text-right profit-positive">${fmt(f.total_profit)}</td><td class="text-right">${margin}%</td></tr>`;
                     }).join('');
                 }
 
-                // Top kg
+                // Top kg table
                 if (top.top_by_kg) {
-                    document.getElementById('topKgTable').innerHTML = top.top_by_kg.map(f =>
-                        `<tr><td>${f.name}</td><td class="text-right">${fmt(f.total_kg)}</td><td class="text-right">${f.nr_vanzari}</td></tr>`
+                    document.getElementById('topKgTable').innerHTML = top.top_by_kg.map((f, i) =>
+                        `<tr class="clickable" onclick="showFirmaProfile(${f.id})"><td>${i+1}</td><td>${f.name}</td><td class="text-right">${fmt(f.total_kg)}</td><td class="text-right">${f.nr_vanzari}</td></tr>`
                     ).join('');
                 }
 
-                // Best month
+                // Best month info
                 if (monthly.months && monthly.months.length > 0) {
                     const best = monthly.months.reduce((a, b) => (a.total_valoare || 0) > (b.total_valoare || 0) ? a : b);
+                    const worst = monthly.months.filter(m => m.total_valoare > 0).reduce((a, b) => (a.total_valoare || Infinity) < (b.total_valoare || Infinity) ? a : b, monthly.months[0]);
                     document.getElementById('bestMonthInfo').innerHTML = `
-                        <div class="insight-box"><strong>${best.month_name} ${best.year}</strong><br>
-                        Valoare: ${fmt(best.total_valoare)} RON<br>
-                        Profit: ${fmt(best.total_profit)} RON<br>
-                        Marja: ${fmtDec(best.profit_margin)}%</div>
+                        <div class="insight-box" style="margin-bottom:10px;"><strong>Legjobb:</strong> ${best.month_name} ${best.year}<br>
+                        ${fmt(best.total_valoare)} RON (${fmt(best.total_profit)} profit)</div>
+                        <div class="insight-box warning"><strong>Leggyengebb:</strong> ${worst.month_name} ${worst.year}<br>
+                        ${fmt(worst.total_valoare)} RON</div>
                     `;
                 }
 
-                // Margin chart
+                // Margin chart by waste type
                 if (marginChartInstance) marginChartInstance.destroy();
                 if (deseuri.deseuri && deseuri.deseuri.length > 0) {
                     const marje = deseuri.deseuri.filter(d => d.total_valoare > 0).map(d => ({
@@ -1069,7 +1223,7 @@
                     });
                 }
 
-                // Profit trend
+                // Profit trend chart
                 if (profitTrendInstance) profitTrendInstance.destroy();
                 if (monthly.months && monthly.months.length > 0) {
                     const labels = monthly.months.map(m => monthNames[m.month - 1] + "'" + String(m.year).slice(2));
@@ -1077,31 +1231,97 @@
                         type: 'line',
                         data: {
                             labels: labels,
-                            datasets: [{ label: 'Marja %', data: monthly.months.map(m => m.profit_margin), borderColor: '#9966ff', backgroundColor: 'rgba(153,102,255,0.1)', fill: true, tension: 0.3 }]
+                            datasets: [
+                                { label: 'Profit', data: monthly.months.map(m => m.total_profit), borderColor: '#00ff88', backgroundColor: 'rgba(0,255,136,0.1)', fill: true, tension: 0.3, yAxisID: 'y' },
+                                { label: 'Marja %', data: monthly.months.map(m => m.profit_margin), borderColor: '#9966ff', borderDash: [5, 5], tension: 0.3, yAxisID: 'y1' }
+                            ]
                         },
                         options: {
                             responsive: true, maintainAspectRatio: false,
-                            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.raw.toFixed(1) + '%' } } }
+                            plugins: { legend: { labels: { color: '#fff' } } },
+                            scales: {
+                                y: { type: 'linear', position: 'left', ticks: { callback: v => fmt(v) } },
+                                y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: v => v + '%' } }
+                            }
                         }
                     });
                 }
 
-                // Inactive firms
-                const sixMonthsAgo = new Date();
-                sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+                // Year comparison info
+                if (yearly.years && yearly.years.length >= 2) {
+                    let compHtml = '<table style="width:100%;font-size:0.9em;"><tr><th>Ev</th><th class="text-right">Rulaj</th><th class="text-right">Profit</th><th class="text-right">Valt.</th></tr>';
+                    for (let i = 0; i < yearly.years.length; i++) {
+                        const y = yearly.years[i];
+                        let change = '';
+                        if (i > 0) {
+                            const prev = yearly.years[i-1];
+                            const pct = ((y.total_valoare - prev.total_valoare) / prev.total_valoare * 100).toFixed(1);
+                            change = pct >= 0 ? `<span style="color:#00ff88;">+${pct}%</span>` : `<span style="color:#ff6b6b;">${pct}%</span>`;
+                        }
+                        compHtml += `<tr><td>${y.year}</td><td class="text-right">${fmt(y.total_valoare)}</td><td class="text-right">${fmt(y.total_profit)}</td><td class="text-right">${change}</td></tr>`;
+                    }
+                    compHtml += '</table>';
+                    document.getElementById('yearCompareInfo').innerHTML = compHtml;
+                }
+
+                // Seasonal chart (avg by month across years)
+                if (seasonalChartInstance) seasonalChartInstance.destroy();
+                if (monthly.months && monthly.months.length > 0) {
+                    const byMonth = {};
+                    monthly.months.forEach(m => {
+                        if (!byMonth[m.month]) byMonth[m.month] = [];
+                        byMonth[m.month].push(m.total_valoare);
+                    });
+                    const avgByMonth = Object.keys(byMonth).sort((a,b) => a - b).map(m => {
+                        const vals = byMonth[m];
+                        return vals.reduce((s, v) => s + v, 0) / vals.length;
+                    });
+
+                    seasonalChartInstance = new Chart(document.getElementById('seasonalChart'), {
+                        type: 'bar',
+                        data: {
+                            labels: monthNames,
+                            datasets: [{ label: 'Atlag', data: avgByMonth, backgroundColor: 'rgba(255,159,64,0.7)', borderRadius: 4 }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) + ' RON' } } },
+                            scales: { y: { ticks: { callback: v => fmt(v) } } }
+                        }
+                    });
+                }
+
+                // Inactive firms (last 6 months)
                 const inactive = allFirmeList.filter(f => {
                     if (!f.last_sale) return false;
                     return new Date(f.last_sale) < sixMonthsAgo;
                 }).sort((a, b) => new Date(a.last_sale) - new Date(b.last_sale));
 
-                document.getElementById('inactiveTable').innerHTML = inactive.slice(0, 20).map(f => {
+                document.getElementById('inactiveTable').innerHTML = inactive.slice(0, 15).map(f => {
                     const days = Math.floor((new Date() - new Date(f.last_sale)) / (1000*60*60*24));
                     return `<tr class="clickable" onclick="showFirmaProfile(${f.id})">
                         <td>${f.name}</td><td>${f.last_sale}</td>
                         <td class="text-right">${fmt(f.total_valoare)}</td>
-                        <td class="text-right" style="color:#ff6b6b;">${days} zile</td>
+                        <td class="text-right" style="color:#ff6b6b;">${days} nap</td>
                     </tr>`;
-                }).join('');
+                }).join('') || '<tr><td colspan="4" style="color:#888;">Nincs inaktiv ceg</td></tr>';
+
+                // New firms (first sale in last 12 months)
+                const oneYearAgo = new Date();
+                oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+                const newFirms = allFirmeList.filter(f => {
+                    if (!f.first_sale) return false;
+                    return new Date(f.first_sale) >= oneYearAgo;
+                }).sort((a, b) => new Date(b.first_sale) - new Date(a.first_sale));
+
+                document.getElementById('newFirmsTable').innerHTML = newFirms.slice(0, 15).map(f => {
+                    return `<tr class="clickable" onclick="showFirmaProfile(${f.id})">
+                        <td>${f.name}</td><td>${f.first_sale}</td>
+                        <td class="text-right">${fmt(f.total_valoare)}</td>
+                        <td class="text-right">${f.nr_vanzari}</td>
+                    </tr>`;
+                }).join('') || '<tr><td colspan="4" style="color:#888;">Nincs uj ceg</td></tr>';
+
             } catch (e) { console.error('Error loading stats:', e); }
         }
 

@@ -387,16 +387,34 @@ class handler(BaseHTTPRequestHandler):
         }
 
     def get_deseuri_summary(self, cur, year=None, month=None):
-        """Get waste type summary"""
+        """Get waste type summary - computed from vanzari for consistency"""
+        # First get totals for percentage calculation
+        total_query = """
+            SELECT COALESCE(SUM(valoare_ron), 0) as total_val,
+                   COALESCE(SUM(adaos_final), 0) as total_profit
+            FROM vanzari WHERE tip_deseu IS NOT NULL
+        """
+        total_params = []
+        if year:
+            total_query += " AND year = %s"
+            total_params.append(int(year))
+        if month:
+            total_query += " AND month = %s"
+            total_params.append(int(month))
+
+        cur.execute(total_query, total_params)
+        totals = cur.fetchone()
+        grand_total_val = float(totals['total_val']) if totals['total_val'] else 1
+        grand_total_profit = float(totals['total_profit']) if totals['total_profit'] else 1
+
+        # Now get breakdown by tip_deseu
         query = """
             SELECT tip_deseu,
-                   SUM(cantitate_kg) as total_kg,
-                   SUM(valoare_ron) as total_valoare,
-                   SUM(adaos_ron) as total_profit,
-                   AVG(procent_vanzari) as avg_procent_vanzari,
-                   AVG(procent_profit) as avg_procent_profit
-            FROM sumar_deseuri
-            WHERE 1=1
+                   COALESCE(SUM(cantitate_receptionata), 0) as total_kg,
+                   COALESCE(SUM(valoare_ron), 0) as total_valoare,
+                   COALESCE(SUM(adaos_final), 0) as total_profit
+            FROM vanzari
+            WHERE tip_deseu IS NOT NULL AND tip_deseu != ''
         """
         params = []
         if year:
@@ -413,13 +431,17 @@ class handler(BaseHTTPRequestHandler):
 
         return {
             'filters': {'year': year, 'month': month},
+            'totals': {
+                'total_valoare': grand_total_val,
+                'total_profit': grand_total_profit
+            },
             'deseuri': [{
                 'tip_deseu': d['tip_deseu'],
                 'total_kg': float(d['total_kg']) if d['total_kg'] else 0,
                 'total_valoare': float(d['total_valoare']) if d['total_valoare'] else 0,
                 'total_profit': float(d['total_profit']) if d['total_profit'] else 0,
-                'procent_vanzari': float(d['avg_procent_vanzari']) if d['avg_procent_vanzari'] else 0,
-                'procent_profit': float(d['avg_procent_profit']) if d['avg_procent_profit'] else 0
+                'procent_vanzari': round(float(d['total_valoare']) / grand_total_val * 100, 2) if grand_total_val else 0,
+                'procent_profit': round(float(d['total_profit']) / grand_total_profit * 100, 2) if grand_total_profit else 0
             } for d in deseuri]
         }
 
@@ -472,7 +494,14 @@ class handler(BaseHTTPRequestHandler):
         }
 
     def get_transporturi(self, cur, year=None):
-        """Get transport costs"""
+        """Get transport costs with domestic/foreign breakdown"""
+        # Define foreign destinations (not Romania)
+        FOREIGN_DESTINATIONS = [
+            'OLANDA', 'UNGARIA', 'VITTUONE', 'CZESTOCHOWA', 'TOMASZOW', 'KONIN',
+            'VARPALOTA', 'SPISSKE VLACHY', 'CASTENDOLO', 'ITALIA', 'POLONIA',
+            'CEHIA', 'SLOVACIA', 'AUSTRIA', 'GERMANIA'
+        ]
+
         query = """
             SELECT year, month, destinatie, firma_name, descriere,
                    suma_fara_tva, tva, total, transportator
@@ -488,6 +517,11 @@ class handler(BaseHTTPRequestHandler):
         cur.execute(query, params)
         transporturi = cur.fetchall()
 
+        # Classify as domestic/foreign
+        for t in transporturi:
+            dest = (t['destinatie'] or '').upper()
+            t['is_foreign'] = any(f in dest for f in FOREIGN_DESTINATIONS)
+
         # Summary by year/month
         cur.execute("""
             SELECT year, month, COALESCE(SUM(total), 0) as total_cost
@@ -497,9 +531,57 @@ class handler(BaseHTTPRequestHandler):
         """)
         summary = cur.fetchall()
 
+        # Summary by year
+        cur.execute("""
+            SELECT year, COUNT(*) as count, COALESCE(SUM(total), 0) as total_cost
+            FROM transporturi_firme
+            GROUP BY year ORDER BY year
+        """)
+        by_year = cur.fetchall()
+
+        # Summary by destination
+        cur.execute("""
+            SELECT destinatie, COUNT(*) as count, COALESCE(SUM(total), 0) as total_cost
+            FROM transporturi_firme
+            WHERE destinatie IS NOT NULL
+            GROUP BY destinatie ORDER BY total_cost DESC
+        """)
+        by_dest = cur.fetchall()
+
+        # Classify destinations
+        domestic_total = 0
+        foreign_total = 0
+        domestic_count = 0
+        foreign_count = 0
+
+        for t in transporturi:
+            cost = float(t['total']) if t['total'] else 0
+            if t['is_foreign']:
+                foreign_total += cost
+                foreign_count += 1
+            else:
+                domestic_total += cost
+                domestic_count += 1
+
         return {
             'year_filter': year,
             'count': len(transporturi),
+            'summary': {
+                'total_cost': domestic_total + foreign_total,
+                'domestic': {'count': domestic_count, 'total': domestic_total},
+                'foreign': {'count': foreign_count, 'total': foreign_total}
+            },
+            'by_year': [{
+                'year': y['year'],
+                'count': y['count'],
+                'total_cost': float(y['total_cost']) if y['total_cost'] else 0
+            } for y in by_year],
+            'by_destination': [{
+                'destinatie': d['destinatie'],
+                'count': d['count'],
+                'total_cost': float(d['total_cost']) if d['total_cost'] else 0,
+                'is_foreign': any(f in (d['destinatie'] or '').upper() for f in FOREIGN_DESTINATIONS)
+            } for d in by_dest],
             'transporturi': [{
                 'year': t['year'],
                 'month': t['month'],
@@ -509,7 +591,8 @@ class handler(BaseHTTPRequestHandler):
                 'suma_fara_tva': float(t['suma_fara_tva']) if t['suma_fara_tva'] else 0,
                 'tva': float(t['tva']) if t['tva'] else 0,
                 'total': float(t['total']) if t['total'] else 0,
-                'transportator': t['transportator']
+                'transportator': t['transportator'],
+                'is_foreign': t['is_foreign']
             } for t in transporturi],
             'monthly_totals': [{
                 'year': s['year'],
