@@ -125,12 +125,18 @@
 </head>
 <body>
     <div class="login-screen" id="loginScreen">
-        <div class="login-box">
+        <div class="login-box" id="loginBox">
             <h1>PAJU Dashboard</h1>
             <p>Introdu parola pentru acces</p>
             <input type="password" id="passwordInput" placeholder="Parola..." onkeypress="if(event.key==='Enter')checkPassword()">
             <button onclick="checkPassword()">Conectare</button>
             <div class="error" id="loginError">Parola gresita!</div>
+        </div>
+        <div class="login-box" id="dashboardSelect" style="display:none;">
+            <h1>PAJU Dashboard</h1>
+            <p>Selecteaza dashboard-ul dorit</p>
+            <button onclick="goToDashboard('pf')" style="margin-bottom:10px;background: linear-gradient(135deg, #00d9ff, #00ff88);">Persoane Fizice</button>
+            <button onclick="goToDashboard('firme')" style="background: linear-gradient(135deg, #ff9f40, #ff6b6b);">Firme (B2B)</button>
         </div>
     </div>
 
@@ -576,19 +582,29 @@
         function checkPassword() {
             if (document.getElementById('passwordInput').value === 'war') {
                 sessionStorage.setItem('paju_auth', 'true');
-                document.getElementById('loginScreen').classList.add('hidden');
-                document.getElementById('mainContent').classList.add('visible');
-                loadAllData();
+                // Show dashboard selection instead of going directly to dashboard
+                document.getElementById('loginBox').style.display = 'none';
+                document.getElementById('dashboardSelect').style.display = 'block';
             } else {
                 document.getElementById('loginError').style.display = 'block';
             }
         }
 
+        function goToDashboard(type) {
+            if (type === 'firme') {
+                window.location.href = 'firme.html';
+            } else {
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('mainContent').classList.add('visible');
+                loadAllData();
+            }
+        }
+
         // Check if already logged in
         if (sessionStorage.getItem('paju_auth') === 'true') {
-            document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('mainContent').classList.add('visible');
-            document.addEventListener('DOMContentLoaded', loadAllData);
+            // Show dashboard selection
+            document.getElementById('loginBox').style.display = 'none';
+            document.getElementById('dashboardSelect').style.display = 'block';
         }
 
         let monthlyData = null, wasteData = null, weekdayChart = null;

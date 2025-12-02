@@ -148,6 +148,15 @@
     <div class="main-content" id="mainContent">
         <!-- OVERVIEW -->
         <div id="section-overview" class="section active">
+            <div class="search-box">
+                <label>An:</label>
+                <select id="overviewYear" onchange="loadOverviewData()">
+                    <option value="">Toti anii</option>
+                    <option value="2024">2024</option>
+                    <option value="2023">2023</option>
+                    <option value="2022">2022</option>
+                </select>
+            </div>
             <div class="big-stats" id="bigStats">
                 <div class="stat-card orange"><h4>Rulaj Total</h4><div class="value orange" id="totalValue">...</div><div class="sub">RON</div></div>
                 <div class="stat-card green"><h4>Profit Total</h4><div class="value green" id="totalProfit">...</div><div class="sub">RON</div></div>
@@ -523,6 +532,44 @@
             }
         }
 
+        async function loadOverviewData() {
+            const year = document.getElementById('overviewYear').value;
+            let url = '/api/firme?type=overview';
+            if (year) url += `&year=${year}`;
+
+            try {
+                const [overview, top] = await Promise.all([
+                    fetch(url).then(r => r.json()),
+                    fetch(`/api/firme?type=top&limit=10${year ? '&year=' + year : ''}`).then(r => r.json())
+                ]);
+
+                const o = overview.overview;
+                document.getElementById('totalValue').textContent = fmt(o.total_valoare_ron);
+                document.getElementById('totalProfit').textContent = fmt(o.total_profit_ron);
+                document.getElementById('profitMargin').textContent = fmtDec(o.profit_margin);
+                document.getElementById('totalVanzari').textContent = fmt(o.total_vanzari);
+                document.getElementById('totalFirme').textContent = fmt(o.firme_active);
+                document.getElementById('totalKg').textContent = fmt(o.total_kg);
+
+                // Update top firme table
+                if (top.top_by_value) {
+                    const tbody = document.getElementById('topFirmeTable');
+                    tbody.innerHTML = top.top_by_value.map((f, i) => {
+                        const margin = f.total_valoare > 0 ? (f.total_profit / f.total_valoare * 100).toFixed(1) : 0;
+                        return `<tr class="clickable" onclick="showFirmaProfile(${f.id})">
+                            <td>${i + 1}</td>
+                            <td>${f.name}</td>
+                            <td class="text-right">${fmt(f.total_valoare)}</td>
+                            <td class="text-right profit-positive">${fmt(f.total_profit)}</td>
+                            <td class="text-right">${margin}%</td>
+                        </tr>`;
+                    }).join('');
+                }
+            } catch (e) {
+                console.error('Error loading overview:', e);
+            }
+        }
+
         function initOverview(overview, top, yearly) {
             const o = overview.overview;
             document.getElementById('totalValue').textContent = fmt(o.total_valoare_ron);
@@ -649,32 +696,40 @@
             `;
         }
 
-        function searchFirme() {
-            const query = document.getElementById('firmaSearch').value.toLowerCase();
+        async function searchFirme() {
+            const query = document.getElementById('firmaSearch').value;
             const year = document.getElementById('firmaYear').value;
             const minValue = parseFloat(document.getElementById('firmaMinValue').value) || 0;
             const sort = document.getElementById('firmaSort').value;
 
-            let filtered = [...allFirmeList];
+            // Build API URL with filters
+            let url = '/api/firme?type=list';
+            if (year) url += `&year=${year}`;
+            if (query) url += `&search=${encodeURIComponent(query)}`;
 
-            if (query) {
-                filtered = filtered.filter(f => f.name.toLowerCase().includes(query));
-            }
-            if (minValue > 0) {
-                filtered = filtered.filter(f => f.total_valoare >= minValue);
-            }
+            try {
+                const data = await fetch(url).then(r => r.json());
+                let filtered = data.firme || [];
 
-            // Sort
-            switch(sort) {
-                case 'value_asc': filtered.sort((a,b) => a.total_valoare - b.total_valoare); break;
-                case 'profit_desc': filtered.sort((a,b) => b.total_profit - a.total_profit); break;
-                case 'name_asc': filtered.sort((a,b) => a.name.localeCompare(b.name)); break;
-                case 'visits_desc': filtered.sort((a,b) => b.nr_vanzari - a.nr_vanzari); break;
-                default: filtered.sort((a,b) => b.total_valoare - a.total_valoare);
-            }
+                // Client-side filtering for min value
+                if (minValue > 0) {
+                    filtered = filtered.filter(f => f.total_valoare >= minValue);
+                }
 
-            document.getElementById('firmeCount').textContent = filtered.length;
-            renderFirmeTable(filtered);
+                // Client-side sorting
+                switch(sort) {
+                    case 'value_asc': filtered.sort((a,b) => a.total_valoare - b.total_valoare); break;
+                    case 'profit_desc': filtered.sort((a,b) => b.total_profit - a.total_profit); break;
+                    case 'name_asc': filtered.sort((a,b) => a.name.localeCompare(b.name)); break;
+                    case 'visits_desc': filtered.sort((a,b) => b.nr_vanzari - a.nr_vanzari); break;
+                    default: filtered.sort((a,b) => b.total_valoare - a.total_valoare);
+                }
+
+                document.getElementById('firmeCount').textContent = filtered.length;
+                renderFirmeTable(filtered);
+            } catch (e) {
+                console.error('Error searching firme:', e);
+            }
         }
 
         function resetFirmaFilters() {

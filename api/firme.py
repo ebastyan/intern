@@ -43,9 +43,12 @@ class handler(BaseHTTPRequestHandler):
             query_type = params.get('type', ['overview'])[0]
 
             if query_type == 'overview':
-                result = self.get_overview(cur)
+                year = params.get('year', [None])[0]
+                result = self.get_overview(cur, year)
             elif query_type == 'list':
-                result = self.get_firme_list(cur)
+                year = params.get('year', [None])[0]
+                search = params.get('search', [None])[0]
+                result = self.get_firme_list(cur, year, search)
             elif query_type == 'firma':
                 firma_id = params.get('id', [None])[0]
                 result = self.get_firma_details(cur, firma_id)
@@ -91,19 +94,32 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({'error': str(e)}).encode())
 
-    def get_overview(self, cur):
+    def get_overview(self, cur, year=None):
         """Get overall B2B business overview"""
         # Total stats
-        cur.execute("""
-            SELECT COUNT(*) as total_vanzari,
-                   COUNT(DISTINCT firma_id) as firme_active,
-                   COALESCE(SUM(valoare_ron), 0) as total_valoare,
-                   COALESCE(SUM(adaos_final), 0) as total_profit,
-                   COALESCE(SUM(cantitate_receptionata), 0) as total_kg,
-                   MIN(data) as first_date,
-                   MAX(data) as last_date
-            FROM vanzari
-        """)
+        if year:
+            cur.execute("""
+                SELECT COUNT(*) as total_vanzari,
+                       COUNT(DISTINCT firma_id) as firme_active,
+                       COALESCE(SUM(valoare_ron), 0) as total_valoare,
+                       COALESCE(SUM(adaos_final), 0) as total_profit,
+                       COALESCE(SUM(cantitate_receptionata), 0) as total_kg,
+                       MIN(data) as first_date,
+                       MAX(data) as last_date
+                FROM vanzari
+                WHERE year = %s
+            """, (int(year),))
+        else:
+            cur.execute("""
+                SELECT COUNT(*) as total_vanzari,
+                       COUNT(DISTINCT firma_id) as firme_active,
+                       COALESCE(SUM(valoare_ron), 0) as total_valoare,
+                       COALESCE(SUM(adaos_final), 0) as total_profit,
+                       COALESCE(SUM(cantitate_receptionata), 0) as total_kg,
+                       MIN(data) as first_date,
+                       MAX(data) as last_date
+                FROM vanzari
+            """)
         totals = cur.fetchone()
 
         # Total firme
@@ -161,9 +177,9 @@ class handler(BaseHTTPRequestHandler):
             }
         }
 
-    def get_firme_list(self, cur):
-        """Get list of all companies with stats"""
-        cur.execute("""
+    def get_firme_list(self, cur, year=None, search=None):
+        """Get list of all companies with stats, optionally filtered by year"""
+        query = """
             SELECT f.id, f.name,
                    COUNT(v.id) as nr_vanzari,
                    COALESCE(SUM(v.valoare_ron), 0) as total_valoare,
@@ -173,13 +189,29 @@ class handler(BaseHTTPRequestHandler):
                    MAX(v.data) as last_sale
             FROM firme f
             LEFT JOIN vanzari v ON f.id = v.firma_id
-            GROUP BY f.id, f.name
-            ORDER BY total_valoare DESC
-        """)
+        """
+        conditions = []
+        params = []
+
+        if year:
+            conditions.append("v.year = %s")
+            params.append(int(year))
+
+        if search:
+            conditions.append("LOWER(f.name) LIKE %s")
+            params.append(f"%{search.lower()}%")
+
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+
+        query += " GROUP BY f.id, f.name HAVING COUNT(v.id) > 0 ORDER BY total_valoare DESC"
+
+        cur.execute(query, params)
         firme = cur.fetchall()
 
         return {
             'count': len(firme),
+            'filters': {'year': year, 'search': search},
             'firme': [{
                 'id': f['id'],
                 'name': f['name'],
