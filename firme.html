@@ -245,7 +245,7 @@
                             <tr>
                                 <th>An</th>
                                 <th>Luna</th>
-                                <th class="text-right">Tranzakciok</th>
+                                <th class="text-right">Tranzactii</th>
                                 <th class="text-right">Firme</th>
                                 <th class="text-right">Total kg</th>
                                 <th class="text-right">Valoare</th>
@@ -308,6 +308,9 @@
                 </select>
                 <input type="text" id="deseuriSearch" placeholder="Cauta tip deseu..." style="width:150px;" onkeyup="filterDeseuriTable()">
                 <button class="secondary" onclick="resetDeseuriFilters()">Reset</button>
+            </div>
+            <div id="deseuriWarning" class="insight-box" style="display:none; margin:15px 0; border-left-color:#ff6b6b; background:#3a2020;">
+                <strong>⚠️ Atentie:</strong> Date tip_deseu lipsesc pentru 2023 si 2024. Campul tip_deseu nu a fost completat in fisierul Excel original pentru acesti ani.
             </div>
             <div class="grid grid-2">
                 <div class="card"><h2><span class="icon">🥧</span> Distributie dupa Valoare</h2><div class="chart-container"><canvas id="deseuriPieChart"></canvas></div></div>
@@ -404,22 +407,22 @@
 
             <div class="grid grid-2">
                 <div class="card">
-                    <h2><span class="icon">📊</span> Eves Osszehasonlitas</h2>
+                    <h2><span class="icon">📊</span> Comparatie Anuala</h2>
                     <div class="chart-container"><canvas id="transportYearChart"></canvas></div>
                 </div>
                 <div class="card">
-                    <h2><span class="icon">🌍</span> Belfold vs Kulfold</h2>
+                    <h2><span class="icon">🌍</span> Intern vs Extern</h2>
                     <div class="chart-container"><canvas id="transportTypeChart"></canvas></div>
                 </div>
             </div>
 
             <div class="grid grid-2">
                 <div class="card">
-                    <h2><span class="icon">🚚</span> Havonkenti Koltsegek</h2>
+                    <h2><span class="icon">🚚</span> Costuri Lunare</h2>
                     <div class="chart-container"><canvas id="transportChart"></canvas></div>
                 </div>
                 <div class="card">
-                    <h2><span class="icon">📍</span> Top Destinaciok</h2>
+                    <h2><span class="icon">📍</span> Top Destinatii</h2>
                     <div id="transportDestBars"></div>
                 </div>
             </div>
@@ -450,12 +453,12 @@
         <div id="section-stats" class="section">
             <!-- Key metrics -->
             <div class="big-stats">
-                <div class="stat-card orange"><h4>Atlag Vanzare</h4><div class="value orange" id="statAvgSale">...</div><div class="sub">RON/vanzare</div></div>
-                <div class="stat-card green"><h4>Atlag Profit</h4><div class="value green" id="statAvgProfit">...</div><div class="sub">RON/vanzare</div></div>
-                <div class="stat-card purple"><h4>Atlag Marja</h4><div class="value purple" id="statAvgMargin">...</div><div class="sub">%</div></div>
-                <div class="stat-card cyan"><h4>Novekedesi Rata</h4><div class="value cyan" id="statGrowth">...</div><div class="sub">% YoY</div></div>
-                <div class="stat-card yellow"><h4>Top 5 Ceg Aranya</h4><div class="value yellow" id="statTopShare">...</div><div class="sub" id="statTopShareSub">% forgalombol</div></div>
-                <div class="stat-card red"><h4>Aktiv Cegek</h4><div class="value red" id="statActiveFirms">...</div><div class="sub">utobbi 6 honap</div></div>
+                <div class="stat-card orange"><h4>Media Vanzare</h4><div class="value orange" id="statAvgSale">...</div><div class="sub">RON/vanzare</div></div>
+                <div class="stat-card green"><h4>Media Profit</h4><div class="value green" id="statAvgProfit">...</div><div class="sub">RON/vanzare</div></div>
+                <div class="stat-card purple"><h4>Marja Medie</h4><div class="value purple" id="statAvgMargin">...</div><div class="sub">%</div></div>
+                <div class="stat-card cyan"><h4>Rata Crestere</h4><div class="value cyan" id="statGrowth">...</div><div class="sub">% YoY</div></div>
+                <div class="stat-card yellow"><h4>Top 5 Firme</h4><div class="value yellow" id="statTopShare">...</div><div class="sub" id="statTopShareSub">% din rulaj</div></div>
+                <div class="stat-card red"><h4>Firme Active</h4><div class="value red" id="statActiveFirms">...</div><div class="sub">ultimele 6 luni</div></div>
             </div>
 
             <div class="grid grid-3">
@@ -474,34 +477,34 @@
             </div>
             <div class="grid grid-2">
                 <div class="card">
-                    <h2><span class="icon">📊</span> Marje pe Kategoriak</h2>
+                    <h2><span class="icon">📊</span> Marje pe Categorii</h2>
                     <div class="chart-container"><canvas id="marginChart"></canvas></div>
                 </div>
                 <div class="card">
-                    <h2><span class="icon">📈</span> Havonkenti Profit Trend</h2>
+                    <h2><span class="icon">📈</span> Trend Profit Lunar</h2>
                     <div class="chart-container"><canvas id="profitTrendChart"></canvas></div>
                 </div>
             </div>
 
             <div class="grid grid-2">
                 <div class="card">
-                    <h2><span class="icon">🔄</span> Eves Osszehasonlitas</h2>
+                    <h2><span class="icon">🔄</span> Comparatie Anuala</h2>
                     <div id="yearCompareInfo"></div>
                 </div>
                 <div class="card">
-                    <h2><span class="icon">📉</span> Szezonalitas</h2>
+                    <h2><span class="icon">📉</span> Sezonalitate</h2>
                     <div class="chart-container short"><canvas id="seasonalChart"></canvas></div>
                 </div>
             </div>
 
             <div class="grid grid-2">
                 <div class="card">
-                    <h2><span class="icon">🔍</span> Inaktiv Cegek (6 honap)</h2>
-                    <div class="scroll-table"><table><thead><tr><th>Firma</th><th>Utolso Vanzare</th><th class="text-right">Osszes Ertek</th><th class="text-right">Inaktiv Nap</th></tr></thead><tbody id="inactiveTable"></tbody></table></div>
+                    <h2><span class="icon">🔍</span> Firme Inactive (6 luni)</h2>
+                    <div class="scroll-table"><table><thead><tr><th>Firma</th><th>Ultima Vanzare</th><th class="text-right">Valoare Totala</th><th class="text-right">Zile Inactive</th></tr></thead><tbody id="inactiveTable"></tbody></table></div>
                 </div>
                 <div class="card">
-                    <h2><span class="icon">⭐</span> Uj Cegek (12 honap)</h2>
-                    <div class="scroll-table"><table><thead><tr><th>Firma</th><th>Elso Vanzare</th><th class="text-right">Osszes Ertek</th><th class="text-right">Vanzari</th></tr></thead><tbody id="newFirmsTable"></tbody></table></div>
+                    <h2><span class="icon">⭐</span> Firme Noi (12 luni)</h2>
+                    <div class="scroll-table"><table><thead><tr><th>Firma</th><th>Prima Vanzare</th><th class="text-right">Valoare Totala</th><th class="text-right">Vanzari</th></tr></thead><tbody id="newFirmsTable"></tbody></table></div>
                 </div>
             </div>
         </div>
@@ -852,7 +855,7 @@
 
                 document.getElementById('monthlyTotals').innerHTML = `
                     <div class="total-item"><span class="total-label">Luni</span><span class="total-value">${data.months.length}</span></div>
-                    <div class="total-item"><span class="total-label">Tranzakciok</span><span class="total-value">${fmt(totalVanz)}</span></div>
+                    <div class="total-item"><span class="total-label">Tranzactii</span><span class="total-value">${fmt(totalVanz)}</span></div>
                     <div class="total-item"><span class="total-label">Total kg</span><span class="total-value">${fmt(totalKg)}</span></div>
                     <div class="total-item"><span class="total-label">Valoare</span><span class="total-value">${fmt(totalVal)} RON</span></div>
                     <div class="total-item"><span class="total-label">Profit</span><span class="total-value">${fmt(totalProf)} RON</span></div>
@@ -877,6 +880,14 @@
             try {
                 const data = await fetch(url).then(r => r.json());
                 allDeseuriData = data.deseuri || [];
+
+                // Show warning if data is missing for selected year
+                const warningEl = document.getElementById('deseuriWarning');
+                if ((year === '2023' || year === '2024') && allDeseuriData.length === 0) {
+                    if (warningEl) warningEl.style.display = 'block';
+                } else {
+                    if (warningEl) warningEl.style.display = 'none';
+                }
 
                 // Populate tip_deseu filter dropdown (only once or when reset)
                 if (allTipDeseuList.length === 0) {
@@ -1031,7 +1042,7 @@
                 </tr>
             `).join('');
 
-            // Insights - improved YoY display
+            // Insights - improved YoY display (Romanian)
             let insights = '';
             if (years.length >= 2) {
                 const y1 = years[years.length - 2]; // older year (e.g. 2023)
@@ -1041,19 +1052,17 @@
                 const yoyPct = ((valDiff) / y1.total_valoare * 100).toFixed(1);
                 const profitYoyPct = ((profitDiff) / y1.total_profit * 100).toFixed(1);
 
-                // Clear explanation: newer year grew compared to older year
-                const valTrend = valDiff >= 0 ? 'nott' : 'csokk';
                 const valColor = valDiff >= 0 ? '#00ff88' : '#ff6b6b';
                 const profitColor = profitDiff >= 0 ? '#00ff88' : '#ff6b6b';
 
                 insights += `<div class="insight-box">
-                    <strong>Eves Novekedes (${y1.year} -> ${y2.year}):</strong><br>
+                    <strong>Crestere Anuala (${y1.year} → ${y2.year}):</strong><br>
                     Rulaj: <span style="color:${valColor};">${valDiff >= 0 ? '+' : ''}${fmt(valDiff)} RON (${valDiff >= 0 ? '+' : ''}${yoyPct}%)</span><br>
                     Profit: <span style="color:${profitColor};">${profitDiff >= 0 ? '+' : ''}${fmt(profitDiff)} RON (${profitDiff >= 0 ? '+' : ''}${profitYoyPct}%)</span>
                 </div>`;
 
                 const bestYear = years.reduce((a, b) => a.total_valoare > b.total_valoare ? a : b);
-                insights += `<div class="insight-box"><strong>Legjobb ev:</strong> ${bestYear.year} - ${fmt(bestYear.total_valoare)} RON rulaj, ${fmt(bestYear.total_profit)} RON profit</div>`;
+                insights += `<div class="insight-box"><strong>Cel mai bun an:</strong> ${bestYear.year} - ${fmt(bestYear.total_valoare)} RON rulaj, ${fmt(bestYear.total_profit)} RON profit</div>`;
 
                 // Monthly best comparison
                 let bestMonth2024 = null, bestMonth2023 = null;
@@ -1073,29 +1082,29 @@
                 }
 
                 if (bestMonth2024 && bestMonth2023) {
-                    insights += `<div class="insight-box"><strong>Legjobb honapok:</strong><br>${y2.year}: ${bestMonth2024.month} (${fmt(bestMonth2024.valoare)} RON)<br>${y1.year}: ${bestMonth2023.month} (${fmt(bestMonth2023.valoare)} RON)</div>`;
+                    insights += `<div class="insight-box"><strong>Cele mai bune luni:</strong><br>${y2.year}: ${bestMonth2024.month} (${fmt(bestMonth2024.valoare)} RON)<br>${y1.year}: ${bestMonth2023.month} (${fmt(bestMonth2023.valoare)} RON)</div>`;
                 }
             }
             document.getElementById('compareInsights').innerHTML = insights || '<p style="color:#888;">Nu sunt suficiente date pentru analiza.</p>';
 
-            // Trends - more details
+            // Trends - more details (Romanian)
             let trends = '';
             if (years.length >= 2) {
                 const avgMargin = years.reduce((s, y) => s + y.profit_margin, 0) / years.length;
-                trends += `<div class="insight-box"><strong>Atlag marja:</strong> ${avgMargin.toFixed(1)}%</div>`;
+                trends += `<div class="insight-box"><strong>Marja medie:</strong> ${avgMargin.toFixed(1)}%</div>`;
 
                 const totalFirme = new Set(allFirmeList.map(f => f.name)).size;
-                trends += `<div class="insight-box"><strong>Osszes ceg:</strong> ${totalFirme} egyedi ceg</div>`;
+                trends += `<div class="insight-box"><strong>Total firme:</strong> ${totalFirme} firme unice</div>`;
 
                 // Average per transaction
                 const totalTrx = years.reduce((s, y) => s + y.nr_vanzari, 0);
                 const totalVal = years.reduce((s, y) => s + y.total_valoare, 0);
                 const avgPerTrx = totalTrx > 0 ? totalVal / totalTrx : 0;
-                trends += `<div class="insight-box"><strong>Atlag / tranzakcio:</strong> ${fmt(avgPerTrx)} RON</div>`;
+                trends += `<div class="insight-box"><strong>Media / tranzactie:</strong> ${fmt(avgPerTrx)} RON</div>`;
 
                 // Total kg processed
                 const totalKg = years.reduce((s, y) => s + y.total_kg, 0);
-                trends += `<div class="insight-box"><strong>Osszes feldolgozott:</strong> ${fmt(totalKg)} kg</div>`;
+                trends += `<div class="insight-box"><strong>Total procesat:</strong> ${fmt(totalKg)} kg</div>`;
             }
             document.getElementById('compareTrends').innerHTML = trends || '';
         }
@@ -1192,7 +1201,7 @@
                         <div class="bar-bg"><div class="bar" style="width:${pct}%;background:${color};">${fmt(d.total_cost)}</div></div>
                         <span class="kg">${d.count} db</span>
                     </div>`;
-                }).join('') || '<p style="color:#888;">Nincs adat</p>';
+                }).join('') || '<p style="color:#888;">Nu exista date</p>';
 
                 // Filter and render table
                 filterTransportTable();
@@ -1317,17 +1326,17 @@
                         byYear[m.year].push(m);
                     });
 
-                    let bestMonthHtml = `<div class="insight-box" style="margin-bottom:10px;"><strong>Osszes ido legjobb:</strong> ${best.month_name} ${best.year}<br>${fmt(best.total_valoare)} RON rulaj, ${fmt(best.total_profit)} RON profit</div>`;
+                    let bestMonthHtml = `<div class="insight-box" style="margin-bottom:10px;"><strong>Cea mai buna luna (total):</strong> ${best.month_name} ${best.year}<br>${fmt(best.total_valoare)} RON rulaj, ${fmt(best.total_profit)} RON profit</div>`;
 
                     // Best per year
-                    bestMonthHtml += '<div class="insight-box"><strong>Legjobb honap evente:</strong><br>';
+                    bestMonthHtml += '<div class="insight-box"><strong>Cea mai buna luna / an:</strong><br>';
                     Object.keys(byYear).sort().reverse().forEach(year => {
                         const yearBest = byYear[year].reduce((a, b) => (a.total_valoare || 0) > (b.total_valoare || 0) ? a : b);
                         bestMonthHtml += `${year}: ${yearBest.month_name} - ${fmt(yearBest.total_valoare)} RON<br>`;
                     });
                     bestMonthHtml += '</div>';
 
-                    bestMonthHtml += `<div class="insight-box" style="border-left-color:#ff6b6b;"><strong>Leggyengebb:</strong> ${worst.month_name} ${worst.year}<br>${fmt(worst.total_valoare)} RON</div>`;
+                    bestMonthHtml += `<div class="insight-box" style="border-left-color:#ff6b6b;"><strong>Cea mai slaba luna:</strong> ${worst.month_name} ${worst.year}<br>${fmt(worst.total_valoare)} RON</div>`;
 
                     document.getElementById('bestMonthInfo').innerHTML = bestMonthHtml;
                 }
@@ -1438,7 +1447,7 @@
                         type: 'bar',
                         data: {
                             labels: monthNames,
-                            datasets: [{ label: 'Atlag', data: avgByMonth, backgroundColor: 'rgba(255,159,64,0.7)', borderRadius: 4 }]
+                            datasets: [{ label: 'Media', data: avgByMonth, backgroundColor: 'rgba(255,159,64,0.7)', borderRadius: 4 }]
                         },
                         options: {
                             responsive: true, maintainAspectRatio: false,
@@ -1459,9 +1468,9 @@
                     return `<tr class="clickable" onclick="showFirmaProfile(${f.id})">
                         <td>${f.name}</td><td>${f.last_sale}</td>
                         <td class="text-right">${fmt(f.total_valoare)}</td>
-                        <td class="text-right" style="color:#ff6b6b;">${days} nap</td>
+                        <td class="text-right" style="color:#ff6b6b;">${days} zile</td>
                     </tr>`;
-                }).join('') || '<tr><td colspan="4" style="color:#888;">Nincs inaktiv ceg</td></tr>';
+                }).join('') || '<tr><td colspan="4" style="color:#888;">Nu exista firme inactive</td></tr>';
 
                 // New firms (first sale in last 12 months)
                 const oneYearAgo = new Date();
@@ -1477,7 +1486,7 @@
                         <td class="text-right">${fmt(f.total_valoare)}</td>
                         <td class="text-right">${f.nr_vanzari}</td>
                     </tr>`;
-                }).join('') || '<tr><td colspan="4" style="color:#888;">Nincs uj ceg</td></tr>';
+                }).join('') || '<tr><td colspan="4" style="color:#888;">Nu exista firme noi</td></tr>';
 
             } catch (e) { console.error('Error loading stats:', e); }
         }
