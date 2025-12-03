@@ -73,6 +73,10 @@
         .scroll-table::-webkit-scrollbar { width: 5px; }
         .scroll-table::-webkit-scrollbar-thumb { background: rgba(255,159,64,0.3); border-radius: 3px; }
         .scroll-table thead th { position: sticky; top: 0; background: #1a1a2e; z-index: 10; }
+        .sortable { cursor: pointer; user-select: none; }
+        .sortable:hover { color: #fff; background: rgba(255,159,64,0.2); }
+        .sortable.asc::after { content: ' ▲'; font-size: 0.7em; }
+        .sortable.desc::after { content: ' ▼'; font-size: 0.7em; }
         .category-bar { display: flex; align-items: center; margin-bottom: 8px; font-size: 0.8em; }
         .category-bar .name { width: 120px; color: #ccc; }
         .category-bar .bar-bg { flex: 1; height: 20px; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; margin: 0 10px; }
@@ -505,11 +509,23 @@
             <div class="grid grid-3">
                 <div class="card">
                     <h2><span class="icon">🏆</span> Top 10 Firme - Profit</h2>
-                    <div class="scroll-table"><table><thead><tr><th>#</th><th>Firma</th><th class="text-right">Profit</th><th class="text-right">Marja</th></tr></thead><tbody id="topProfitTable"></tbody></table></div>
+                    <div class="scroll-table"><table id="topProfitTableContainer"><thead><tr>
+                        <th class="sortable" data-sort="index" data-table="profit">#</th>
+                        <th class="sortable" data-sort="name" data-table="profit">Firma</th>
+                        <th class="sortable text-right" data-sort="profit" data-table="profit">Profit</th>
+                        <th class="sortable text-right" data-sort="valoare" data-table="profit">Valoare</th>
+                        <th class="sortable text-right" data-sort="margin" data-table="profit">Marja</th>
+                    </tr></thead><tbody id="topProfitTable"></tbody></table></div>
                 </div>
                 <div class="card">
                     <h2><span class="icon">📦</span> Top 10 Firme - Cantitate</h2>
-                    <div class="scroll-table"><table><thead><tr><th>#</th><th>Firma</th><th class="text-right">Total kg</th><th class="text-right">Vanzari</th></tr></thead><tbody id="topKgTable"></tbody></table></div>
+                    <div class="scroll-table"><table id="topKgTableContainer"><thead><tr>
+                        <th class="sortable" data-sort="index" data-table="kg">#</th>
+                        <th class="sortable" data-sort="name" data-table="kg">Firma</th>
+                        <th class="sortable text-right" data-sort="kg" data-table="kg">Total kg</th>
+                        <th class="sortable text-right" data-sort="profit" data-table="kg">Profit</th>
+                        <th class="sortable text-right" data-sort="vanzari" data-table="kg">Vanzari</th>
+                    </tr></thead><tbody id="topKgTable"></tbody></table></div>
                 </div>
                 <div class="card">
                     <h2><span class="icon">⚡</span> Cea mai buna luna</h2>
@@ -533,7 +549,7 @@
                     <div id="yearCompareInfo"></div>
                 </div>
                 <div class="card">
-                    <h2><span class="icon">📉</span> Sezonalitate</h2>
+                    <h2><span class="icon">📉</span> Sezonalitate <small style="color:#888;font-weight:normal;font-size:0.7em">(Media valorii pe luna din toti anii)</small></h2>
                     <div class="chart-container short"><canvas id="seasonalChart"></canvas></div>
                 </div>
             </div>
@@ -1496,20 +1512,106 @@
                 document.getElementById('statTopShareSub').textContent = top5Names || '% forgalombol';
                 document.getElementById('statActiveFirms').textContent = activeFirms;
 
-                // Top profit table
-                if (top.top_by_profit) {
-                    document.getElementById('topProfitTable').innerHTML = top.top_by_profit.map((f, i) => {
-                        const margin = f.total_valoare > 0 ? (f.total_profit / f.total_valoare * 100).toFixed(1) : 0;
-                        return `<tr class="clickable" onclick="showFirmaProfile(${f.id})"><td>${i+1}</td><td>${f.name}</td><td class="text-right profit-positive">${fmt(f.total_profit)}</td><td class="text-right">${margin}%</td></tr>`;
+                // Top profit table - store data for sorting
+                window.topProfitData = top.top_by_profit || [];
+                window.topKgData = top.top_by_kg || [];
+                window.topProfitSort = { key: 'profit', asc: false };
+                window.topKgSort = { key: 'kg', asc: false };
+
+                // Render function for Top Profit table
+                function renderTopProfitTable() {
+                    const data = [...topProfitData];
+                    const { key, asc } = topProfitSort;
+
+                    // Sort data
+                    data.sort((a, b) => {
+                        let valA, valB;
+                        if (key === 'index') { valA = topProfitData.indexOf(a); valB = topProfitData.indexOf(b); }
+                        else if (key === 'name') { valA = a.name.toLowerCase(); valB = b.name.toLowerCase(); }
+                        else if (key === 'profit') { valA = a.total_profit; valB = b.total_profit; }
+                        else if (key === 'valoare') { valA = a.total_valoare; valB = b.total_valoare; }
+                        else if (key === 'margin') { valA = a.total_valoare ? a.total_profit / a.total_valoare : 0; valB = b.total_valoare ? b.total_profit / b.total_valoare : 0; }
+                        else { valA = a.total_profit; valB = b.total_profit; }
+
+                        if (typeof valA === 'string') return asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                        return asc ? valA - valB : valB - valA;
+                    });
+
+                    // Update sort indicators
+                    document.querySelectorAll('#topProfitTableContainer .sortable').forEach(th => {
+                        th.classList.remove('asc', 'desc');
+                        if (th.dataset.sort === key) th.classList.add(asc ? 'asc' : 'desc');
+                    });
+
+                    // Render table
+                    document.getElementById('topProfitTable').innerHTML = data.map((f, i) => {
+                        const margin = f.total_valoare ? (f.total_profit / f.total_valoare * 100).toFixed(1) : 0;
+                        return `<tr class="clickable" onclick="showFirmaDetails(${f.id})">
+                            <td>${i + 1}</td>
+                            <td>${f.name}</td>
+                            <td class="text-right">${fmt(f.total_profit)} RON</td>
+                            <td class="text-right">${fmt(f.total_valoare)} RON</td>
+                            <td class="text-right">${margin}%</td>
+                        </tr>`;
                     }).join('');
                 }
 
-                // Top kg table
-                if (top.top_by_kg) {
-                    document.getElementById('topKgTable').innerHTML = top.top_by_kg.map((f, i) =>
-                        `<tr class="clickable" onclick="showFirmaProfile(${f.id})"><td>${i+1}</td><td>${f.name}</td><td class="text-right">${fmt(f.total_kg)}</td><td class="text-right">${f.nr_vanzari}</td></tr>`
-                    ).join('');
+                // Render function for Top Kg table
+                function renderTopKgTable() {
+                    const data = [...topKgData];
+                    const { key, asc } = topKgSort;
+
+                    // Sort data
+                    data.sort((a, b) => {
+                        let valA, valB;
+                        if (key === 'index') { valA = topKgData.indexOf(a); valB = topKgData.indexOf(b); }
+                        else if (key === 'name') { valA = a.name.toLowerCase(); valB = b.name.toLowerCase(); }
+                        else if (key === 'kg') { valA = a.total_kg; valB = b.total_kg; }
+                        else if (key === 'profit') { valA = a.total_profit; valB = b.total_profit; }
+                        else if (key === 'vanzari') { valA = a.nr_vanzari; valB = b.nr_vanzari; }
+                        else { valA = a.total_kg; valB = b.total_kg; }
+
+                        if (typeof valA === 'string') return asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                        return asc ? valA - valB : valB - valA;
+                    });
+
+                    // Update sort indicators
+                    document.querySelectorAll('#topKgTableContainer .sortable').forEach(th => {
+                        th.classList.remove('asc', 'desc');
+                        if (th.dataset.sort === key) th.classList.add(asc ? 'asc' : 'desc');
+                    });
+
+                    // Render table
+                    document.getElementById('topKgTable').innerHTML = data.map((f, i) => {
+                        return `<tr class="clickable" onclick="showFirmaDetails(${f.id})">
+                            <td>${i + 1}</td>
+                            <td>${f.name}</td>
+                            <td class="text-right">${fmt(f.total_kg)} kg</td>
+                            <td class="text-right">${fmt(f.total_profit)} RON</td>
+                            <td class="text-right">${f.nr_vanzari}</td>
+                        </tr>`;
+                    }).join('');
                 }
+
+                renderTopProfitTable();
+                renderTopKgTable();
+
+                // Add sort listeners
+                document.querySelectorAll('.sortable').forEach(th => {
+                    th.onclick = () => {
+                        const table = th.dataset.table;
+                        const sortKey = th.dataset.sort;
+                        if (table === 'profit') {
+                            if (topProfitSort.key === sortKey) topProfitSort.asc = !topProfitSort.asc;
+                            else { topProfitSort.key = sortKey; topProfitSort.asc = false; }
+                            renderTopProfitTable();
+                        } else if (table === 'kg') {
+                            if (topKgSort.key === sortKey) topKgSort.asc = !topKgSort.asc;
+                            else { topKgSort.key = sortKey; topKgSort.asc = false; }
+                            renderTopKgTable();
+                        }
+                    };
+                });
 
                 // Best month info - show best for each year
                 if (monthly.months && monthly.months.length > 0) {
