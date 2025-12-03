@@ -458,9 +458,9 @@
                 <h3 style="color:#ff9f40; margin: 20px 0 15px; font-size: 1.1em;">Detalii Transport 2024 (date complete)</h3>
                 <div class="grid grid-3">
                     <div class="card">
-                        <h2><span class="icon">🌍</span> Destinatii pe Tara</h2>
+                        <h2><span class="icon">🌍</span> Destinatii pe Tara (click pentru detalii)</h2>
                         <div class="chart-container short"><canvas id="transportCountryChart"></canvas></div>
-                        <div class="scroll-table" style="max-height:200px;">
+                        <div class="scroll-table" style="max-height:300px;">
                             <table>
                                 <thead><tr><th>Tara</th><th class="text-right">Fuvarok</th><th class="text-right">Transport RON</th></tr></thead>
                                 <tbody id="transportCountryTable"></tbody>
@@ -468,9 +468,9 @@
                         </div>
                     </div>
                     <div class="card">
-                        <h2><span class="icon">🚛</span> Transportatori</h2>
+                        <h2><span class="icon">🚛</span> Transportatori (click pentru detalii)</h2>
                         <div class="chart-container short"><canvas id="transporterChart"></canvas></div>
-                        <div class="scroll-table" style="max-height:200px;">
+                        <div class="scroll-table" style="max-height:500px;">
                             <table>
                                 <thead><tr><th>Transportator</th><th class="text-right">Fuvarok</th><th class="text-right">KG Total</th></tr></thead>
                                 <tbody id="transporterTable"></tbody>
@@ -478,8 +478,8 @@
                         </div>
                     </div>
                     <div class="card">
-                        <h2><span class="icon">👨‍✈️</span> Top 15 Soferi</h2>
-                        <div class="scroll-table" style="max-height:350px;">
+                        <h2><span class="icon">👨‍✈️</span> Soferi (click pentru detalii)</h2>
+                        <div class="scroll-table" style="max-height:500px;">
                             <table>
                                 <thead><tr><th>#</th><th>Sofer</th><th class="text-right">Fuvarok</th><th class="text-right">KG Total</th></tr></thead>
                                 <tbody id="driverTable"></tbody>
@@ -559,6 +559,17 @@
                 <button class="modal-close" onclick="closeModal()">&times;</button>
             </div>
             <div id="modalContent"><div class="loading">Se incarca...</div></div>
+        </div>
+    </div>
+
+    <!-- Transport Profile Modal (Sofer, Transportator, Country) -->
+    <div class="modal-overlay" id="transportProfileModal">
+        <div class="modal" style="max-width:900px;">
+            <div class="modal-header">
+                <h3 id="transportProfileTitle">Profil Transport</h3>
+                <button class="modal-close" onclick="closeTransportModal()">&times;</button>
+            </div>
+            <div id="transportProfileContent"><div class="loading">Se incarca...</div></div>
         </div>
     </div>
 
@@ -1362,9 +1373,9 @@
                 }
             });
 
-            // Country table
+            // Country table - clickable
             document.getElementById('transportCountryTable').innerHTML = details.by_country.map(c => `
-                <tr>
+                <tr class="clickable" onclick="showCountryProfile('${c.tara.replace(/'/g, "\\'")}')">
                     <td>${c.tara}</td>
                     <td class="text-right">${c.fuvarok}</td>
                     <td class="text-right">${fmt(c.transport_ron)}</td>
@@ -1392,18 +1403,18 @@
                 }
             });
 
-            // Transporter table
-            document.getElementById('transporterTable').innerHTML = details.by_transporter.map(t => `
-                <tr>
+            // Transporter table - all rows, clickable
+            document.getElementById('transporterTable').innerHTML = details.by_transporter.slice(0, 40).map(t => `
+                <tr class="clickable" onclick="showTransportatorProfile('${t.transportator.replace(/'/g, "\\'")}')">
                     <td>${t.transportator}</td>
                     <td class="text-right">${t.fuvarok}</td>
                     <td class="text-right">${fmt(t.kg_total)}</td>
                 </tr>
             `).join('');
 
-            // Driver table
-            document.getElementById('driverTable').innerHTML = details.by_driver.map((d, i) => `
-                <tr>
+            // Driver table - clickable, show all
+            document.getElementById('driverTable').innerHTML = details.by_driver.slice(0, 40).map((d, i) => `
+                <tr class="clickable" onclick="showSoferProfile('${d.sofer.replace(/'/g, "\\'")}')">
                     <td>${i + 1}</td>
                     <td>${d.sofer}</td>
                     <td class="text-right">${d.fuvarok}</td>
@@ -1730,8 +1741,197 @@
             if (e.target === this) closeModal();
         });
 
+        // Transport Profile Modal functions
+        function closeTransportModal() {
+            document.getElementById('transportProfileModal').classList.remove('active');
+        }
+
+        document.getElementById('transportProfileModal').addEventListener('click', function(e) {
+            if (e.target === this) closeTransportModal();
+        });
+
+        // Sofer (Driver) Profile
+        async function showSoferProfile(soferName) {
+            document.getElementById('transportProfileModal').classList.add('active');
+            document.getElementById('transportProfileTitle').textContent = 'Sofer: ' + soferName;
+            document.getElementById('transportProfileContent').innerHTML = '<div class="loading">Se incarca...</div>';
+
+            try {
+                const data = await fetch(`/api/firme?type=sofer_profile&sofer=${encodeURIComponent(soferName)}`).then(r => r.json());
+                const s = data.summary;
+
+                let html = `
+                    <div class="big-stats" style="margin-bottom:20px;">
+                        <div class="stat-card orange"><h4>Total Fuvarok</h4><div class="value orange">${fmt(s.total_fuvarok)}</div></div>
+                        <div class="stat-card cyan"><h4>Total KG</h4><div class="value cyan">${fmt(s.total_kg)}</div></div>
+                        <div class="stat-card green"><h4>Total Valoare</h4><div class="value green">${fmt(s.total_valoare)}</div><div class="sub">RON</div></div>
+                        <div class="stat-card purple"><h4>Total Profit</h4><div class="value purple">${fmt(s.total_profit)}</div><div class="sub">RON</div></div>
+                        <div class="stat-card red"><h4>Cost Transport</h4><div class="value red">${fmt(s.total_transport)}</div><div class="sub">RON</div></div>
+                    </div>
+                `;
+
+                // Monthly breakdown
+                if (data.monthly && data.monthly.length > 0) {
+                    html += `<h4 style="color:#ff9f40;margin-bottom:10px;">Evolutie Lunara 2024</h4>
+                        <div class="scroll-table" style="max-height:200px;margin-bottom:20px;">
+                            <table><thead><tr><th>Luna</th><th class="text-right">Fuvarok</th><th class="text-right">KG</th><th class="text-right">Valoare</th><th class="text-right">Profit</th></tr></thead>
+                            <tbody>${data.monthly.map(m => `<tr><td>${monthNames[m.month - 1]}</td><td class="text-right">${m.fuvarok}</td><td class="text-right">${fmt(m.kg)}</td><td class="text-right">${fmt(m.valoare)}</td><td class="text-right profit-positive">${fmt(m.profit)}</td></tr>`).join('')}</tbody>
+                            </table>
+                        </div>`;
+                }
+
+                // By country and transporter summary
+                html += `<div class="grid grid-2" style="margin-bottom:20px;">`;
+                if (data.by_country && data.by_country.length > 0) {
+                    html += `<div class="card"><h4 style="color:#00d9ff;margin-bottom:10px;">Pe Tari</h4>
+                        <div class="scroll-table" style="max-height:150px;">
+                        <table><thead><tr><th>Tara</th><th class="text-right">Fuvarok</th><th class="text-right">KG</th></tr></thead>
+                        <tbody>${data.by_country.map(c => `<tr><td>${c.tara}</td><td class="text-right">${c.fuvarok}</td><td class="text-right">${fmt(c.kg)}</td></tr>`).join('')}</tbody>
+                        </table></div></div>`;
+                }
+                if (data.by_transporter && data.by_transporter.length > 0) {
+                    html += `<div class="card"><h4 style="color:#ff9f40;margin-bottom:10px;">Pe Transportatori</h4>
+                        <div class="scroll-table" style="max-height:150px;">
+                        <table><thead><tr><th>Transportator</th><th class="text-right">Fuvarok</th><th class="text-right">KG</th></tr></thead>
+                        <tbody>${data.by_transporter.map(t => `<tr><td>${t.transportator}</td><td class="text-right">${t.fuvarok}</td><td class="text-right">${fmt(t.kg)}</td></tr>`).join('')}</tbody>
+                        </table></div></div>`;
+                }
+                html += `</div>`;
+
+                // Last trips
+                if (data.trips && data.trips.length > 0) {
+                    html += `<h4 style="color:#ff9f40;margin-bottom:10px;">Ultimele Curse (${data.trips.length})</h4>
+                        <div class="scroll-table" style="max-height:300px;">
+                            <table><thead><tr><th>Data</th><th>Aviz</th><th>Client</th><th>Deseu</th><th>Tara</th><th class="text-right">KG</th><th class="text-right">Valoare</th><th class="text-right">Profit</th></tr></thead>
+                            <tbody>${data.trips.map(t => `<tr><td>${t.data}</td><td>${t.numar_aviz || '-'}</td><td>${t.firma || '-'}</td><td>${t.tip_deseu || '-'}</td><td>${t.tara || '-'}</td><td class="text-right">${fmt(t.kg)}</td><td class="text-right">${fmt(t.valoare)}</td><td class="text-right profit-positive">${fmt(t.profit)}</td></tr>`).join('')}</tbody>
+                            </table>
+                        </div>`;
+                }
+
+                document.getElementById('transportProfileContent').innerHTML = html;
+            } catch (e) {
+                console.error(e);
+                document.getElementById('transportProfileContent').innerHTML = '<p style="color:#ff6b6b;">Eroare la incarcarea datelor!</p>';
+            }
+        }
+
+        // Transportator (Company) Profile
+        async function showTransportatorProfile(transportatorName) {
+            document.getElementById('transportProfileModal').classList.add('active');
+            document.getElementById('transportProfileTitle').textContent = 'Transportator: ' + transportatorName;
+            document.getElementById('transportProfileContent').innerHTML = '<div class="loading">Se incarca...</div>';
+
+            try {
+                const data = await fetch(`/api/firme?type=transportator_profile&transportator=${encodeURIComponent(transportatorName)}`).then(r => r.json());
+                const s = data.summary;
+
+                let html = `
+                    <div class="big-stats" style="margin-bottom:20px;">
+                        <div class="stat-card orange"><h4>Total Fuvarok</h4><div class="value orange">${fmt(s.total_fuvarok)}</div></div>
+                        <div class="stat-card cyan"><h4>Total KG</h4><div class="value cyan">${fmt(s.total_kg)}</div></div>
+                        <div class="stat-card green"><h4>Total Valoare</h4><div class="value green">${fmt(s.total_valoare)}</div><div class="sub">RON</div></div>
+                        <div class="stat-card purple"><h4>Total Profit</h4><div class="value purple">${fmt(s.total_profit)}</div><div class="sub">RON</div></div>
+                        <div class="stat-card red"><h4>Cost Transport</h4><div class="value red">${fmt(s.total_transport)}</div><div class="sub">RON</div></div>
+                        <div class="stat-card yellow"><h4>Soferi</h4><div class="value yellow">${s.nr_soferi}</div></div>
+                    </div>
+                `;
+
+                // Monthly breakdown
+                if (data.monthly && data.monthly.length > 0) {
+                    html += `<h4 style="color:#ff9f40;margin-bottom:10px;">Evolutie Lunara 2024</h4>
+                        <div class="scroll-table" style="max-height:200px;margin-bottom:20px;">
+                            <table><thead><tr><th>Luna</th><th class="text-right">Fuvarok</th><th class="text-right">KG</th><th class="text-right">Valoare</th><th class="text-right">Profit</th></tr></thead>
+                            <tbody>${data.monthly.map(m => `<tr><td>${monthNames[m.month - 1]}</td><td class="text-right">${m.fuvarok}</td><td class="text-right">${fmt(m.kg)}</td><td class="text-right">${fmt(m.valoare)}</td><td class="text-right profit-positive">${fmt(m.profit)}</td></tr>`).join('')}</tbody>
+                            </table>
+                        </div>`;
+                }
+
+                // Top drivers and by country
+                html += `<div class="grid grid-2" style="margin-bottom:20px;">`;
+                if (data.top_drivers && data.top_drivers.length > 0) {
+                    html += `<div class="card"><h4 style="color:#00d9ff;margin-bottom:10px;">Top Soferi</h4>
+                        <div class="scroll-table" style="max-height:200px;">
+                        <table><thead><tr><th>Sofer</th><th class="text-right">Fuvarok</th><th class="text-right">KG</th></tr></thead>
+                        <tbody>${data.top_drivers.map(d => `<tr class="clickable" onclick="showSoferProfile('${d.sofer.replace(/'/g, "\\'")}')"><td>${d.sofer}</td><td class="text-right">${d.fuvarok}</td><td class="text-right">${fmt(d.kg)}</td></tr>`).join('')}</tbody>
+                        </table></div></div>`;
+                }
+                if (data.by_country && data.by_country.length > 0) {
+                    html += `<div class="card"><h4 style="color:#ff9f40;margin-bottom:10px;">Pe Tari</h4>
+                        <div class="scroll-table" style="max-height:200px;">
+                        <table><thead><tr><th>Tara</th><th class="text-right">Fuvarok</th><th class="text-right">KG</th></tr></thead>
+                        <tbody>${data.by_country.map(c => `<tr class="clickable" onclick="showCountryProfile('${c.tara.replace(/'/g, "\\'")}')"><td>${c.tara}</td><td class="text-right">${c.fuvarok}</td><td class="text-right">${fmt(c.kg)}</td></tr>`).join('')}</tbody>
+                        </table></div></div>`;
+                }
+                html += `</div>`;
+
+                document.getElementById('transportProfileContent').innerHTML = html;
+            } catch (e) {
+                console.error(e);
+                document.getElementById('transportProfileContent').innerHTML = '<p style="color:#ff6b6b;">Eroare la incarcarea datelor!</p>';
+            }
+        }
+
+        // Country Profile
+        async function showCountryProfile(countryName) {
+            document.getElementById('transportProfileModal').classList.add('active');
+            document.getElementById('transportProfileTitle').textContent = 'Tara: ' + countryName;
+            document.getElementById('transportProfileContent').innerHTML = '<div class="loading">Se incarca...</div>';
+
+            try {
+                const data = await fetch(`/api/firme?type=country_profile&country=${encodeURIComponent(countryName)}`).then(r => r.json());
+                const s = data.summary;
+
+                let html = `
+                    <div class="big-stats" style="margin-bottom:20px;">
+                        <div class="stat-card orange"><h4>Total Fuvarok</h4><div class="value orange">${fmt(s.total_fuvarok)}</div></div>
+                        <div class="stat-card cyan"><h4>Total KG</h4><div class="value cyan">${fmt(s.total_kg)}</div></div>
+                        <div class="stat-card green"><h4>Total Valoare</h4><div class="value green">${fmt(s.total_valoare)}</div><div class="sub">RON</div></div>
+                        <div class="stat-card purple"><h4>Total Profit</h4><div class="value purple">${fmt(s.total_profit)}</div><div class="sub">RON</div></div>
+                        <div class="stat-card red"><h4>Cost Transport</h4><div class="value red">${fmt(s.total_transport)}</div><div class="sub">RON</div></div>
+                        <div class="stat-card yellow"><h4>Soferi</h4><div class="value yellow">${s.nr_soferi}</div></div>
+                    </div>
+                `;
+
+                // Monthly breakdown
+                if (data.monthly && data.monthly.length > 0) {
+                    html += `<h4 style="color:#ff9f40;margin-bottom:10px;">Evolutie Lunara 2024</h4>
+                        <div class="scroll-table" style="max-height:200px;margin-bottom:20px;">
+                            <table><thead><tr><th>Luna</th><th class="text-right">Fuvarok</th><th class="text-right">KG</th><th class="text-right">Valoare</th><th class="text-right">Profit</th></tr></thead>
+                            <tbody>${data.monthly.map(m => `<tr><td>${monthNames[m.month - 1]}</td><td class="text-right">${m.fuvarok}</td><td class="text-right">${fmt(m.kg)}</td><td class="text-right">${fmt(m.valoare)}</td><td class="text-right profit-positive">${fmt(m.profit)}</td></tr>`).join('')}</tbody>
+                            </table>
+                        </div>`;
+                }
+
+                // Top drivers and transporters
+                html += `<div class="grid grid-2" style="margin-bottom:20px;">`;
+                if (data.top_drivers && data.top_drivers.length > 0) {
+                    html += `<div class="card"><h4 style="color:#00d9ff;margin-bottom:10px;">Top Soferi</h4>
+                        <div class="scroll-table" style="max-height:200px;">
+                        <table><thead><tr><th>Sofer</th><th class="text-right">Fuvarok</th><th class="text-right">KG</th></tr></thead>
+                        <tbody>${data.top_drivers.map(d => `<tr class="clickable" onclick="showSoferProfile('${d.sofer.replace(/'/g, "\\'")}')"><td>${d.sofer}</td><td class="text-right">${d.fuvarok}</td><td class="text-right">${fmt(d.kg)}</td></tr>`).join('')}</tbody>
+                        </table></div></div>`;
+                }
+                if (data.by_transporter && data.by_transporter.length > 0) {
+                    html += `<div class="card"><h4 style="color:#ff9f40;margin-bottom:10px;">Pe Transportatori</h4>
+                        <div class="scroll-table" style="max-height:200px;">
+                        <table><thead><tr><th>Transportator</th><th class="text-right">Fuvarok</th><th class="text-right">KG</th></tr></thead>
+                        <tbody>${data.by_transporter.map(t => `<tr class="clickable" onclick="showTransportatorProfile('${t.transportator.replace(/'/g, "\\'")}')"><td>${t.transportator}</td><td class="text-right">${t.fuvarok}</td><td class="text-right">${fmt(t.kg)}</td></tr>`).join('')}</tbody>
+                        </table></div></div>`;
+                }
+                html += `</div>`;
+
+                document.getElementById('transportProfileContent').innerHTML = html;
+            } catch (e) {
+                console.error(e);
+                document.getElementById('transportProfileContent').innerHTML = '<p style="color:#ff6b6b;">Eroare la incarcarea datelor!</p>';
+            }
+        }
+
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') closeModal();
+            if (e.key === 'Escape') {
+                closeModal();
+                closeTransportModal();
+            }
         });
     </script>
 </body>

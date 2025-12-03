@@ -73,6 +73,15 @@ class handler(BaseHTTPRequestHandler):
             elif query_type == 'transporturi':
                 year = params.get('year', [None])[0]
                 result = self.get_transporturi(cur, year)
+            elif query_type == 'sofer_profile':
+                sofer = params.get('sofer', [None])[0]
+                result = self.get_sofer_profile(cur, sofer)
+            elif query_type == 'transportator_profile':
+                transportator = params.get('transportator', [None])[0]
+                result = self.get_transportator_profile(cur, transportator)
+            elif query_type == 'country_profile':
+                country = params.get('country', [None])[0]
+                result = self.get_country_profile(cur, country)
             elif query_type == 'yearly':
                 result = self.get_yearly_comparison(cur)
             else:
@@ -708,6 +717,278 @@ class handler(BaseHTTPRequestHandler):
             'by_country': by_country,
             'by_transporter': by_transporter,
             'by_driver': by_driver
+        }
+
+    def get_sofer_profile(self, cur, sofer_name):
+        """Get detailed driver profile with all trips"""
+        if not sofer_name:
+            return {'error': 'Sofer name required'}
+
+        # Summary stats
+        cur.execute("""
+            SELECT
+                COUNT(*) as total_fuvarok,
+                COALESCE(SUM(cantitate_livrata), 0) as total_kg,
+                COALESCE(SUM(valoare_ron), 0) as total_valoare,
+                COALESCE(SUM(adaos_final), 0) as total_profit,
+                COALESCE(SUM(transport_ron), 0) as total_transport,
+                COUNT(DISTINCT numar_auto) as vehicule_used,
+                COUNT(DISTINCT tara_destinatie) as tari_vizitate,
+                COUNT(DISTINCT transportator) as transportatori,
+                MIN(data) as first_trip,
+                MAX(data) as last_trip
+            FROM vanzari
+            WHERE nume_sofer = %s
+        """, (sofer_name,))
+        summary = cur.fetchone()
+
+        # Monthly breakdown
+        cur.execute("""
+            SELECT month,
+                   COUNT(*) as fuvarok,
+                   COALESCE(SUM(cantitate_livrata), 0) as kg,
+                   COALESCE(SUM(valoare_ron), 0) as valoare,
+                   COALESCE(SUM(adaos_final), 0) as profit
+            FROM vanzari
+            WHERE nume_sofer = %s AND year = 2024
+            GROUP BY month
+            ORDER BY month
+        """, (sofer_name,))
+        monthly = cur.fetchall()
+
+        # By country
+        cur.execute("""
+            SELECT tara_destinatie,
+                   COUNT(*) as fuvarok,
+                   COALESCE(SUM(cantitate_livrata), 0) as kg
+            FROM vanzari
+            WHERE nume_sofer = %s AND tara_destinatie IS NOT NULL
+            GROUP BY tara_destinatie
+            ORDER BY fuvarok DESC
+        """, (sofer_name,))
+        by_country = cur.fetchall()
+
+        # By transporter
+        cur.execute("""
+            SELECT transportator,
+                   COUNT(*) as fuvarok
+            FROM vanzari
+            WHERE nume_sofer = %s AND transportator IS NOT NULL
+            GROUP BY transportator
+            ORDER BY fuvarok DESC
+        """, (sofer_name,))
+        by_transporter = cur.fetchall()
+
+        # Recent trips (last 50)
+        cur.execute("""
+            SELECT data, numar_aviz, tip_deseu, tara_destinatie,
+                   cantitate_livrata, valoare_ron, adaos_final, numar_auto, transportator
+            FROM vanzari
+            WHERE nume_sofer = %s
+            ORDER BY data DESC
+            LIMIT 50
+        """, (sofer_name,))
+        trips = cur.fetchall()
+
+        month_names = ['', 'Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun', 'Iul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+        return {
+            'sofer': sofer_name,
+            'summary': {
+                'total_fuvarok': summary['total_fuvarok'],
+                'total_kg': float(summary['total_kg']) if summary['total_kg'] else 0,
+                'total_valoare': float(summary['total_valoare']) if summary['total_valoare'] else 0,
+                'total_profit': float(summary['total_profit']) if summary['total_profit'] else 0,
+                'total_transport': float(summary['total_transport']) if summary['total_transport'] else 0,
+                'vehicule_used': summary['vehicule_used'],
+                'tari_vizitate': summary['tari_vizitate'],
+                'transportatori': summary['transportatori'],
+                'first_trip': str(summary['first_trip']) if summary['first_trip'] else None,
+                'last_trip': str(summary['last_trip']) if summary['last_trip'] else None
+            },
+            'monthly': [{
+                'month': m['month'],
+                'month_name': month_names[m['month']],
+                'fuvarok': m['fuvarok'],
+                'kg': float(m['kg']) if m['kg'] else 0,
+                'valoare': float(m['valoare']) if m['valoare'] else 0,
+                'profit': float(m['profit']) if m['profit'] else 0
+            } for m in monthly],
+            'by_country': [{'tara': c['tara_destinatie'], 'fuvarok': c['fuvarok'], 'kg': float(c['kg']) if c['kg'] else 0} for c in by_country],
+            'by_transporter': [{'transportator': t['transportator'], 'fuvarok': t['fuvarok']} for t in by_transporter],
+            'trips': [{
+                'data': str(t['data']),
+                'numar_aviz': t['numar_aviz'],
+                'tip_deseu': t['tip_deseu'],
+                'tara': t['tara_destinatie'],
+                'kg': float(t['cantitate_livrata']) if t['cantitate_livrata'] else 0,
+                'valoare': float(t['valoare_ron']) if t['valoare_ron'] else 0,
+                'profit': float(t['adaos_final']) if t['adaos_final'] else 0,
+                'numar_auto': t['numar_auto'],
+                'transportator': t['transportator']
+            } for t in trips]
+        }
+
+    def get_transportator_profile(self, cur, transportator_name):
+        """Get detailed transporter company profile"""
+        if not transportator_name:
+            return {'error': 'Transportator name required'}
+
+        # Summary stats
+        cur.execute("""
+            SELECT
+                COUNT(*) as total_fuvarok,
+                COALESCE(SUM(cantitate_livrata), 0) as total_kg,
+                COALESCE(SUM(valoare_ron), 0) as total_valoare,
+                COALESCE(SUM(adaos_final), 0) as total_profit,
+                COALESCE(SUM(transport_ron), 0) as total_transport,
+                COUNT(DISTINCT nume_sofer) as soferi_count,
+                COUNT(DISTINCT numar_auto) as vehicule_count,
+                COUNT(DISTINCT tara_destinatie) as tari_count
+            FROM vanzari
+            WHERE transportator = %s
+        """, (transportator_name,))
+        summary = cur.fetchone()
+
+        # Monthly breakdown
+        cur.execute("""
+            SELECT month,
+                   COUNT(*) as fuvarok,
+                   COALESCE(SUM(cantitate_livrata), 0) as kg,
+                   COALESCE(SUM(valoare_ron), 0) as valoare,
+                   COALESCE(SUM(adaos_final), 0) as profit
+            FROM vanzari
+            WHERE transportator = %s AND year = 2024
+            GROUP BY month
+            ORDER BY month
+        """, (transportator_name,))
+        monthly = cur.fetchall()
+
+        # Top drivers for this transporter
+        cur.execute("""
+            SELECT nume_sofer, COUNT(*) as fuvarok, COALESCE(SUM(cantitate_livrata), 0) as kg
+            FROM vanzari
+            WHERE transportator = %s AND nume_sofer IS NOT NULL
+            GROUP BY nume_sofer
+            ORDER BY fuvarok DESC
+            LIMIT 10
+        """, (transportator_name,))
+        top_drivers = cur.fetchall()
+
+        # By country
+        cur.execute("""
+            SELECT tara_destinatie, COUNT(*) as fuvarok, COALESCE(SUM(cantitate_livrata), 0) as kg
+            FROM vanzari
+            WHERE transportator = %s AND tara_destinatie IS NOT NULL
+            GROUP BY tara_destinatie
+            ORDER BY fuvarok DESC
+        """, (transportator_name,))
+        by_country = cur.fetchall()
+
+        month_names = ['', 'Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun', 'Iul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+        return {
+            'transportator': transportator_name,
+            'summary': {
+                'total_fuvarok': summary['total_fuvarok'],
+                'total_kg': float(summary['total_kg']) if summary['total_kg'] else 0,
+                'total_valoare': float(summary['total_valoare']) if summary['total_valoare'] else 0,
+                'total_profit': float(summary['total_profit']) if summary['total_profit'] else 0,
+                'total_transport': float(summary['total_transport']) if summary['total_transport'] else 0,
+                'soferi_count': summary['soferi_count'],
+                'vehicule_count': summary['vehicule_count'],
+                'tari_count': summary['tari_count']
+            },
+            'monthly': [{
+                'month': m['month'],
+                'month_name': month_names[m['month']],
+                'fuvarok': m['fuvarok'],
+                'kg': float(m['kg']) if m['kg'] else 0,
+                'valoare': float(m['valoare']) if m['valoare'] else 0,
+                'profit': float(m['profit']) if m['profit'] else 0
+            } for m in monthly],
+            'top_drivers': [{'sofer': d['nume_sofer'], 'fuvarok': d['fuvarok'], 'kg': float(d['kg']) if d['kg'] else 0} for d in top_drivers],
+            'by_country': [{'tara': c['tara_destinatie'], 'fuvarok': c['fuvarok'], 'kg': float(c['kg']) if c['kg'] else 0} for c in by_country]
+        }
+
+    def get_country_profile(self, cur, country_name):
+        """Get detailed country destination profile"""
+        if not country_name:
+            return {'error': 'Country name required'}
+
+        # Summary stats
+        cur.execute("""
+            SELECT
+                COUNT(*) as total_fuvarok,
+                COALESCE(SUM(cantitate_livrata), 0) as total_kg,
+                COALESCE(SUM(valoare_ron), 0) as total_valoare,
+                COALESCE(SUM(adaos_final), 0) as total_profit,
+                COALESCE(SUM(transport_ron), 0) as total_transport,
+                COUNT(DISTINCT nume_sofer) as soferi_count,
+                COUNT(DISTINCT transportator) as transportatori_count
+            FROM vanzari
+            WHERE tara_destinatie = %s
+        """, (country_name,))
+        summary = cur.fetchone()
+
+        # Monthly breakdown
+        cur.execute("""
+            SELECT month,
+                   COUNT(*) as fuvarok,
+                   COALESCE(SUM(cantitate_livrata), 0) as kg,
+                   COALESCE(SUM(valoare_ron), 0) as valoare,
+                   COALESCE(SUM(adaos_final), 0) as profit
+            FROM vanzari
+            WHERE tara_destinatie = %s AND year = 2024
+            GROUP BY month
+            ORDER BY month
+        """, (country_name,))
+        monthly = cur.fetchall()
+
+        # Top drivers to this country
+        cur.execute("""
+            SELECT nume_sofer, COUNT(*) as fuvarok, COALESCE(SUM(cantitate_livrata), 0) as kg
+            FROM vanzari
+            WHERE tara_destinatie = %s AND nume_sofer IS NOT NULL
+            GROUP BY nume_sofer
+            ORDER BY fuvarok DESC
+            LIMIT 10
+        """, (country_name,))
+        top_drivers = cur.fetchall()
+
+        # By transporter
+        cur.execute("""
+            SELECT transportator, COUNT(*) as fuvarok, COALESCE(SUM(cantitate_livrata), 0) as kg
+            FROM vanzari
+            WHERE tara_destinatie = %s AND transportator IS NOT NULL
+            GROUP BY transportator
+            ORDER BY fuvarok DESC
+        """, (country_name,))
+        by_transporter = cur.fetchall()
+
+        month_names = ['', 'Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun', 'Iul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+        return {
+            'country': country_name,
+            'summary': {
+                'total_fuvarok': summary['total_fuvarok'],
+                'total_kg': float(summary['total_kg']) if summary['total_kg'] else 0,
+                'total_valoare': float(summary['total_valoare']) if summary['total_valoare'] else 0,
+                'total_profit': float(summary['total_profit']) if summary['total_profit'] else 0,
+                'total_transport': float(summary['total_transport']) if summary['total_transport'] else 0,
+                'soferi_count': summary['soferi_count'],
+                'transportatori_count': summary['transportatori_count']
+            },
+            'monthly': [{
+                'month': m['month'],
+                'month_name': month_names[m['month']],
+                'fuvarok': m['fuvarok'],
+                'kg': float(m['kg']) if m['kg'] else 0,
+                'valoare': float(m['valoare']) if m['valoare'] else 0,
+                'profit': float(m['profit']) if m['profit'] else 0
+            } for m in monthly],
+            'top_drivers': [{'sofer': d['nume_sofer'], 'fuvarok': d['fuvarok'], 'kg': float(d['kg']) if d['kg'] else 0} for d in top_drivers],
+            'by_transporter': [{'transportator': t['transportator'], 'fuvarok': t['fuvarok'], 'kg': float(t['kg']) if t['kg'] else 0} for t in by_transporter]
         }
 
     def get_yearly_comparison(self, cur):
