@@ -5,7 +5,10 @@
       "Bash(python:*)",
       "Bash(pip install:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nFix Deseuri tab: use sumar_deseuri table for waste type data\n\n- Changed get_deseuri_summary to query sumar_deseuri table instead of vanzari\n- This table contains complete 2023/2024 waste type data from Excel Sumar tabs\n- Added available_years and available_types to API response for filters\n- Removed misleading warning about missing data\n- Dropdown now populated from API response\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(git commit -m \"$(cat <<''EOF''\nFix Deseuri tab: use sumar_deseuri table for waste type data\n\n- Changed get_deseuri_summary to query sumar_deseuri table instead of vanzari\n- This table contains complete 2023/2024 waste type data from Excel Sumar tabs\n- Added available_years and available_types to API response for filters\n- Removed misleading warning about missing data\n- Dropdown now populated from API response\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push)",
+      "Bash(chcp:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

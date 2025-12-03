@@ -525,111 +525,109 @@ class handler(BaseHTTPRequestHandler):
         }
 
     def get_transporturi(self, cur, year=None):
-        """Get transport costs with domestic/foreign breakdown"""
-        # Define foreign destinations (not Romania)
-        FOREIGN_DESTINATIONS = [
-            'OLANDA', 'UNGARIA', 'VITTUONE', 'CZESTOCHOWA', 'TOMASZOW', 'KONIN',
-            'VARPALOTA', 'SPISSKE VLACHY', 'CASTENDOLO', 'ITALIA', 'POLONIA',
-            'CEHIA', 'SLOVACIA', 'AUSTRIA', 'GERMANIA'
-        ]
-
+        """Get transport costs from vanzari table (transport_ron column)"""
+        # Monthly summary from vanzari.transport_ron
         query = """
-            SELECT year, month, destinatie, firma_name, descriere,
-                   suma_fara_tva, tva, total, transportator
-            FROM transporturi_firme
+            SELECT year, month,
+                   COUNT(*) as nr_vanzari,
+                   COUNT(transport_ron) as nr_with_transport,
+                   COALESCE(SUM(transport_ron), 0) as transport_total,
+                   COALESCE(SUM(valoare_ron), 0) as valoare_total
+            FROM vanzari
         """
         params = []
         if year:
             query += " WHERE year = %s"
             params.append(int(year))
-
-        query += " ORDER BY year DESC, month DESC"
+        query += " GROUP BY year, month ORDER BY year, month"
 
         cur.execute(query, params)
-        transporturi = cur.fetchall()
+        monthly = cur.fetchall()
 
-        # Classify as domestic/foreign
-        for t in transporturi:
-            dest = (t['destinatie'] or '').upper()
-            t['is_foreign'] = any(f in dest for f in FOREIGN_DESTINATIONS)
+        # Yearly summary
+        year_query = """
+            SELECT year,
+                   COUNT(*) as nr_vanzari,
+                   COUNT(transport_ron) as nr_with_transport,
+                   COALESCE(SUM(transport_ron), 0) as transport_total,
+                   COALESCE(SUM(valoare_ron), 0) as valoare_total
+            FROM vanzari
+        """
+        year_params = []
+        if year:
+            year_query += " WHERE year = %s"
+            year_params.append(int(year))
+        year_query += " GROUP BY year ORDER BY year"
 
-        # Summary by year/month
-        cur.execute("""
-            SELECT year, month, COALESCE(SUM(total), 0) as total_cost
-            FROM transporturi_firme
-            GROUP BY year, month
-            ORDER BY year, month
-        """)
-        summary = cur.fetchall()
-
-        # Summary by year
-        cur.execute("""
-            SELECT year, COUNT(*) as count, COALESCE(SUM(total), 0) as total_cost
-            FROM transporturi_firme
-            GROUP BY year ORDER BY year
-        """)
+        cur.execute(year_query, year_params)
         by_year = cur.fetchall()
 
-        # Summary by destination
-        cur.execute("""
-            SELECT destinatie, COUNT(*) as count, COALESCE(SUM(total), 0) as total_cost
-            FROM transporturi_firme
-            WHERE destinatie IS NOT NULL
-            GROUP BY destinatie ORDER BY total_cost DESC
-        """)
-        by_dest = cur.fetchall()
+        # By firma (top transporters)
+        firma_query = """
+            SELECT f.name as firma_name,
+                   COUNT(*) as nr_vanzari,
+                   COALESCE(SUM(v.transport_ron), 0) as transport_total,
+                   COALESCE(SUM(v.valoare_ron), 0) as valoare_total
+            FROM vanzari v
+            JOIN firme f ON v.firma_id = f.id
+            WHERE v.transport_ron > 0
+        """
+        firma_params = []
+        if year:
+            firma_query += " AND v.year = %s"
+            firma_params.append(int(year))
+        firma_query += " GROUP BY f.name ORDER BY transport_total DESC LIMIT 20"
 
-        # Classify destinations
-        domestic_total = 0
-        foreign_total = 0
-        domestic_count = 0
-        foreign_count = 0
+        cur.execute(firma_query, firma_params)
+        by_firma = cur.fetchall()
 
-        for t in transporturi:
-            cost = float(t['total']) if t['total'] else 0
-            if t['is_foreign']:
-                foreign_total += cost
-                foreign_count += 1
-            else:
-                domestic_total += cost
-                domestic_count += 1
+        # Calculate totals
+        total_transport = sum(float(m['transport_total'] or 0) for m in monthly)
+        total_valoare = sum(float(m['valoare_total'] or 0) for m in monthly)
+        total_vanzari = sum(m['nr_vanzari'] for m in monthly)
+        total_with_transport = sum(m['nr_with_transport'] for m in monthly)
+
+        # Get available years
+        cur.execute("SELECT DISTINCT year FROM vanzari ORDER BY year")
+        available_years = [r['year'] for r in cur.fetchall()]
+
+        month_names = ['', 'Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun',
+                       'Iul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
         return {
             'year_filter': year,
-            'count': len(transporturi),
+            'available_years': available_years,
             'summary': {
-                'total_cost': domestic_total + foreign_total,
-                'domestic': {'count': domestic_count, 'total': domestic_total},
-                'foreign': {'count': foreign_count, 'total': foreign_total}
+                'total_transport': total_transport,
+                'total_valoare': total_valoare,
+                'total_vanzari': total_vanzari,
+                'total_with_transport': total_with_transport,
+                'transport_percent': round(total_transport / total_valoare * 100, 2) if total_valoare else 0
             },
             'by_year': [{
                 'year': y['year'],
-                'count': y['count'],
-                'total_cost': float(y['total_cost']) if y['total_cost'] else 0
+                'nr_vanzari': y['nr_vanzari'],
+                'nr_with_transport': y['nr_with_transport'],
+                'transport_total': float(y['transport_total']) if y['transport_total'] else 0,
+                'valoare_total': float(y['valoare_total']) if y['valoare_total'] else 0,
+                'transport_percent': round(float(y['transport_total'] or 0) / float(y['valoare_total']) * 100, 2) if y['valoare_total'] else 0
             } for y in by_year],
-            'by_destination': [{
-                'destinatie': d['destinatie'],
-                'count': d['count'],
-                'total_cost': float(d['total_cost']) if d['total_cost'] else 0,
-                'is_foreign': any(f in (d['destinatie'] or '').upper() for f in FOREIGN_DESTINATIONS)
-            } for d in by_dest],
-            'transporturi': [{
-                'year': t['year'],
-                'month': t['month'],
-                'destinatie': t['destinatie'],
-                'firma_name': t['firma_name'],
-                'descriere': t['descriere'],
-                'suma_fara_tva': float(t['suma_fara_tva']) if t['suma_fara_tva'] else 0,
-                'tva': float(t['tva']) if t['tva'] else 0,
-                'total': float(t['total']) if t['total'] else 0,
-                'transportator': t['transportator'],
-                'is_foreign': t['is_foreign']
-            } for t in transporturi],
-            'monthly_totals': [{
-                'year': s['year'],
-                'month': s['month'],
-                'total_cost': float(s['total_cost'])
-            } for s in summary]
+            'by_firma': [{
+                'firma_name': f['firma_name'],
+                'nr_vanzari': f['nr_vanzari'],
+                'transport_total': float(f['transport_total']) if f['transport_total'] else 0,
+                'valoare_total': float(f['valoare_total']) if f['valoare_total'] else 0
+            } for f in by_firma],
+            'monthly': [{
+                'year': m['year'],
+                'month': m['month'],
+                'month_name': month_names[m['month']],
+                'nr_vanzari': m['nr_vanzari'],
+                'nr_with_transport': m['nr_with_transport'],
+                'transport_total': float(m['transport_total']) if m['transport_total'] else 0,
+                'valoare_total': float(m['valoare_total']) if m['valoare_total'] else 0,
+                'transport_percent': round(float(m['transport_total'] or 0) / float(m['valoare_total']) * 100, 2) if m['valoare_total'] else 0
+            } for m in monthly]
         }
 
     def get_yearly_comparison(self, cur):

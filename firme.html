@@ -380,9 +380,9 @@
             <!-- Summary cards -->
             <div class="big-stats" id="transportStats">
                 <div class="stat-card orange"><h4>Total Transport</h4><div class="value orange" id="transportTotal">...</div><div class="sub">RON</div></div>
-                <div class="stat-card green"><h4>Belfold</h4><div class="value green" id="transportDomestic">...</div><div class="sub">RON</div></div>
-                <div class="stat-card purple"><h4>Kulfold</h4><div class="value purple" id="transportForeign">...</div><div class="sub">RON</div></div>
-                <div class="stat-card cyan"><h4>Nr. Szallitas</h4><div class="value cyan" id="transportCountTotal">...</div></div>
+                <div class="stat-card green"><h4>% din Rulaj</h4><div class="value green" id="transportPercent">...</div><div class="sub">cost transport/valoare</div></div>
+                <div class="stat-card purple"><h4>Nr. Vanzari</h4><div class="value purple" id="transportVanzari">...</div><div class="sub">total tranzactii</div></div>
+                <div class="stat-card cyan"><h4>Cu Transport</h4><div class="value cyan" id="transportCountTotal">...</div><div class="sub">vanzari cu cost transport</div></div>
             </div>
 
             <div class="search-box">
@@ -391,17 +391,10 @@
                     <option value="">Toti anii</option>
                     <option value="2024">2024</option>
                     <option value="2023">2023</option>
+                    <option value="2022">2022</option>
                 </select>
-                <label>Tip:</label>
-                <select id="transportType" onchange="filterTransportTable()">
-                    <option value="">Toate</option>
-                    <option value="domestic">Belfold</option>
-                    <option value="foreign">Kulfold</option>
-                </select>
-                <label>Destinatie:</label>
-                <input type="text" id="transportDest" placeholder="Cauta destinatie..." style="width:150px;" onkeyup="filterTransportTable()">
                 <label>Firma:</label>
-                <input type="text" id="transportFirma" placeholder="Cauta firma..." style="width:150px;" onkeyup="filterTransportTable()">
+                <input type="text" id="transportFirma" placeholder="Cauta firma..." style="width:150px;" onkeyup="filterTransportByFirma()">
                 <button class="secondary" onclick="resetTransportFilters()">Reset</button>
             </div>
 
@@ -411,8 +404,8 @@
                     <div class="chart-container"><canvas id="transportYearChart"></canvas></div>
                 </div>
                 <div class="card">
-                    <h2><span class="icon">🌍</span> Intern vs Extern</h2>
-                    <div class="chart-container"><canvas id="transportTypeChart"></canvas></div>
+                    <h2><span class="icon">📈</span> Transport vs Rulaj pe An</h2>
+                    <div class="chart-container"><canvas id="transportPercentChart"></canvas></div>
                 </div>
             </div>
 
@@ -422,24 +415,24 @@
                     <div class="chart-container"><canvas id="transportChart"></canvas></div>
                 </div>
                 <div class="card">
-                    <h2><span class="icon">📍</span> Top Destinatii</h2>
-                    <div id="transportDestBars"></div>
+                    <h2><span class="icon">🏢</span> Top Firme dupa Transport</h2>
+                    <div id="transportFirmaBars"></div>
                 </div>
             </div>
 
             <div class="card">
-                <h2><span class="icon">📋</span> Reszletes Lista (<span id="transportCount">0</span>)</h2>
+                <h2><span class="icon">📋</span> Detalii Lunare</h2>
                 <div class="scroll-table" style="max-height:400px;">
                     <table>
                         <thead>
                             <tr>
                                 <th>An</th>
                                 <th>Luna</th>
-                                <th>Destinatie</th>
-                                <th>Tipus</th>
-                                <th>Firma</th>
-                                <th class="text-right">Total</th>
-                                <th>Transportator</th>
+                                <th class="text-right">Nr. Vanzari</th>
+                                <th class="text-right">Cu Transport</th>
+                                <th class="text-right">Cost Transport</th>
+                                <th class="text-right">Rulaj Total</th>
+                                <th class="text-right">% Transport</th>
                             </tr>
                         </thead>
                         <tbody id="transportTable"></tbody>
@@ -1108,6 +1101,8 @@
         let transportYearChartInstance = null;
         let transportTypeChartInstance = null;
 
+        let transportPercentChartInstance = null;
+
         async function loadTransportData() {
             const year = document.getElementById('transportYear').value;
             let url = '/api/firme?type=transporturi';
@@ -1118,13 +1113,13 @@
                 allTransportData = data;
 
                 // Update summary cards
-                const summary = data.summary || {total_cost: 0, domestic: {count: 0, total: 0}, foreign: {count: 0, total: 0}};
-                document.getElementById('transportTotal').textContent = fmt(summary.total_cost);
-                document.getElementById('transportDomestic').textContent = fmt(summary.domestic.total);
-                document.getElementById('transportForeign').textContent = fmt(summary.foreign.total);
-                document.getElementById('transportCountTotal').textContent = data.count || 0;
+                const summary = data.summary || {total_transport: 0, total_valoare: 0, total_vanzari: 0, total_with_transport: 0, transport_percent: 0};
+                document.getElementById('transportTotal').textContent = fmt(summary.total_transport);
+                document.getElementById('transportPercent').textContent = summary.transport_percent + '%';
+                document.getElementById('transportVanzari').textContent = fmt(summary.total_vanzari);
+                document.getElementById('transportCountTotal').textContent = fmt(summary.total_with_transport);
 
-                // Year comparison chart
+                // Year comparison chart - transport costs
                 if (transportYearChartInstance) transportYearChartInstance.destroy();
                 if (data.by_year && data.by_year.length > 0) {
                     transportYearChartInstance = new Chart(document.getElementById('transportYearChart'), {
@@ -1132,9 +1127,9 @@
                         data: {
                             labels: data.by_year.map(y => y.year),
                             datasets: [{
-                                label: 'Koltseg',
-                                data: data.by_year.map(y => y.total_cost),
-                                backgroundColor: ['rgba(255,107,107,0.8)', 'rgba(255,159,64,0.8)'],
+                                label: 'Cost Transport',
+                                data: data.by_year.map(y => y.transport_total),
+                                backgroundColor: ['rgba(255,107,107,0.8)', 'rgba(255,159,64,0.8)', 'rgba(0,217,255,0.8)'],
                                 borderRadius: 8
                             }]
                         },
@@ -1146,36 +1141,37 @@
                     });
                 }
 
-                // Domestic vs Foreign pie chart
-                if (transportTypeChartInstance) transportTypeChartInstance.destroy();
-                transportTypeChartInstance = new Chart(document.getElementById('transportTypeChart'), {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Belfold', 'Kulfold'],
-                        datasets: [{
-                            data: [summary.domestic.total, summary.foreign.total],
-                            backgroundColor: ['rgba(0,255,136,0.8)', 'rgba(153,102,255,0.8)'],
-                            borderWidth: 0
-                        }]
-                    },
-                    options: {
-                        responsive: true, maintainAspectRatio: false,
-                        plugins: {
-                            legend: { position: 'right', labels: { color: '#fff' } },
-                            tooltip: { callbacks: { label: ctx => fmt(ctx.raw) + ' RON (' + (ctx.raw / summary.total_cost * 100).toFixed(1) + '%)' } }
+                // Transport % chart per year
+                if (transportPercentChartInstance) transportPercentChartInstance.destroy();
+                if (data.by_year && data.by_year.length > 0) {
+                    transportPercentChartInstance = new Chart(document.getElementById('transportPercentChart'), {
+                        type: 'bar',
+                        data: {
+                            labels: data.by_year.map(y => y.year),
+                            datasets: [{
+                                label: '% Transport din Rulaj',
+                                data: data.by_year.map(y => y.transport_percent),
+                                backgroundColor: ['rgba(0,255,136,0.8)', 'rgba(153,102,255,0.8)', 'rgba(255,206,86,0.8)'],
+                                borderRadius: 8
+                            }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.raw.toFixed(2) + '%' } } },
+                            scales: { y: { ticks: { callback: v => v + '%' } } }
                         }
-                    }
-                });
+                    });
+                }
 
                 // Monthly chart
                 if (transportChartInstance) transportChartInstance.destroy();
-                if (data.monthly_totals && data.monthly_totals.length > 0) {
-                    const labels = data.monthly_totals.map(t => monthNames[t.month - 1] + "'" + String(t.year).slice(2));
+                if (data.monthly && data.monthly.length > 0) {
+                    const labels = data.monthly.map(t => t.month_name + "'" + String(t.year).slice(2));
                     transportChartInstance = new Chart(document.getElementById('transportChart'), {
                         type: 'line',
                         data: {
                             labels: labels,
-                            datasets: [{ label: 'Cost Transport', data: data.monthly_totals.map(t => t.total_cost), borderColor: '#ff6b6b', backgroundColor: 'rgba(255,107,107,0.2)', fill: true, tension: 0.3 }]
+                            datasets: [{ label: 'Cost Transport', data: data.monthly.map(t => t.transport_total), borderColor: '#ff6b6b', backgroundColor: 'rgba(255,107,107,0.2)', fill: true, tension: 0.3 }]
                         },
                         options: {
                             responsive: true, maintainAspectRatio: false,
@@ -1185,65 +1181,75 @@
                     });
                 }
 
-                // Destination bars
-                const maxDest = data.by_destination?.[0]?.total_cost || 1;
-                document.getElementById('transportDestBars').innerHTML = (data.by_destination || []).slice(0, 10).map(d => {
-                    const pct = (d.total_cost / maxDest * 100).toFixed(0);
-                    const color = d.is_foreign ? '#9966ff' : '#00ff88';
-                    const badge = d.is_foreign ? '<span class="badge purple" style="margin-left:5px;">Kulfold</span>' : '<span class="badge green" style="margin-left:5px;">Belfold</span>';
+                // Top firms by transport bars
+                const maxFirma = data.by_firma?.[0]?.transport_total || 1;
+                document.getElementById('transportFirmaBars').innerHTML = (data.by_firma || []).slice(0, 10).map(f => {
+                    const pct = (f.transport_total / maxFirma * 100).toFixed(0);
                     return `<div class="category-bar">
-                        <span class="name">${d.destinatie}${badge}</span>
-                        <div class="bar-bg"><div class="bar" style="width:${pct}%;background:${color};">${fmt(d.total_cost)}</div></div>
-                        <span class="kg">${d.count} db</span>
+                        <span class="name">${f.firma_name}</span>
+                        <div class="bar-bg"><div class="bar" style="width:${pct}%;background:#ff6b6b;">${fmt(f.transport_total)}</div></div>
+                        <span class="kg">${f.nr_vanzari} vanz.</span>
                     </div>`;
                 }).join('') || '<p style="color:#888;">Nu exista date</p>';
 
-                // Filter and render table
-                filterTransportTable();
+                // Render monthly table
+                renderTransportTable(data.monthly || []);
             } catch (e) { console.error('Error loading transport:', e); }
         }
 
-        function filterTransportTable() {
-            if (!allTransportData) return;
-
-            const transportType = document.getElementById('transportType').value;
-            const dest = document.getElementById('transportDest').value.toLowerCase();
-            const firma = document.getElementById('transportFirma').value.toLowerCase();
-
-            let filtered = allTransportData.transporturi || [];
-            if (transportType === 'domestic') filtered = filtered.filter(t => !t.is_foreign);
-            if (transportType === 'foreign') filtered = filtered.filter(t => t.is_foreign);
-            if (dest) filtered = filtered.filter(t => (t.destinatie || '').toLowerCase().includes(dest));
-            if (firma) filtered = filtered.filter(t => (t.firma_name || '').toLowerCase().includes(firma));
-
-            document.getElementById('transportCount').textContent = filtered.length;
-
-            let totalCost = 0;
+        function renderTransportTable(monthly) {
+            let totalTransport = 0, totalValoare = 0, totalVanzari = 0, totalWithTransport = 0;
             const tbody = document.getElementById('transportTable');
-            tbody.innerHTML = filtered.map(t => {
-                totalCost += t.total || 0;
-                const typeBadge = t.is_foreign
-                    ? '<span class="badge purple">Kulfold</span>'
-                    : '<span class="badge green">Belfold</span>';
+            tbody.innerHTML = monthly.map(m => {
+                totalTransport += m.transport_total || 0;
+                totalValoare += m.valoare_total || 0;
+                totalVanzari += m.nr_vanzari || 0;
+                totalWithTransport += m.nr_with_transport || 0;
                 return `<tr>
-                    <td>${t.year}</td><td>${monthNames[t.month - 1]}</td>
-                    <td>${t.destinatie || '-'}</td><td>${typeBadge}</td>
-                    <td>${t.firma_name || '-'}</td>
-                    <td class="text-right"><strong>${fmt(t.total)}</strong></td>
-                    <td>${t.transportator || '-'}</td>
+                    <td>${m.year}</td>
+                    <td>${m.month_name}</td>
+                    <td class="text-right">${fmt(m.nr_vanzari)}</td>
+                    <td class="text-right">${fmt(m.nr_with_transport)}</td>
+                    <td class="text-right"><strong>${fmt(m.transport_total)}</strong></td>
+                    <td class="text-right">${fmt(m.valoare_total)}</td>
+                    <td class="text-right">${m.transport_percent}%</td>
                 </tr>`;
             }).join('');
 
+            const avgPercent = totalValoare > 0 ? (totalTransport / totalValoare * 100).toFixed(2) : 0;
             document.getElementById('transportTotals').innerHTML = `
-                <div class="total-item"><span class="total-label">Szallitasok</span><span class="total-value">${filtered.length}</span></div>
-                <div class="total-item"><span class="total-label">Osszes Koltseg</span><span class="total-value">${fmt(totalCost)} RON</span></div>
+                <div class="total-item"><span class="total-label">Luni</span><span class="total-value">${monthly.length}</span></div>
+                <div class="total-item"><span class="total-label">Vanzari</span><span class="total-value">${fmt(totalVanzari)}</span></div>
+                <div class="total-item"><span class="total-label">Cu Transport</span><span class="total-value">${fmt(totalWithTransport)}</span></div>
+                <div class="total-item"><span class="total-label">Cost Transport</span><span class="total-value">${fmt(totalTransport)} RON</span></div>
+                <div class="total-item"><span class="total-label">Rulaj</span><span class="total-value">${fmt(totalValoare)} RON</span></div>
+                <div class="total-item"><span class="total-label">% Mediu</span><span class="total-value">${avgPercent}%</span></div>
             `;
+        }
+
+        function filterTransportByFirma() {
+            // Simple filter - reload with firma filter would need API change
+            // For now just visual filter on by_firma list
+            const search = document.getElementById('transportFirma').value.toLowerCase();
+            if (!allTransportData || !allTransportData.by_firma) return;
+
+            const filtered = search
+                ? allTransportData.by_firma.filter(f => f.firma_name.toLowerCase().includes(search))
+                : allTransportData.by_firma;
+
+            const maxFirma = filtered[0]?.transport_total || 1;
+            document.getElementById('transportFirmaBars').innerHTML = filtered.slice(0, 10).map(f => {
+                const pct = (f.transport_total / maxFirma * 100).toFixed(0);
+                return `<div class="category-bar">
+                    <span class="name">${f.firma_name}</span>
+                    <div class="bar-bg"><div class="bar" style="width:${pct}%;background:#ff6b6b;">${fmt(f.transport_total)}</div></div>
+                    <span class="kg">${f.nr_vanzari} vanz.</span>
+                </div>`;
+            }).join('') || '<p style="color:#888;">Nu exista date</p>';
         }
 
         function resetTransportFilters() {
             document.getElementById('transportYear').value = '';
-            document.getElementById('transportType').value = '';
-            document.getElementById('transportDest').value = '';
             document.getElementById('transportFirma').value = '';
             loadTransportData();
         }
