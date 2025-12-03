@@ -1780,6 +1780,16 @@
                         </div>`;
                 }
 
+                // By waste type (tip_deseu)
+                if (data.by_waste && data.by_waste.length > 0) {
+                    html += `<h4 style="color:#00ff88;margin-bottom:10px;">Tipuri Deseuri</h4>
+                        <div class="scroll-table" style="max-height:200px;margin-bottom:20px;">
+                            <table><thead><tr><th>Tip Deseu</th><th class="text-right">Fuvarok</th><th class="text-right">KG</th><th class="text-right">Valoare</th><th class="text-right">Profit</th></tr></thead>
+                            <tbody>${data.by_waste.map(w => `<tr><td>${w.tip_deseu}</td><td class="text-right">${w.fuvarok}</td><td class="text-right">${fmt(w.kg)}</td><td class="text-right">${fmt(w.valoare)}</td><td class="text-right profit-positive">${fmt(w.profit)}</td></tr>`).join('')}</tbody>
+                            </table>
+                        </div>`;
+                }
+
                 // By country and transporter summary
                 html += `<div class="grid grid-2" style="margin-bottom:20px;">`;
                 if (data.by_country && data.by_country.length > 0) {
@@ -1846,6 +1856,16 @@
                         </div>`;
                 }
 
+                // By waste type
+                if (data.by_waste && data.by_waste.length > 0) {
+                    html += `<h4 style="color:#00ff88;margin-bottom:10px;">Tipuri Deseuri</h4>
+                        <div class="scroll-table" style="max-height:200px;margin-bottom:20px;">
+                            <table><thead><tr><th>Tip Deseu</th><th class="text-right">Fuvarok</th><th class="text-right">KG</th><th class="text-right">Valoare</th><th class="text-right">Profit</th></tr></thead>
+                            <tbody>${data.by_waste.map(w => `<tr><td>${w.tip_deseu}</td><td class="text-right">${w.fuvarok}</td><td class="text-right">${fmt(w.kg)}</td><td class="text-right">${fmt(w.valoare)}</td><td class="text-right profit-positive">${fmt(w.profit)}</td></tr>`).join('')}</tbody>
+                            </table>
+                        </div>`;
+                }
+
                 // Top drivers and by country
                 html += `<div class="grid grid-2" style="margin-bottom:20px;">`;
                 if (data.top_drivers && data.top_drivers.length > 0) {
@@ -1898,6 +1918,16 @@
                         <div class="scroll-table" style="max-height:200px;margin-bottom:20px;">
                             <table><thead><tr><th>Luna</th><th class="text-right">Fuvarok</th><th class="text-right">KG</th><th class="text-right">Valoare</th><th class="text-right">Profit</th></tr></thead>
                             <tbody>${data.monthly.map(m => `<tr><td>${monthNames[m.month - 1]}</td><td class="text-right">${m.fuvarok}</td><td class="text-right">${fmt(m.kg)}</td><td class="text-right">${fmt(m.valoare)}</td><td class="text-right profit-positive">${fmt(m.profit)}</td></tr>`).join('')}</tbody>
+                            </table>
+                        </div>`;
+                }
+
+                // By waste type
+                if (data.by_waste && data.by_waste.length > 0) {
+                    html += `<h4 style="color:#00ff88;margin-bottom:10px;">Tipuri Deseuri</h4>
+                        <div class="scroll-table" style="max-height:200px;margin-bottom:20px;">
+                            <table><thead><tr><th>Tip Deseu</th><th class="text-right">Fuvarok</th><th class="text-right">KG</th><th class="text-right">Valoare</th><th class="text-right">Profit</th></tr></thead>
+                            <tbody>${data.by_waste.map(w => `<tr><td>${w.tip_deseu}</td><td class="text-right">${w.fuvarok}</td><td class="text-right">${fmt(w.kg)}</td><td class="text-right">${fmt(w.valoare)}</td><td class="text-right profit-positive">${fmt(w.profit)}</td></tr>`).join('')}</tbody>
                             </table>
                         </div>`;
                 }

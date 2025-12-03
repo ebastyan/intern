@@ -779,6 +779,20 @@ class handler(BaseHTTPRequestHandler):
         """, (sofer_name,))
         by_transporter = cur.fetchall()
 
+        # By waste type (tip_deseu)
+        cur.execute("""
+            SELECT tip_deseu,
+                   COUNT(*) as fuvarok,
+                   COALESCE(SUM(cantitate_livrata), 0) as kg,
+                   COALESCE(SUM(valoare_ron), 0) as valoare,
+                   COALESCE(SUM(adaos_final), 0) as profit
+            FROM vanzari
+            WHERE nume_sofer = %s AND tip_deseu IS NOT NULL AND tip_deseu != ''
+            GROUP BY tip_deseu
+            ORDER BY kg DESC
+        """, (sofer_name,))
+        by_waste = cur.fetchall()
+
         # Recent trips (last 50)
         cur.execute("""
             SELECT data, numar_aviz, tip_deseu, tara_destinatie,
@@ -816,6 +830,7 @@ class handler(BaseHTTPRequestHandler):
             } for m in monthly],
             'by_country': [{'tara': c['tara_destinatie'], 'fuvarok': c['fuvarok'], 'kg': float(c['kg']) if c['kg'] else 0} for c in by_country],
             'by_transporter': [{'transportator': t['transportator'], 'fuvarok': t['fuvarok']} for t in by_transporter],
+            'by_waste': [{'tip_deseu': w['tip_deseu'], 'fuvarok': w['fuvarok'], 'kg': float(w['kg']) if w['kg'] else 0, 'valoare': float(w['valoare']) if w['valoare'] else 0, 'profit': float(w['profit']) if w['profit'] else 0} for w in by_waste],
             'trips': [{
                 'data': str(t['data']),
                 'numar_aviz': t['numar_aviz'],
@@ -885,6 +900,19 @@ class handler(BaseHTTPRequestHandler):
         """, (transportator_name,))
         by_country = cur.fetchall()
 
+        # By waste type
+        cur.execute("""
+            SELECT tip_deseu, COUNT(*) as fuvarok,
+                   COALESCE(SUM(cantitate_livrata), 0) as kg,
+                   COALESCE(SUM(valoare_ron), 0) as valoare,
+                   COALESCE(SUM(adaos_final), 0) as profit
+            FROM vanzari
+            WHERE transportator = %s AND tip_deseu IS NOT NULL AND tip_deseu != ''
+            GROUP BY tip_deseu
+            ORDER BY kg DESC
+        """, (transportator_name,))
+        by_waste = cur.fetchall()
+
         month_names = ['', 'Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun', 'Iul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
         return {
@@ -895,7 +923,7 @@ class handler(BaseHTTPRequestHandler):
                 'total_valoare': float(summary['total_valoare']) if summary['total_valoare'] else 0,
                 'total_profit': float(summary['total_profit']) if summary['total_profit'] else 0,
                 'total_transport': float(summary['total_transport']) if summary['total_transport'] else 0,
-                'soferi_count': summary['soferi_count'],
+                'nr_soferi': summary['soferi_count'],
                 'vehicule_count': summary['vehicule_count'],
                 'tari_count': summary['tari_count']
             },
@@ -908,7 +936,8 @@ class handler(BaseHTTPRequestHandler):
                 'profit': float(m['profit']) if m['profit'] else 0
             } for m in monthly],
             'top_drivers': [{'sofer': d['nume_sofer'], 'fuvarok': d['fuvarok'], 'kg': float(d['kg']) if d['kg'] else 0} for d in top_drivers],
-            'by_country': [{'tara': c['tara_destinatie'], 'fuvarok': c['fuvarok'], 'kg': float(c['kg']) if c['kg'] else 0} for c in by_country]
+            'by_country': [{'tara': c['tara_destinatie'], 'fuvarok': c['fuvarok'], 'kg': float(c['kg']) if c['kg'] else 0} for c in by_country],
+            'by_waste': [{'tip_deseu': w['tip_deseu'], 'fuvarok': w['fuvarok'], 'kg': float(w['kg']) if w['kg'] else 0, 'valoare': float(w['valoare']) if w['valoare'] else 0, 'profit': float(w['profit']) if w['profit'] else 0} for w in by_waste]
         }
 
     def get_country_profile(self, cur, country_name):
@@ -966,6 +995,19 @@ class handler(BaseHTTPRequestHandler):
         """, (country_name,))
         by_transporter = cur.fetchall()
 
+        # By waste type
+        cur.execute("""
+            SELECT tip_deseu, COUNT(*) as fuvarok,
+                   COALESCE(SUM(cantitate_livrata), 0) as kg,
+                   COALESCE(SUM(valoare_ron), 0) as valoare,
+                   COALESCE(SUM(adaos_final), 0) as profit
+            FROM vanzari
+            WHERE tara_destinatie = %s AND tip_deseu IS NOT NULL AND tip_deseu != ''
+            GROUP BY tip_deseu
+            ORDER BY kg DESC
+        """, (country_name,))
+        by_waste = cur.fetchall()
+
         month_names = ['', 'Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun', 'Iul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
         return {
@@ -976,7 +1018,7 @@ class handler(BaseHTTPRequestHandler):
                 'total_valoare': float(summary['total_valoare']) if summary['total_valoare'] else 0,
                 'total_profit': float(summary['total_profit']) if summary['total_profit'] else 0,
                 'total_transport': float(summary['total_transport']) if summary['total_transport'] else 0,
-                'soferi_count': summary['soferi_count'],
+                'nr_soferi': summary['soferi_count'],
                 'transportatori_count': summary['transportatori_count']
             },
             'monthly': [{
@@ -988,7 +1030,8 @@ class handler(BaseHTTPRequestHandler):
                 'profit': float(m['profit']) if m['profit'] else 0
             } for m in monthly],
             'top_drivers': [{'sofer': d['nume_sofer'], 'fuvarok': d['fuvarok'], 'kg': float(d['kg']) if d['kg'] else 0} for d in top_drivers],
-            'by_transporter': [{'transportator': t['transportator'], 'fuvarok': t['fuvarok'], 'kg': float(t['kg']) if t['kg'] else 0} for t in by_transporter]
+            'by_transporter': [{'transportator': t['transportator'], 'fuvarok': t['fuvarok'], 'kg': float(t['kg']) if t['kg'] else 0} for t in by_transporter],
+            'by_waste': [{'tip_deseu': w['tip_deseu'], 'fuvarok': w['fuvarok'], 'kg': float(w['kg']) if w['kg'] else 0, 'valoare': float(w['valoare']) if w['valoare'] else 0, 'profit': float(w['profit']) if w['profit'] else 0} for w in by_waste]
         }
 
     def get_yearly_comparison(self, cur):
