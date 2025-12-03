@@ -392,7 +392,9 @@
                 <div class="stat-card orange"><h4>Total Transport</h4><div class="value orange" id="transportTotal">...</div><div class="sub">RON</div></div>
                 <div class="stat-card green"><h4>% din Rulaj</h4><div class="value green" id="transportPercent">...</div><div class="sub">cost transport/valoare</div></div>
                 <div class="stat-card purple"><h4>Nr. Vanzari</h4><div class="value purple" id="transportVanzari">...</div><div class="sub">total tranzactii</div></div>
-                <div class="stat-card cyan"><h4>Cu Transport</h4><div class="value cyan" id="transportCountTotal">...</div><div class="sub">vanzari cu cost transport</div></div>
+                <div class="stat-card cyan"><h4>Soferi 2024</h4><div class="value cyan" id="transportDrivers">...</div><div class="sub">soferi unici</div></div>
+                <div class="stat-card yellow"><h4>Vehicule 2024</h4><div class="value yellow" id="transportVehicles">...</div><div class="sub">masini unice</div></div>
+                <div class="stat-card red"><h4>Tari 2024</h4><div class="value red" id="transportCountries">...</div><div class="sub">destinatii</div></div>
             </div>
 
             <div class="search-box">
@@ -449,6 +451,42 @@
                     </table>
                 </div>
                 <div class="totals-bar" id="transportTotals"></div>
+            </div>
+
+            <!-- 2024 Details Section -->
+            <div id="transport2024Details" style="display:none;">
+                <h3 style="color:#ff9f40; margin: 20px 0 15px; font-size: 1.1em;">Detalii Transport 2024 (date complete)</h3>
+                <div class="grid grid-3">
+                    <div class="card">
+                        <h2><span class="icon">🌍</span> Destinatii pe Tara</h2>
+                        <div class="chart-container short"><canvas id="transportCountryChart"></canvas></div>
+                        <div class="scroll-table" style="max-height:200px;">
+                            <table>
+                                <thead><tr><th>Tara</th><th class="text-right">Fuvarok</th><th class="text-right">Transport RON</th></tr></thead>
+                                <tbody id="transportCountryTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h2><span class="icon">🚛</span> Transportatori</h2>
+                        <div class="chart-container short"><canvas id="transporterChart"></canvas></div>
+                        <div class="scroll-table" style="max-height:200px;">
+                            <table>
+                                <thead><tr><th>Transportator</th><th class="text-right">Fuvarok</th><th class="text-right">KG Total</th></tr></thead>
+                                <tbody id="transporterTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h2><span class="icon">👨‍✈️</span> Top 15 Soferi</h2>
+                        <div class="scroll-table" style="max-height:350px;">
+                            <table>
+                                <thead><tr><th>#</th><th>Sofer</th><th class="text-right">Fuvarok</th><th class="text-right">KG Total</th></tr></thead>
+                                <tbody id="driverTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1180,7 +1218,12 @@
                 document.getElementById('transportTotal').textContent = fmt(summary.total_transport);
                 document.getElementById('transportPercent').textContent = summary.transport_percent + '%';
                 document.getElementById('transportVanzari').textContent = fmt(summary.total_vanzari);
-                document.getElementById('transportCountTotal').textContent = fmt(summary.total_with_transport);
+
+                // 2024 details
+                const details = data.details_2024 || {};
+                document.getElementById('transportDrivers').textContent = details.unique_drivers || '-';
+                document.getElementById('transportVehicles').textContent = details.unique_vehicles || '-';
+                document.getElementById('transportCountries').textContent = details.unique_countries || '-';
 
                 // Year comparison chart - transport costs
                 if (transportYearChartInstance) transportYearChartInstance.destroy();
@@ -1257,6 +1300,9 @@
 
                 // Render monthly table
                 renderTransportTable(data.monthly || []);
+
+                // Render 2024 details section
+                render2024TransportDetails(data.details_2024);
             } catch (e) { console.error('Error loading transport:', e); }
         }
 
@@ -1288,6 +1334,82 @@
                 <div class="total-item"><span class="total-label">Rulaj</span><span class="total-value">${fmt(totalValoare)} RON</span></div>
                 <div class="total-item"><span class="total-label">% Mediu</span><span class="total-value">${avgPercent}%</span></div>
             `;
+        }
+
+        let transportCountryChartInstance = null;
+        let transporterChartInstance = null;
+
+        function render2024TransportDetails(details) {
+            const container = document.getElementById('transport2024Details');
+            if (!details || !details.has_details) {
+                container.style.display = 'none';
+                return;
+            }
+            container.style.display = 'block';
+
+            // Country chart (pie)
+            if (transportCountryChartInstance) transportCountryChartInstance.destroy();
+            const countryColors = ['#00d9ff', '#ff9f40', '#00ff88', '#ff6b6b', '#9966ff', '#feca57', '#4bc0c0', '#e7e9ed', '#36a2eb', '#ff6384', '#c9cbcf'];
+            transportCountryChartInstance = new Chart(document.getElementById('transportCountryChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: details.by_country.map(c => c.tara),
+                    datasets: [{ data: details.by_country.map(c => c.fuvarok), backgroundColor: countryColors, borderWidth: 0 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.label + ': ' + ctx.raw + ' fuvar' } } }
+                }
+            });
+
+            // Country table
+            document.getElementById('transportCountryTable').innerHTML = details.by_country.map(c => `
+                <tr>
+                    <td>${c.tara}</td>
+                    <td class="text-right">${c.fuvarok}</td>
+                    <td class="text-right">${fmt(c.transport_ron)}</td>
+                </tr>
+            `).join('');
+
+            // Transporter chart (bar)
+            if (transporterChartInstance) transporterChartInstance.destroy();
+            transporterChartInstance = new Chart(document.getElementById('transporterChart'), {
+                type: 'bar',
+                data: {
+                    labels: details.by_transporter.slice(0, 8).map(t => t.transportator),
+                    datasets: [{
+                        label: 'Fuvarok',
+                        data: details.by_transporter.slice(0, 8).map(t => t.fuvarok),
+                        backgroundColor: 'rgba(255,159,64,0.8)',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: { legend: { display: false } },
+                    scales: { x: { ticks: { color: '#888' } }, y: { ticks: { color: '#fff', font: { size: 10 } } } }
+                }
+            });
+
+            // Transporter table
+            document.getElementById('transporterTable').innerHTML = details.by_transporter.map(t => `
+                <tr>
+                    <td>${t.transportator}</td>
+                    <td class="text-right">${t.fuvarok}</td>
+                    <td class="text-right">${fmt(t.kg_total)}</td>
+                </tr>
+            `).join('');
+
+            // Driver table
+            document.getElementById('driverTable').innerHTML = details.by_driver.map((d, i) => `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td>${d.sofer}</td>
+                    <td class="text-right">${d.fuvarok}</td>
+                    <td class="text-right">${fmt(d.kg_total)}</td>
+                </tr>
+            `).join('');
         }
 
         function filterTransportByFirma() {

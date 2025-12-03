@@ -627,7 +627,87 @@ class handler(BaseHTTPRequestHandler):
                 'transport_total': float(m['transport_total']) if m['transport_total'] else 0,
                 'valoare_total': float(m['valoare_total']) if m['valoare_total'] else 0,
                 'transport_percent': round(float(m['transport_total'] or 0) / float(m['valoare_total']) * 100, 2) if m['valoare_total'] else 0
-            } for m in monthly]
+            } for m in monthly],
+            'details_2024': self._get_transport_details_2024(cur, year)
+        }
+
+    def _get_transport_details_2024(self, cur, year_filter):
+        """Get detailed transport stats (drivers, vehicles, countries) - only 2024 has data"""
+        # By country
+        cur.execute("""
+            SELECT tara_destinatie, COUNT(*) as fuvarok,
+                   COALESCE(SUM(transport_ron), 0) as transport_total,
+                   COALESCE(SUM(cantitate_livrata), 0) as kg_total
+            FROM vanzari
+            WHERE year = 2024 AND tara_destinatie IS NOT NULL
+            GROUP BY tara_destinatie
+            ORDER BY fuvarok DESC
+        """)
+        by_country = [{
+            'tara': r['tara_destinatie'],
+            'fuvarok': r['fuvarok'],
+            'transport_ron': float(r['transport_total']) if r['transport_total'] else 0,
+            'kg_total': float(r['kg_total']) if r['kg_total'] else 0
+        } for r in cur.fetchall()]
+
+        # By transporter company
+        cur.execute("""
+            SELECT transportator, COUNT(*) as fuvarok,
+                   COALESCE(SUM(transport_ron), 0) as transport_total,
+                   COALESCE(SUM(cantitate_livrata), 0) as kg_total
+            FROM vanzari
+            WHERE year = 2024 AND transportator IS NOT NULL
+            GROUP BY transportator
+            ORDER BY fuvarok DESC
+        """)
+        by_transporter = [{
+            'transportator': r['transportator'],
+            'fuvarok': r['fuvarok'],
+            'transport_ron': float(r['transport_total']) if r['transport_total'] else 0,
+            'kg_total': float(r['kg_total']) if r['kg_total'] else 0
+        } for r in cur.fetchall()]
+
+        # By driver (top 15)
+        cur.execute("""
+            SELECT nume_sofer, COUNT(*) as fuvarok,
+                   COALESCE(SUM(transport_ron), 0) as transport_total,
+                   COALESCE(SUM(cantitate_livrata), 0) as kg_total
+            FROM vanzari
+            WHERE year = 2024 AND nume_sofer IS NOT NULL
+            GROUP BY nume_sofer
+            ORDER BY fuvarok DESC
+            LIMIT 15
+        """)
+        by_driver = [{
+            'sofer': r['nume_sofer'],
+            'fuvarok': r['fuvarok'],
+            'transport_ron': float(r['transport_total']) if r['transport_total'] else 0,
+            'kg_total': float(r['kg_total']) if r['kg_total'] else 0
+        } for r in cur.fetchall()]
+
+        # Unique counts
+        cur.execute("SELECT COUNT(DISTINCT numar_auto) FROM vanzari WHERE year = 2024 AND numar_auto IS NOT NULL")
+        unique_vehicles = cur.fetchone()[0]
+
+        cur.execute("SELECT COUNT(DISTINCT nume_sofer) FROM vanzari WHERE year = 2024 AND nume_sofer IS NOT NULL")
+        unique_drivers = cur.fetchone()[0]
+
+        cur.execute("SELECT COUNT(DISTINCT tara_destinatie) FROM vanzari WHERE year = 2024 AND tara_destinatie IS NOT NULL")
+        unique_countries = cur.fetchone()[0]
+
+        cur.execute("SELECT COUNT(DISTINCT transportator) FROM vanzari WHERE year = 2024 AND transportator IS NOT NULL")
+        unique_transporters = cur.fetchone()[0]
+
+        return {
+            'has_details': True,
+            'year': 2024,
+            'unique_vehicles': unique_vehicles,
+            'unique_drivers': unique_drivers,
+            'unique_countries': unique_countries,
+            'unique_transporters': unique_transporters,
+            'by_country': by_country,
+            'by_transporter': by_transporter,
+            'by_driver': by_driver
         }
 
     def get_yearly_comparison(self, cur):
