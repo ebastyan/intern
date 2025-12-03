@@ -686,17 +686,17 @@ class handler(BaseHTTPRequestHandler):
         } for r in cur.fetchall()]
 
         # Unique counts
-        cur.execute("SELECT COUNT(DISTINCT numar_auto) FROM vanzari WHERE year = 2024 AND numar_auto IS NOT NULL")
-        unique_vehicles = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(DISTINCT numar_auto) as cnt FROM vanzari WHERE year = 2024 AND numar_auto IS NOT NULL")
+        unique_vehicles = cur.fetchone()['cnt']
 
-        cur.execute("SELECT COUNT(DISTINCT nume_sofer) FROM vanzari WHERE year = 2024 AND nume_sofer IS NOT NULL")
-        unique_drivers = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(DISTINCT nume_sofer) as cnt FROM vanzari WHERE year = 2024 AND nume_sofer IS NOT NULL")
+        unique_drivers = cur.fetchone()['cnt']
 
-        cur.execute("SELECT COUNT(DISTINCT tara_destinatie) FROM vanzari WHERE year = 2024 AND tara_destinatie IS NOT NULL")
-        unique_countries = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(DISTINCT tara_destinatie) as cnt FROM vanzari WHERE year = 2024 AND tara_destinatie IS NOT NULL")
+        unique_countries = cur.fetchone()['cnt']
 
-        cur.execute("SELECT COUNT(DISTINCT transportator) FROM vanzari WHERE year = 2024 AND transportator IS NOT NULL")
-        unique_transporters = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(DISTINCT transportator) as cnt FROM vanzari WHERE year = 2024 AND transportator IS NOT NULL")
+        unique_transporters = cur.fetchone()['cnt']
 
         return {
             'has_details': True,
