@@ -212,6 +212,28 @@ e094f42 Major improvements to Firme dashboard
    - 154 rekord hozzaadva a sumar_deseuri tablahoz (2022 adatok)
    - 2022: 12 honap, 56 hulladektipus
 
+### Session 2 - tip_deseu nevek normalizalasa
+
+1. **Duplikalt nevek osszevonasa**
+   - 101 kulonbozo nevbol 39 tiszta nev lett
+   - Title Case format (pl. "CUPRU" -> "Cupru")
+   - Roman karakterek csereje (ă->a, â->a, Ș->S, etc.)
+
+2. **Hibas adatok torlese**
+   - Cegnevek torolve (Heneken, Ragmet, Reif, Spiz, Syntom, Zlatcup, etc.)
+   - Kombinalt ertekek torolve (pl. "Alama, Cupru" - nem ertelmezheto)
+
+3. **Elirások javitasa**
+   - "Span Alumniu" -> "Span Aluminiu"
+   - "Aluminiu Jante" -> "Aluminiu Jenti"
+
+**Vegleges sumar_deseuri statisztika:**
+| Ev | Tipusok | Rekordok | Ertek RON |
+|----|---------|----------|-----------|
+| 2022 | 24 | 96 | 74,262,053 |
+| 2023 | 29 | 92 | 45,164,877 |
+| 2024 | 37 | 247 | 141,128,085 |
+
 ---
 
 ## MEGJEGYZESEK
