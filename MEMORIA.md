@@ -234,6 +234,28 @@ e094f42 Major improvements to Firme dashboard
 | 2023 | 29 | 92 | 45,164,877 |
 | 2024 | 37 | 247 | 141,128,085 |
 
+### Session 3 - Transport profil es tip_deseu import
+
+1. **Transport profilok hozzaadva**
+   - Sofer profil: kattinthato sofor neve → osszes fuvar, kg, ertek, hulladek tipusok
+   - Transportator profil: ceg profil → osszes fuvar, kg, ertek, hulladek tipusok
+   - Tara profil: orszag profil → osszes fuvar, kg, ertek, hulladek tipusok
+   - Tablak 40 sorra novelve
+   - API endpoints: sofer_profile, transportator_profile, country_profile
+
+2. **tip_deseu adat import a vanzari tablaba**
+   - 2024: 1,520 / 1,594 rekordhoz importalva (95.4%) - Excel-bol
+   - 2023: 0 / 1,500 - Excel-ben NINCS tip_deseu oszlop!
+   - 2022: 826 / 1,296 - mar benne volt
+   - Forras: ALE_situatie transport_2024 (1).xlsx
+
+**vanzari.tip_deseu statisztika:**
+| Ev | Rekordok tip_deseu-val | Ossz rekord | Lefedettség |
+|----|------------------------|-------------|-------------|
+| 2022 | 826 | 1,296 | 63.7% |
+| 2023 | 0 | 1,500 | 0% |
+| 2024 | 1,520 | 1,594 | 95.4% |
+
 ---
 
 ## MEGJEGYZESEK
