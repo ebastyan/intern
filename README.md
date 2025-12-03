@@ -18,6 +18,10 @@
 
 Aplicatie web moderna pentru monitorizarea si analiza activitatii de achizitie deseuri reciclabile. Sistemul ofera vizualizari interactive, rapoarte detaliate si instrumente avansate de filtrare.
 
+Sistemul contine doua module principale:
+- **Persoane Fizice** (`index.html`) - Dashboard pentru achizitii de la persoane fizice
+- **Firme B2B** (`firme.html`) - Dashboard pentru vanzari catre firme
+
 ---
 
 ## Functionalitati
@@ -69,6 +73,32 @@ Aplicatie web moderna pentru monitorizarea si analiza activitatii de achizitie d
 ### Statistici Detaliate
 - Carduri lunare cu detalii complete
 - Zile lucratoare, parteneri unici, valori
+
+---
+
+## Dashboard Firme (B2B)
+
+Dashboard dedicat pentru vanzari catre firme (`firme.html`):
+
+### Tab-uri disponibile:
+- **Sumar** - Statistici globale, grafice anuale, top firme
+- **Firme** - Lista completa de firme cu cautare
+- **Lunar** - Analiza lunara detaliata
+- **Deseuri** - Statistici pe tipuri de deseuri
+- **Comparatie** - Comparatie anuala (2022-2024)
+- **Transport** - Costuri si profiluri transport
+- **Statistici** - Analize avansate:
+  - Top 10 Firme dupa Profit (sortabil)
+  - Top 10 Firme dupa Cantitate (sortabil)
+  - Sezonalitate (media lunara multi-anuala)
+  - Marje pe categorii
+  - Trend profit
+
+### Caracteristici:
+- Tabele sortabile cu indicatori vizuali
+- Profile detaliate pentru soferi, transportatori, tari
+- Grafice interactive cu tooltips complete
+- Filtre avansate pe an, luna, tip deseu
 
 ---
 
@@ -161,10 +191,12 @@ paju/
 │   ├── waste.py         # Statistici deseuri
 │   ├── data.py          # Date dashboard
 │   └── monthly.py       # Rapoarte lunare
-├── index.html           # Aplicatia principala (SPA)
+├── index.html           # Dashboard Persoane Fizice (SPA)
+├── firme.html           # Dashboard Firme B2B (SPA)
 ├── vercel.json          # Configurare Vercel
 ├── requirements.txt     # Dependinte Python
-├── CLAUDE.md            # Documentatie tehnica detaliata
+├── CLAUDE.md            # Documentatie tehnica pentru dezvoltare
+├── MEMORIA.md           # Jurnal modificari si detalii tehnice
 └── README.md            # Acest fisier
 ```
 

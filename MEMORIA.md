@@ -256,6 +256,25 @@ e094f42 Major improvements to Firme dashboard
 | 2023 | 0 | 1,500 | 0% |
 | 2024 | 1,520 | 1,594 | 95.4% |
 
+### Session 4 - Statistici tab fejlesztesek
+
+1. **Sezonalitate chart magyarazat**
+   - Hozzaadva: "(Media valorii pe luna din toti anii)" - elmagyarazza mit mutat a grafikon
+   - Az atlagos havi erteket mutatja 2022-2024 evek alapjan (szezonalitas)
+
+2. **Top 10 Firme tablak fejlesztese**
+   - **Top 10 Profit tabla**: Uj oszlopok - Valoare, Marja %
+   - **Top 10 Cantitate tabla**: Uj oszlop - Profit
+   - **Rendezheto fejlecek**: Kattinthato minden oszlop
+   - **Rendezesi irany jelzo**: ▲ (novekvo) / ▼ (csokkeno)
+   - Ujra kattintva forditott sorrend
+
+3. **CSS frissites**
+   - `.sortable` class: kattinthato fejlec, hover effekt
+   - `.asc` / `.desc` class: rendezesi nyilak
+
+**Git commit:** `2dfc00e` - Add sortable Top 10 tables with Profit column
+
 ---
 
 ## MEGJEGYZESEK
@@ -268,4 +287,4 @@ e094f42 Major improvements to Firme dashboard
 
 ---
 
-*Utolso frissites: 2024-12-03*
+*Utolso frissites: 2024-12-03 (Session 4)*
