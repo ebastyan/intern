@@ -118,6 +118,16 @@
         .totals-bar .total-item { display: flex; flex-direction: column; }
         .totals-bar .total-label { font-size: 0.7em; color: #888; text-transform: uppercase; }
         .totals-bar .total-value { font-size: 1.1em; font-weight: bold; color: #ff9f40; }
+        /* Sortable table headers */
+        th.sortable { cursor: pointer; user-select: none; transition: background 0.2s; }
+        th.sortable:hover { background: rgba(255,159,64,0.2); }
+        th.sortable .sort-icon { margin-left: 4px; opacity: 0.5; font-size: 0.9em; }
+        th.sortable.asc .sort-icon { opacity: 1; }
+        th.sortable.desc .sort-icon { opacity: 1; }
+        th.sortable.asc .sort-icon::after { content: '↑'; }
+        th.sortable.desc .sort-icon::after { content: '↓'; }
+        th.sortable:not(.asc):not(.desc) .sort-icon::after { content: '↕'; }
+        th.sortable .sort-icon { font-size: 0; } /* Hide default text, use ::after */
     </style>
 </head>
 <body>
@@ -319,15 +329,15 @@
             <div class="card">
                 <h2><span class="icon">📦</span> Detalii Deseuri</h2>
                 <div class="scroll-table">
-                    <table>
+                    <table id="deseuriTableEl">
                         <thead>
                             <tr>
-                                <th>Tip Deseu</th>
-                                <th class="text-right">Total kg</th>
-                                <th class="text-right">Valoare</th>
-                                <th class="text-right">Profit</th>
-                                <th class="text-right">% Vanzari</th>
-                                <th class="text-right">% Profit</th>
+                                <th class="sortable" data-sort="tip_deseu" onclick="sortDeseuriTable('tip_deseu')">Tip Deseu <span class="sort-icon"></span></th>
+                                <th class="sortable text-right" data-sort="total_kg" onclick="sortDeseuriTable('total_kg')">Total kg <span class="sort-icon"></span></th>
+                                <th class="sortable text-right" data-sort="total_valoare" onclick="sortDeseuriTable('total_valoare')">Valoare <span class="sort-icon"></span></th>
+                                <th class="sortable text-right" data-sort="total_profit" onclick="sortDeseuriTable('total_profit')">Profit <span class="sort-icon"></span></th>
+                                <th class="sortable text-right" data-sort="procent_vanzari" onclick="sortDeseuriTable('procent_vanzari')">% Vanzari <span class="sort-icon"></span></th>
+                                <th class="sortable text-right" data-sort="procent_profit" onclick="sortDeseuriTable('procent_profit')">% Profit <span class="sort-icon"></span></th>
                             </tr>
                         </thead>
                         <tbody id="deseuriTable"></tbody>
@@ -858,6 +868,8 @@
 
         let allDeseuriData = null;
         let allTipDeseuList = [];
+        let deseuriSortColumn = 'total_valoare';
+        let deseuriSortDirection = 'desc';
 
         async function loadDeseuriData() {
             const year = document.getElementById('deseuriYear').value;
@@ -902,24 +914,66 @@
         function filterDeseuriTable() {
             if (!allDeseuriData) return;
             const search = document.getElementById('deseuriSearch').value.toLowerCase();
-            let filtered = allDeseuriData;
+            let filtered = [...allDeseuriData]; // Create copy for sorting
             if (search) {
                 filtered = filtered.filter(d => (d.tip_deseu || '').toLowerCase().includes(search));
             }
+            // Apply sorting
+            filtered.sort((a, b) => {
+                let valA = a[deseuriSortColumn];
+                let valB = b[deseuriSortColumn];
+                if (deseuriSortColumn === 'tip_deseu') {
+                    valA = (valA || '').toLowerCase();
+                    valB = (valB || '').toLowerCase();
+                    return deseuriSortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                }
+                valA = valA || 0;
+                valB = valB || 0;
+                return deseuriSortDirection === 'asc' ? valA - valB : valB - valA;
+            });
             renderDeseuriTable(filtered);
+            updateSortIndicators();
+        }
+
+        function sortDeseuriTable(column) {
+            if (deseuriSortColumn === column) {
+                deseuriSortDirection = deseuriSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                deseuriSortColumn = column;
+                deseuriSortDirection = column === 'tip_deseu' ? 'asc' : 'desc';
+            }
+            filterDeseuriTable();
+        }
+
+        function updateSortIndicators() {
+            const table = document.getElementById('deseuriTableEl');
+            if (!table) return;
+            table.querySelectorAll('th.sortable').forEach(th => {
+                th.classList.remove('asc', 'desc');
+                if (th.dataset.sort === deseuriSortColumn) {
+                    th.classList.add(deseuriSortDirection);
+                }
+            });
         }
 
         function renderDeseuriCharts(data) {
             if (deseuriPieInstance) deseuriPieInstance.destroy();
             if (profitPieInstance) profitPieInstance.destroy();
 
-            const colors = ['#ff6384', '#ff9f40', '#00ff88', '#00d9ff', '#9966ff', '#ffce56', '#4bc0c0', '#e7e9ed', '#ff6b6b', '#feca57'];
+            const colors = ['#ff6384', '#ff9f40', '#00ff88', '#00d9ff', '#9966ff', '#ffce56', '#4bc0c0', '#e7e9ed', '#ff6b6b', '#feca57', '#36a2eb', '#c9cbcf'];
+            const maxItems = 10; // Show top 10 instead of 8
+
+            // Sort by valoare for valoare chart
+            const byValoare = [...data].sort((a, b) => (b.total_valoare || 0) - (a.total_valoare || 0)).slice(0, maxItems);
+
+            // Sort by profit for profit chart (separate ordering!)
+            const byProfit = [...data].sort((a, b) => (b.total_profit || 0) - (a.total_profit || 0)).slice(0, maxItems);
 
             deseuriPieInstance = new Chart(document.getElementById('deseuriPieChart'), {
                 type: 'doughnut',
                 data: {
-                    labels: data.slice(0, 8).map(d => d.tip_deseu || 'N/A'),
-                    datasets: [{ data: data.slice(0, 8).map(d => d.total_valoare), backgroundColor: colors, borderWidth: 0 }]
+                    labels: byValoare.map(d => d.tip_deseu || 'N/A'),
+                    datasets: [{ data: byValoare.map(d => d.total_valoare), backgroundColor: colors, borderWidth: 0 }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
@@ -930,8 +984,8 @@
             profitPieInstance = new Chart(document.getElementById('profitPieChart'), {
                 type: 'doughnut',
                 data: {
-                    labels: data.slice(0, 8).map(d => d.tip_deseu || 'N/A'),
-                    datasets: [{ data: data.slice(0, 8).map(d => d.total_profit), backgroundColor: colors, borderWidth: 0 }]
+                    labels: byProfit.map(d => d.tip_deseu || 'N/A'),
+                    datasets: [{ data: byProfit.map(d => d.total_profit), backgroundColor: colors, borderWidth: 0 }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
