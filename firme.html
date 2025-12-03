@@ -881,18 +881,13 @@
                 const data = await fetch(url).then(r => r.json());
                 allDeseuriData = data.deseuri || [];
 
-                // Show warning if data is missing for selected year
+                // Hide warning - data now comes from sumar_deseuri table which has all years
                 const warningEl = document.getElementById('deseuriWarning');
-                if ((year === '2023' || year === '2024') && allDeseuriData.length === 0) {
-                    if (warningEl) warningEl.style.display = 'block';
-                } else {
-                    if (warningEl) warningEl.style.display = 'none';
-                }
+                if (warningEl) warningEl.style.display = 'none';
 
-                // Populate tip_deseu filter dropdown (only once or when reset)
-                if (allTipDeseuList.length === 0) {
-                    const allData = await fetch('/api/firme?type=deseuri').then(r => r.json());
-                    allTipDeseuList = (allData.deseuri || []).map(d => d.tip_deseu).filter(t => t);
+                // Populate tip_deseu filter dropdown from API response
+                if (allTipDeseuList.length === 0 && data.available_types) {
+                    allTipDeseuList = data.available_types;
                     const select = document.getElementById('deseuriTipFilter');
                     select.innerHTML = '<option value="">Toate</option>' + allTipDeseuList.map(t => `<option value="${t}">${t}</option>`).join('');
                 }

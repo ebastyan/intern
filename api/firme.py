@@ -389,7 +389,7 @@ class handler(BaseHTTPRequestHandler):
         }
 
     def get_deseuri_summary(self, cur, year=None, month_from=None, month_to=None, tip_deseu=None):
-        """Get waste type summary - computed from vanzari for consistency"""
+        """Get waste type summary from sumar_deseuri table (monthly summaries from Excel)"""
         # Build filter conditions
         conditions = ["tip_deseu IS NOT NULL"]
         params = []
@@ -404,16 +404,16 @@ class handler(BaseHTTPRequestHandler):
             conditions.append("month <= %s")
             params.append(int(month_to))
         if tip_deseu:
-            conditions.append("tip_deseu = %s")
-            params.append(tip_deseu)
+            conditions.append("tip_deseu ILIKE %s")
+            params.append(f"%{tip_deseu}%")
 
         where_clause = " AND ".join(conditions)
 
         # First get totals for percentage calculation
         total_query = f"""
             SELECT COALESCE(SUM(valoare_ron), 0) as total_val,
-                   COALESCE(SUM(adaos_final), 0) as total_profit
-            FROM vanzari WHERE {where_clause}
+                   COALESCE(SUM(adaos_ron), 0) as total_profit
+            FROM sumar_deseuri WHERE {where_clause}
         """
 
         cur.execute(total_query, params)
@@ -422,12 +422,12 @@ class handler(BaseHTTPRequestHandler):
         grand_total_profit = float(totals['total_profit']) if totals['total_profit'] else 1
 
         # Now get breakdown by tip_deseu
-        query = f"""
+        query = """
             SELECT tip_deseu,
-                   COALESCE(SUM(cantitate_receptionata), 0) as total_kg,
+                   COALESCE(SUM(cantitate_kg), 0) as total_kg,
                    COALESCE(SUM(valoare_ron), 0) as total_valoare,
-                   COALESCE(SUM(adaos_final), 0) as total_profit
-            FROM vanzari
+                   COALESCE(SUM(adaos_ron), 0) as total_profit
+            FROM sumar_deseuri
             WHERE tip_deseu IS NOT NULL AND tip_deseu != ''
         """
 
@@ -442,16 +442,26 @@ class handler(BaseHTTPRequestHandler):
             query += " AND month <= %s"
             detail_params.append(int(month_to))
         if tip_deseu:
-            query += " AND tip_deseu = %s"
-            detail_params.append(tip_deseu)
+            query += " AND tip_deseu ILIKE %s"
+            detail_params.append(f"%{tip_deseu}%")
 
         query += " GROUP BY tip_deseu ORDER BY total_valoare DESC"
 
         cur.execute(query, detail_params)
         deseuri = cur.fetchall()
 
+        # Get available years for filter
+        cur.execute("SELECT DISTINCT year FROM sumar_deseuri ORDER BY year")
+        available_years = [r['year'] for r in cur.fetchall()]
+
+        # Get available waste types for filter
+        cur.execute("SELECT DISTINCT tip_deseu FROM sumar_deseuri WHERE tip_deseu IS NOT NULL ORDER BY tip_deseu")
+        available_types = [r['tip_deseu'] for r in cur.fetchall()]
+
         return {
             'filters': {'year': year, 'month_from': month_from, 'month_to': month_to, 'tip_deseu': tip_deseu},
+            'available_years': available_years,
+            'available_types': available_types,
             'totals': {
                 'total_valoare': grand_total_val,
                 'total_profit': grand_total_profit
