@@ -80,25 +80,26 @@
 
 ---
 
-## ISMERT ADAT PROBLEMAK
+## ISMERT ADAT PROBLEMAK (FRISSITVE 2024-12-03)
 
-### 1. tip_deseu (Deseuri tab) - KRITIKUS!
-```
-2022: 826 rekord tip_deseu adattal
-2023: 0 rekord (MIND NULL!)
-2024: 0 rekord (MIND NULL!)
-```
-**Ok**: Az eredeti Excel fajlban a tip_deseu oszlop nem lett kitoltve 2023/2024-re.
-**Hatas**: A Deseuri tab csak 2022-es adatokat tud mutatni.
+### 1. Deseuri tab (sumar_deseuri tabla)
+A Deseuri tab a `sumar_deseuri` tablat hasznalja, ami az Excel Sumar sheet-ekbol szarmazik.
 
-### 2. Transport adatok - HIANYOS
-```
-2023/1: 18 rekord, 74,599 RON
-2024/1: 21 rekord, 74,599 RON (UGYANAZ az osszeg - duplikat?)
-Ossz: 39 rekord, ~149,000 RON
-```
-**Ok**: Csak 2 honap adata van feltoltve az adatbazisba.
-**Hatas**: Transport chart egy sik vonal, nincs ertelmes trend.
+| Ev | Honapok | Lefedettség | Megjegyzes |
+|----|---------|-------------|------------|
+| 2022 | 12/12 | ~79% | vanzari.tip_deseu oszlopbol szamitva |
+| 2023 | 5/12 | ~37% | Csak Aug-Dec, Jan-Jul Excel-ben NINCS tip deseu szekció! |
+| 2024 | 12/12 | 100% | Teljes adat |
+
+**Figyelmeztetés a frontend-en jelenik meg év kiválasztásakor.**
+
+### 2. Transport adatok - JAVÍTVA ✅
+Korabban a `transporturi_firme` tablat hasznaltuk (39 rekord, 149k RON).
+Most a `vanzari.transport_ron` oszlopot hasznaljuk:
+- **2022**: 1,998,986 RON
+- **2023**: 1,993,346 RON
+- **2024**: 2,404,429 RON
+- **Ossz**: 6,396,761 RON
 
 ### 3. Comparatie Anuala tablazat
 - 2022-nek nincs VALT % mert nincs elozo ev amivel osszehasonlitani
@@ -191,6 +192,28 @@ e094f42 Major improvements to Firme dashboard
 
 ---
 
+## 2024-12-03 VALTOZTATASOK
+
+### Session 1 - Deseuri es Transport javitasok
+
+1. **Deseuri tab - sumar_deseuri tabla hasznalata**
+   - Korabban vanzari.tip_deseu-t nezett (ami 2023/2024-re ures volt)
+   - Most sumar_deseuri tablat hasznal (Excel Sumar sheet-ekbol)
+   - 2022 adatok importalva a vanzari.tip_deseu alapjan
+   - Figyelmeztetés jelenik meg 2022/2023 kivalasztasakor
+
+2. **Transport tab - vanzari.transport_ron hasznalata**
+   - Korabban transporturi_firme tablat nezett (csak 39 rekord, 149k RON)
+   - Most vanzari.transport_ron oszlopot hasznal
+   - 6.4M RON osszes transport koltseg (2022-2024)
+   - Uj chartok: eves osszehasonlitas, % transport/rulaj, top firmak
+
+3. **Adatbazis frissites**
+   - 154 rekord hozzaadva a sumar_deseuri tablahoz (2022 adatok)
+   - 2022: 12 honap, 56 hulladektipus
+
+---
+
 ## MEGJEGYZESEK
 
 - A frontend NINCS framework-ben (React, Vue, stb.), tiszta vanilla JS
@@ -201,4 +224,4 @@ e094f42 Major improvements to Firme dashboard
 
 ---
 
-*Utolso frissites: 2024-12-02*
+*Utolso frissites: 2024-12-03*

@@ -309,8 +309,8 @@
                 <input type="text" id="deseuriSearch" placeholder="Cauta tip deseu..." style="width:150px;" onkeyup="filterDeseuriTable()">
                 <button class="secondary" onclick="resetDeseuriFilters()">Reset</button>
             </div>
-            <div id="deseuriWarning" class="insight-box" style="display:none; margin:15px 0; border-left-color:#ff6b6b; background:#3a2020;">
-                <strong>⚠️ Atentie:</strong> Date tip_deseu lipsesc pentru 2023 si 2024. Campul tip_deseu nu a fost completat in fisierul Excel original pentru acesti ani.
+            <div id="deseuriWarning" class="insight-box" style="display:none; margin:15px 0; border-left-color:#ffaa00; background:#3a3520;">
+                <strong>ℹ️ Nota:</strong> <span id="deseuriWarningText"></span>
             </div>
             <div class="grid grid-2">
                 <div class="card"><h2><span class="icon">🥧</span> Distributie dupa Valoare</h2><div class="chart-container"><canvas id="deseuriPieChart"></canvas></div></div>
@@ -874,9 +874,18 @@
                 const data = await fetch(url).then(r => r.json());
                 allDeseuriData = data.deseuri || [];
 
-                // Hide warning - data now comes from sumar_deseuri table which has all years
+                // Show data coverage warning based on selected year
                 const warningEl = document.getElementById('deseuriWarning');
-                if (warningEl) warningEl.style.display = 'none';
+                const warningText = document.getElementById('deseuriWarningText');
+                if (year === '2023') {
+                    warningEl.style.display = 'block';
+                    warningText.textContent = 'Pentru 2023, datele tip deseu sunt disponibile doar pentru Aug-Dec. Fisierul Excel original nu contine sectiunea "Tip Deseuri" pentru Ian-Iul.';
+                } else if (year === '2022') {
+                    warningEl.style.display = 'block';
+                    warningText.textContent = 'Pentru 2022, datele acopera ~79% din rulaj. Nu toate tranzactiile au avut tip_deseu completat in Excel.';
+                } else {
+                    warningEl.style.display = 'none';
+                }
 
                 // Populate tip_deseu filter dropdown from API response
                 if (allTipDeseuList.length === 0 && data.available_types) {
