@@ -1,290 +1,507 @@
-# PAJU Project - Memoria / Dokumentacio
+# PAJU - Teljes Projekt Dokumentacio
 
-## Projekt Leiras
-
-**PAJU** - Hulladekfeldolgozo ceg belso dashboard rendszere, amely ket fo reszbol all:
-1. **Persoane Fizice** - Maganszemelyek vasarlasi adatai (lakossagi beszerzesek)
-2. **Firme (B2B)** - Cegek felei ertekesitesek (nagykereskedelmi)
+> **FONTOS**: Ez a fajl tartalmazza a projekt MINDEN reszletet. Ha ujra megnyitod a chat-et, olvasd el ezt a fajlt es tudni fogod pontosan mi ez es hogy mukodik.
 
 ---
 
-## Technikai Stack
+## 1. MI EZ A PROJEKT?
 
-- **Frontend**: HTML + CSS + JavaScript (vanilla)
-- **Charts**: Chart.js
-- **Backend**: Python (Vercel Serverless Functions)
-- **Database**: PostgreSQL (NeonDB)
-- **Hosting**: Vercel
-- **Git**: GitHub (ebastyan/intern repo)
+**PAJU** = Hulladekfelvasarlo ceg (Nagyvarad/Oradea, Romania) belso dashboard rendszere.
 
----
+### Cel
+Ket kulonallo dashboard a ceg ket fo tevekenysegerol:
 
-## Adatbazis Struktura
+| Dashboard | URL | Leiras |
+|-----------|-----|--------|
+| **Persoane Fizice** | `/` vagy `/index.html` | Lakossagi hulladekfelvasarlas (maganszemelyek) |
+| **Firme (B2B)** | `/firme.html` | Cegeknek torteno hulladek ERTEKESITES |
 
-### Tablak
-
-1. **`firme`** - Cegek adatai
-   - `id`, `name`
-
-2. **`vanzari`** - Ertekesitesek (B2B tranzakciok)
-   - `id`, `firma_id`, `data`, `year`, `month`
-   - `numar_aviz`, `tip_deseu`
-   - `cantitate_livrata`, `cantitate_receptionata`
-   - `pret_achizitie`, `pret_vanzare`
-   - `valoare_ron`, `adaos_final`
-
-3. **`transporturi_firme`** - Szallitasi koltsegek
-   - `id`, `year`, `month`
-   - `destinatie`, `firma_name`
-   - `descriere`, `transportator`
-   - `suma_fara_tva`, `tva`, `total`
-
-4. **`sumar_deseuri`** - Hulladek osszesites (FIGYELEM: csak 2022-es adatok!)
-   - `tip_deseu`, `year`, `cantitate_kg`, `valoare_ron`, `adaos_ron`
-
-5. **`persoane_fizice`** - Lakossagi vasarlasok
-   - Kulonallo tabla a Persoane Fizice dashboardhoz
+### Uzleti logika
+1. **Persoane Fizice**: A ceg VASAROL hulladekot maganszemelektol (reztol a vasig)
+2. **Firme**: A ceg ELAD hulladekot mas cegeknek (nagykereskedelem)
 
 ---
 
-## API Endpoints
+## 2. TECHNOLOGIAI STACK
 
-**File**: `api/firme.py`
+### Frontend
+```
+- HTML5 + Vanilla JavaScript (NINCS React/Vue/Angular!)
+- Chart.js v3+ (grafikonok)
+- CSS (dark theme: #0a0a14 hatter, #00d9ff accent szin)
+- Single Page Application (SPA) - tab rendszer
+```
 
-| Endpoint | Leiras |
-|----------|--------|
-| `/api/firme?type=overview` | Altalanos osszesites |
-| `/api/firme?type=list` | Cegek listaja |
-| `/api/firme?type=firma&id=X` | Egy ceg reszletei |
-| `/api/firme?type=vanzari&firma_id=X` | Ceg ertekesitesei |
-| `/api/firme?type=monthly&year=2024` | Havi osszesites |
-| `/api/firme?type=deseuri&year=2024` | Hulladek tipusok |
-| `/api/firme?type=top` | Top cegek |
-| `/api/firme?type=transporturi` | Szallitasi adatok |
-| `/api/firme?type=yearly` | Eves osszehasonlitas |
+### Backend
+```
+- Python 3.12 (Vercel Serverless Functions)
+- psycopg2 (PostgreSQL driver)
+- API endpoints: /api/*.py
+```
 
----
+### Database
+```
+- PostgreSQL (hosted: NeonDB)
+- Connection string: POSTGRES_URL env variable
+- SSL: REQUIRED
+```
 
-## Frontend Oldalak
-
-### firme.html - B2B Dashboard
-
-**Tabok:**
-1. **Sumar** - Osszesito nezet (yearly chart, top firme)
-2. **Firme** - Cegek listaja kereshetoen
-3. **Lunar** - Havi bontas
-4. **Deseuri** - Hulladektipusok szerinti bontas
-5. **Comparatie** - Eves osszehasonlitas
-6. **Transport** - Szallitasi koltsegek
-7. **Statistici** - Reszletes statisztikak
-
----
-
-## ISMERT ADAT PROBLEMAK (FRISSITVE 2024-12-03)
-
-### 1. Deseuri tab (sumar_deseuri tabla)
-A Deseuri tab a `sumar_deseuri` tablat hasznalja, ami az Excel Sumar sheet-ekbol szarmazik.
-
-| Ev | Honapok | Lefedettség | Megjegyzes |
-|----|---------|-------------|------------|
-| 2022 | 12/12 | ~79% | vanzari.tip_deseu oszlopbol szamitva |
-| 2023 | 5/12 | ~37% | Csak Aug-Dec, Jan-Jul Excel-ben NINCS tip deseu szekció! |
-| 2024 | 12/12 | 100% | Teljes adat |
-
-**Figyelmeztetés a frontend-en jelenik meg év kiválasztásakor.**
-
-### 2. Transport adatok - JAVÍTVA ✅
-Korabban a `transporturi_firme` tablat hasznaltuk (39 rekord, 149k RON).
-Most a `vanzari.transport_ron` oszlopot hasznaljuk:
-- **2022**: 1,998,986 RON
-- **2023**: 1,993,346 RON
-- **2024**: 2,404,429 RON
-- **Ossz**: 6,396,761 RON
-
-### 3. Comparatie Anuala tablazat
-- 2022-nek nincs VALT % mert nincs elozo ev amivel osszehasonlitani
-- 2023 -10.5% (csokkenés a rulajban)
-- 2024 +15.6% (növekedés)
-**Ez NORMALIS viselkedes!**
+### Hosting & Deployment
+```
+- Platform: Vercel
+- GitHub repo: ebastyan/intern
+- Branch: main
+- Deploy: Automatikus push utan
+```
 
 ---
 
-## MAI (2024-12-02) VALTOZTATASOK
-
-### Session 1 - Firme Dashboard javitasok
-
-1. **Ceg normalizalas az adatbazisban**
-   - Duplikalt cegek osszevonasa (pl. PW SPIZ SPOLKA → SPIZ)
-   - Transport adat destinatie/firma swap javitas
-
-2. **Chart tooltip javitas**
-   - Teljes szamok megjelenítese (nincs M/K rovidites)
-   - Minden chart-on fmt() fuggveny hasznalata
-
-3. **Lunar tab javitas**
-   - "Vanzari" → "Tranzactii" (erthetobb)
-
-4. **Deseuri tab javitas**
-   - Uj filterek: month_from, month_to, tip_deseu dropdown
-   - Kereses mezo
-   - Reset gomb
-   - Figyelmeztetes ha nincs adat 2023/2024-re
-
-5. **Comparatie tab javitas**
-   - YoY megjelenites javitva: "Crestere Anuala (2023 → 2024)"
-   - Szinek: zold = novekedes, piros = csokkenes
-   - Tobb reszlet: legjobb honapok evente
-
-6. **Statistici tab javitas**
-   - Profit trend: mindket vonal hover-re
-   - Marje pe Categorii: MINDEN anyag (nem csak top 8)
-   - Best month: evenkent kulon
-   - Top 5 ceg nevei a sub text-ben
-
-7. **Nyelv - Magyar → Roman**
-   - Minden magyar szoveg romarra csereve
-   - Eves Osszehasonlitas → Comparatie Anuala
-   - Havonkenti → Costuri Lunare
-   - Atlag → Media
-   - stb.
-
----
-
-## KOVETKEZO LEPESEK / TODO
-
-1. **tip_deseu adat potlasa** - Eredeti Excel-bol ki kell nyerni a 2023/2024 tip_deseu adatokat es feltolteni
-2. **Transport adat kiegeszites** - Tobbi honap transport adatainak feltoltese
-3. **Persoane Fizice dashboard** - Meg nem fejlesztett reszletesen
-4. **Terkep funkció** - Geocoded ceg adatok vannak (companyData_geocoded.json)
-
----
-
-## HASZNOS FAJLOK
-
-| Fajl | Cel |
-|------|-----|
-| `check_data.py` | Adatbazis ellenorzes |
-| `check_all_data.py` | Reszletes adat ellenorzes |
-| `fix_companies.py` | Ceg normalizalas |
-| `fix_transport.py` | Transport adat javitas |
-| `merge_spiz.py` | SPIZ cegek osszevonasa |
-| `companyData_geocoded.json` | Geocoded ceg koordinatak |
-
----
-
-## ADATBAZIS KAPCSOLAT
+## 3. ADATBAZIS KAPCSOLAT
 
 ```python
+# NeonDB PostgreSQL connection
 db_url = "postgresql://neondb_owner:npg_L2AyrcXul8km@ep-ancient-firefly-a47vk6i8-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require"
+
+# Vagy Vercel env variable-bol:
+import os
+db_url = os.environ.get('POSTGRES_URL')
 ```
 
 ---
 
-## GIT HISTORY (mai nap)
+## 4. ADATBAZIS STRUKTURA
 
+### 4.1 Persoane Fizice tablak
+
+```sql
+-- Partnerek (maganszemelyek) - 30,000+ rekord
+partners (
+    cnp VARCHAR(13) PRIMARY KEY,  -- Roman szemelyi szam (13 jegy)
+    name VARCHAR(255),
+    city VARCHAR(100),
+    county VARCHAR(50),           -- Megye (judet)
+    street VARCHAR(255),
+    phone VARCHAR(20),
+    email VARCHAR(100),
+    birth_year INTEGER,
+    sex CHAR(1),                  -- M/F
+    county_from_cnp VARCHAR(50)   -- CNP-bol kiolvasott megye
+)
+
+-- Tranzakciok - 51,000+ rekord
+transactions (
+    document_id VARCHAR(20) PRIMARY KEY,  -- Format: PJ-XXXXXX
+    date DATE,
+    cnp VARCHAR(13) REFERENCES partners(cnp),
+    payment_type VARCHAR(20),
+    iban VARCHAR(50),
+    gross_value DECIMAL(12,2),
+    env_tax DECIMAL(12,2),
+    income_tax DECIMAL(12,2),
+    net_paid DECIMAL(12,2)
+)
+
+-- Tranzakcio tetelek
+transaction_items (
+    id SERIAL PRIMARY KEY,
+    document_id VARCHAR(20) REFERENCES transactions(document_id),
+    waste_type_id INTEGER REFERENCES waste_types(id),
+    price_per_kg DECIMAL(8,2),
+    weight_kg DECIMAL(10,2),
+    value DECIMAL(12,2)
+)
+
+-- Hulladek tipusok
+waste_types (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    category_id INTEGER REFERENCES waste_categories(id)
+)
+
+-- Hulladek kategoriak
+waste_categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50)  -- Cupru, Aluminiu, Fier, DEEE, Acumulatori, etc.
+)
 ```
-120f425 Fix all Hungarian text to Romanian, add data warnings
-cc91448 Fix dashboard issues: charts, filters, analytics improvements
-201e2ea Enhanced Transport and Statistici tabs with more analytics
-659dd42 Fix Firme dashboard: company normalization, transport data, filters
-e094f42 Major improvements to Firme dashboard
+
+### 4.2 Firme (B2B) tablak
+
+```sql
+-- Cegek - 50+ rekord
+firme (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255)
+)
+
+-- Ertekesitesek (B2B tranzakciok) - 4,400+ rekord
+vanzari (
+    id SERIAL PRIMARY KEY,
+    firma_id INTEGER REFERENCES firme(id),
+    data DATE,
+    year INTEGER,
+    month INTEGER,
+    numar_aviz VARCHAR(50),
+    tip_deseu VARCHAR(100),
+    cantitate_livrata DECIMAL(12,2),
+    cantitate_receptionata DECIMAL(12,2),
+    pret_achizitie DECIMAL(10,2),
+    pret_vanzare DECIMAL(10,2),
+    valoare_ron DECIMAL(12,2),
+    adaos_final DECIMAL(12,2),
+    transport_ron DECIMAL(12,2),
+    numar_auto VARCHAR(20),
+    nume_sofer VARCHAR(100),
+    tara_destinatie VARCHAR(50),
+    transportator VARCHAR(100)
+)
+
+-- Hulladek osszesites (Excel Sumar sheet-ekbol)
+sumar_deseuri (
+    id SERIAL PRIMARY KEY,
+    tip_deseu VARCHAR(100),
+    year INTEGER,
+    month INTEGER,
+    cantitate_kg DECIMAL(12,2),
+    valoare_ron DECIMAL(12,2),
+    adaos_ron DECIMAL(12,2)
+)
+
+-- Szallitasi koltsegek (regi tabla, mar NEM hasznalt)
+transporturi_firme (
+    id SERIAL PRIMARY KEY,
+    year INTEGER,
+    month INTEGER,
+    destinatie VARCHAR(100),
+    firma_name VARCHAR(255),
+    descriere VARCHAR(255),
+    transportator VARCHAR(100),
+    suma_fara_tva DECIMAL(12,2),
+    tva DECIMAL(12,2),
+    total DECIMAL(12,2)
+)
 ```
 
 ---
 
-## 2024-12-03 VALTOZTATASOK
+## 5. API ENDPOINTS
 
-### Session 1 - Deseuri es Transport javitasok
+### 5.1 Persoane Fizice API-k
 
-1. **Deseuri tab - sumar_deseuri tabla hasznalata**
-   - Korabban vanzari.tip_deseu-t nezett (ami 2023/2024-re ures volt)
-   - Most sumar_deseuri tablat hasznal (Excel Sumar sheet-ekbol)
-   - 2022 adatok importalva a vanzari.tip_deseu alapjan
-   - Figyelmeztetés jelenik meg 2022/2023 kivalasztasakor
+#### `/api/analytics`
+```
+?type=overview        - Teljes attekintes
+?type=yearly          - Eves osszesites
+?type=monthly&year=X  - Havi bontas
+?type=county          - Megye szerinti
+?type=city&county=X   - Varos szerinti
+?type=city_details&city=X - Varos popup reszletek
+?type=all_cities      - Osszes varos lista
+?type=weekday         - Heti mintak
+?type=age             - Korosztaly elemzes
+?type=trends          - Trend osszehasonlitas
+?type=waste_by_region - Hulladek regionalis bontas
+?type=tops            - Top statisztikak
+?type=holidays        - Unnepnapok elemzese
+```
 
-2. **Transport tab - vanzari.transport_ron hasznalata**
-   - Korabban transporturi_firme tablat nezett (csak 39 rekord, 149k RON)
-   - Most vanzari.transport_ron oszlopot hasznal
-   - 6.4M RON osszes transport koltseg (2022-2024)
-   - Uj chartok: eves osszehasonlitas, % transport/rulaj, top firmak
+#### `/api/partners`
+```
+?q=kereso             - Nev/CNP kereses
+?cnp=XXX              - Partner profil
+?top=N                - Top N partner
+?inactive=days        - Inaktiv partnerek
+?onetime              - Egyszeri vasarlok
+?filter               - Osszetett szures
+?regulars=weekly/monthly/yearly - Rendszeres latogatok
+?same_address         - Azonos cimen elok
+?same_family          - Csaladtagok
+?big_suppliers        - Nagy beszallitok
+?list=1&page=X        - Teljes lista (pagination)
+```
 
-3. **Adatbazis frissites**
-   - 154 rekord hozzaadva a sumar_deseuri tablahoz (2022 adatok)
-   - 2022: 12 honap, 56 hulladektipus
+#### `/api/transactions`
+```
+?document_id=X        - Dokumentum reszletek
+?cnp=X                - Partner tranzakcioi
+?date_from/to         - Datum szures
+?daily=YYYY-MM-DD     - Napi osszesito
+?visitors             - Latogatok szurese
+```
 
-### Session 2 - tip_deseu nevek normalizalasa
+#### `/api/waste`
+```
+?type=categories      - Kategoriak osszesitese
+?type=types&category=X - Tipusok listaja
+?type=prices&category=X - Arfolyam tortenet
+?type=monthly&category=X - Havi bontas
+```
 
-1. **Duplikalt nevek osszevonasa**
-   - 101 kulonbozo nevbol 39 tiszta nev lett
-   - Title Case format (pl. "CUPRU" -> "Cupru")
-   - Roman karakterek csereje (ă->a, â->a, Ș->S, etc.)
+#### `/api/monthly`
+```
+?year=YYYY&month=MM   - Specifikus honap reszletei
+(nincs param)         - Osszes honap osszefoglaloja
+```
 
-2. **Hibas adatok torlese**
-   - Cegnevek torolve (Heneken, Ragmet, Reif, Spiz, Syntom, Zlatcup, etc.)
-   - Kombinalt ertekek torolve (pl. "Alama, Cupru" - nem ertelmezheto)
+#### `/api/data`
+```
+(nincs param)         - Dashboard fo adatok (summary cards)
+```
 
-3. **Elirások javitasa**
-   - "Span Alumniu" -> "Span Aluminiu"
-   - "Aluminiu Jante" -> "Aluminiu Jenti"
+### 5.2 Firme API-k
 
-**Vegleges sumar_deseuri statisztika:**
-| Ev | Tipusok | Rekordok | Ertek RON |
-|----|---------|----------|-----------|
-| 2022 | 24 | 96 | 74,262,053 |
-| 2023 | 29 | 92 | 45,164,877 |
-| 2024 | 37 | 247 | 141,128,085 |
+#### `/api/firme`
+```
+?type=overview        - Altalanos osszesites
+?type=list            - Cegek listaja
+?type=firma&id=X      - Egy ceg reszletei
+?type=vanzari&firma_id=X - Ceg ertekesitesei
+?type=monthly&year=X  - Havi osszesites
+?type=deseuri&year=X  - Hulladek tipusok
+?type=top&limit=N     - Top cegek
+?type=transporturi    - Szallitasi adatok
+?type=yearly          - Eves osszehasonlitas
+?type=sofer_profile&sofer=X - Sofor profil
+?type=transportator_profile&transportator=X - Szallito ceg profil
+?type=country_profile&country=X - Orszag profil
+```
 
-### Session 3 - Transport profil es tip_deseu import
+---
 
-1. **Transport profilok hozzaadva**
-   - Sofer profil: kattinthato sofor neve → osszes fuvar, kg, ertek, hulladek tipusok
-   - Transportator profil: ceg profil → osszes fuvar, kg, ertek, hulladek tipusok
-   - Tara profil: orszag profil → osszes fuvar, kg, ertek, hulladek tipusok
-   - Tablak 40 sorra novelve
-   - API endpoints: sofer_profile, transportator_profile, country_profile
+## 6. FRONTEND STRUKTURA
 
-2. **tip_deseu adat import a vanzari tablaba**
-   - 2024: 1,520 / 1,594 rekordhoz importalva (95.4%) - Excel-bol
-   - 2023: 0 / 1,500 - Excel-ben NINCS tip_deseu oszlop!
-   - 2022: 826 / 1,296 - mar benne volt
-   - Forras: ALE_situatie transport_2024 (1).xlsx
+### 6.1 index.html - Persoane Fizice Dashboard
 
-**vanzari.tip_deseu statisztika:**
+**Tabok:**
+1. **Sumar** - 6 nagy stat kartya, top 10 partnerek, kategoria megoszlas
+2. **2024 vs 2025** - Havi osszehasonlito grafikonok, reszletes tablazat
+3. **Parteneri** - 7 sub-tab:
+   - VIP (Top 20)
+   - O Singura Data (egyszeri latogatok)
+   - Regulati (rendszeres: heti/havi/eves)
+   - Inactivi (60+ nap)
+   - Familii/Adresa (csaladtagok, azonos cim)
+   - Mari Furnizori (nagy beszallitok)
+   - Lista Completa (teljes lista, filterek, pagination)
+4. **Deseuri** - Kategoria osszesites, kordiagram, trend
+5. **Regiuni** - Megye/varos megoszlas, korosztaly
+6. **Predictii** - Elojelzes grafikon
+7. **Statistice** - Reszletes statisztikak
+
+### 6.2 firme.html - B2B Dashboard
+
+**Tabok:**
+1. **Sumar** - Yearly chart, top firmak, osszesites
+2. **Firme** - Cegek listaja kereshetoen, kattinthato profilok
+3. **Lunar** - Havi bontas tablazat es chart
+4. **Deseuri** - Hulladektipusok szerinti bontas, filterek
+5. **Comparatie** - Eves osszehasonlitas (2022-2024)
+6. **Transport** - Szallitasi koltsegek, sofor/transportator/orszag profilok
+7. **Statistici** - Top 10 tablak (rendezhetok), sezonalitas, marjak
+
+---
+
+## 7. FONTOS TECHNIKAI RESZLETEK
+
+### 7.1 Dark Theme CSS
+```css
+body {
+    background: #0a0a14;
+    color: #e0e0e0;
+}
+.accent { color: #00d9ff; }
+.card { background: #1a1a2e; }
+th {
+    position: sticky;
+    top: 0;
+    background: #1a1a2e;
+    z-index: 10;
+}
+```
+
+### 7.2 Chart.js Tooltip Format
+```javascript
+function fmt(n) {
+    return n.toLocaleString('ro-RO', {maximumFractionDigits: 0});
+}
+// Tooltip: teljes szam, nincs M/K rovidites
+```
+
+### 7.3 Rendezheto Tablazat
+```javascript
+// Sortable headers
+document.querySelectorAll('.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+        const key = th.dataset.sort;
+        const asc = !th.classList.contains('asc');
+        // Sort logic...
+    });
+});
+```
+
+### 7.4 SQL Parameter Sorrend
+```python
+# FONTOS: Parameter sorrend egyeznie kell a placeholder-ekkel!
+# Rossz: params = [search, category, date]  de SQL: WHERE category=%s AND date=%s AND name ILIKE %s
+# Jo: params = [category, date, search]
+```
+
+---
+
+## 8. ISMERT ADAT PROBLEMAK
+
+### 8.1 sumar_deseuri tabla
+| Ev | Honapok | Lefedettség | Megjegyzes |
+|----|---------|-------------|------------|
+| 2022 | 12/12 | ~79% | OK |
+| 2023 | 5/12 | ~37% | Jan-Jul Excel-ben NINCS tip_deseu! |
+| 2024 | 12/12 | 100% | Teljes |
+
+**Frontend figyelmeztetest mutat ha 2022/2023 van kivalasztva!**
+
+### 8.2 vanzari.tip_deseu
 | Ev | Rekordok tip_deseu-val | Ossz rekord | Lefedettség |
 |----|------------------------|-------------|-------------|
 | 2022 | 826 | 1,296 | 63.7% |
 | 2023 | 0 | 1,500 | 0% |
 | 2024 | 1,520 | 1,594 | 95.4% |
 
-### Session 4 - Statistici tab fejlesztesek
-
-1. **Sezonalitate chart magyarazat**
-   - Hozzaadva: "(Media valorii pe luna din toti anii)" - elmagyarazza mit mutat a grafikon
-   - Az atlagos havi erteket mutatja 2022-2024 evek alapjan (szezonalitas)
-
-2. **Top 10 Firme tablak fejlesztese**
-   - **Top 10 Profit tabla**: Uj oszlopok - Valoare, Marja %
-   - **Top 10 Cantitate tabla**: Uj oszlop - Profit
-   - **Rendezheto fejlecek**: Kattinthato minden oszlop
-   - **Rendezesi irany jelzo**: ▲ (novekvo) / ▼ (csokkeno)
-   - Ujra kattintva forditott sorrend
-
-3. **CSS frissites**
-   - `.sortable` class: kattinthato fejlec, hover effekt
-   - `.asc` / `.desc` class: rendezesi nyilak
-
-**Git commit:** `2dfc00e` - Add sortable Top 10 tables with Profit column
+### 8.3 Transport koltsegek
+- Regi: `transporturi_firme` tabla (39 rekord, 149k RON) - NEM HASZNALT
+- Uj: `vanzari.transport_ron` oszlop (6.4M RON ossz)
 
 ---
 
-## MEGJEGYZESEK
+## 9. FAJL STRUKTURA
 
-- A frontend NINCS framework-ben (React, Vue, stb.), tiszta vanilla JS
-- Minden szoveg ROMAN kell legyen a dashboard-on
-- Chart.js v3+ hasznalata
-- Vercel automatikusan deploy-ol GitHub push utan
-- NeonDB free tier - limitalt kapcsolat szam
+```
+paju/
+├── api/
+│   ├── analytics.py    # Persoane Fizice analitika
+│   ├── partners.py     # Partner kezeles
+│   ├── transactions.py # Tranzakciok
+│   ├── waste.py        # Hulladek statisztika
+│   ├── data.py         # Dashboard fo adatok
+│   ├── monthly.py      # Havi reszletek
+│   └── firme.py        # Firme (B2B) osszes endpoint
+├── index.html          # Persoane Fizice dashboard (SPA)
+├── firme.html          # Firme B2B dashboard (SPA)
+├── vercel.json         # Vercel konfiguracio
+├── requirements.txt    # Python fuggosegek (psycopg2-binary)
+├── .gitignore          # Git ignore szabalyok
+├── CLAUDE.md           # Claude AI kontextus fajl
+├── MEMORIA.md          # Ez a fajl
+└── README.md           # Projekt leiras (roman nyelven)
+```
 
 ---
 
-*Utolso frissites: 2024-12-03 (Session 4)*
+## 10. FEJLESZTESI KORNYEZET
+
+### Lokalis fejlesztes
+```bash
+# Fuggosegek telepitese
+pip install -r requirements.txt
+
+# Vercel CLI-vel lokalis szerver
+vercel dev
+
+# Vagy kozvetlen Python
+python -m http.server 8000
+```
+
+### Deploy
+```bash
+git add .
+git commit -m "description"
+git push
+# Vercel automatikusan deploy-ol!
+```
+
+### Vercel Environment Variables
+```
+POSTGRES_URL = postgresql://neondb_owner:npg_L2AyrcXul8km@ep-ancient-firefly-a47vk6i8-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require
+```
+
+---
+
+## 11. STATISZTIKAK (2024 December)
+
+### Persoane Fizice
+| Mutato | Ertek |
+|--------|-------|
+| Osszes rulaj | ~118.7M RON |
+| Tranzakciok | 51,000+ |
+| Regisztralt partnerek | 30,000+ |
+| Aktiv partnerek | 13,000+ |
+| Hulladek kategoriak | 16 |
+| Idoszak | 2024.01 - 2025.11 |
+
+### Firme (B2B)
+| Mutato | Ertek |
+|--------|-------|
+| Osszes ertek | ~260M RON (2022-2024) |
+| Tranzakciok | 4,400+ |
+| Cegek | 50+ |
+| Transport koltseg | ~6.4M RON |
+| Idoszak | 2022.01 - 2024.12 |
+
+---
+
+## 12. NYELV
+
+- **Dashboard nyelv**: ROMAN (minden felirat!)
+- **Kod kommentek**: Magyar/Angol
+- **Dokumentacio**: Magyar
+
+---
+
+## 13. FEJLESZTESI NAPLO (Legutobbi)
+
+### 2024-12-04 - Cleanup
+- Torolve 31 felesleges fajl:
+  - 4 regi dashboard HTML
+  - 10 JSON adat fajl (~5.5 MB)
+  - 16 egyszeri migration script
+  - 1 redundans dokumentacio
+- Repo most tiszta es production-ready
+
+### 2024-12-03 - Firme fejlesztesek
+- Rendezheto Top 10 tablak
+- Transport profilok (sofor, szallito, orszag)
+- tip_deseu import 2024-re
+- Sezonalitas chart magyarazat
+
+### 2024-12-02 - Firme dashboard javitasok
+- Ceg normalizalas
+- Chart tooltip javitas
+- Nyelv: Magyar -> Roman
+- Deseuri/Comparatie/Statistici tab fejlesztesek
+
+---
+
+## 14. GYORS HIVATKOZASOK
+
+| Mit akarsz? | Hol talalhato? |
+|-------------|----------------|
+| Persoane Fizice dashboard | `/index.html` |
+| Firme dashboard | `/firme.html` |
+| API endpoints | `/api/*.py` |
+| DB connection | Section 3 fent |
+| DB struktura | Section 4 fent |
+| Ismert hibak | Section 8 fent |
+
+---
+
+## 15. MEGJEGYZESEK CLAUDE-NAK
+
+1. **NE hasznalj framework-ot** - tiszta vanilla JS
+2. **Minden szoveg ROMAN** a dashboardon
+3. **Chart.js v3+** formatumot hasznalj
+4. **psycopg2** a PostgreSQL-hez
+5. **Vercel** auto-deploy GitHub push-ra
+6. **NeonDB** free tier - limitalt connection
+
+---
+
+*Utolso frissites: 2024-12-04*
