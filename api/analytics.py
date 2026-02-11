@@ -325,11 +325,11 @@ class handler(BaseHTTPRequestHandler):
         cur.execute("""
             SELECT
                 CASE
-                    WHEN 2024 - p.birth_year < 25 THEN '18-24'
-                    WHEN 2024 - p.birth_year < 35 THEN '25-34'
-                    WHEN 2024 - p.birth_year < 45 THEN '35-44'
-                    WHEN 2024 - p.birth_year < 55 THEN '45-54'
-                    WHEN 2024 - p.birth_year < 65 THEN '55-64'
+                    WHEN EXTRACT(YEAR FROM CURRENT_DATE) - p.birth_year < 25 THEN '18-24'
+                    WHEN EXTRACT(YEAR FROM CURRENT_DATE) - p.birth_year < 35 THEN '25-34'
+                    WHEN EXTRACT(YEAR FROM CURRENT_DATE) - p.birth_year < 45 THEN '35-44'
+                    WHEN EXTRACT(YEAR FROM CURRENT_DATE) - p.birth_year < 55 THEN '45-54'
+                    WHEN EXTRACT(YEAR FROM CURRENT_DATE) - p.birth_year < 65 THEN '55-64'
                     ELSE '65+'
                 END as age_group,
                 COUNT(DISTINCT p.cnp) as partner_count,
@@ -750,11 +750,11 @@ class handler(BaseHTTPRequestHandler):
         cur.execute(f"""
             SELECT
                 CASE
-                    WHEN 2025 - p.birth_year < 25 THEN '18-24'
-                    WHEN 2025 - p.birth_year < 35 THEN '25-34'
-                    WHEN 2025 - p.birth_year < 45 THEN '35-44'
-                    WHEN 2025 - p.birth_year < 55 THEN '45-54'
-                    WHEN 2025 - p.birth_year < 65 THEN '55-64'
+                    WHEN EXTRACT(YEAR FROM CURRENT_DATE) - p.birth_year < 25 THEN '18-24'
+                    WHEN EXTRACT(YEAR FROM CURRENT_DATE) - p.birth_year < 35 THEN '25-34'
+                    WHEN EXTRACT(YEAR FROM CURRENT_DATE) - p.birth_year < 45 THEN '35-44'
+                    WHEN EXTRACT(YEAR FROM CURRENT_DATE) - p.birth_year < 55 THEN '45-54'
+                    WHEN EXTRACT(YEAR FROM CURRENT_DATE) - p.birth_year < 65 THEN '55-64'
                     ELSE '65+'
                 END as age_group,
                 SUM(ti.weight_kg) as total_kg, SUM(ti.value) as total_value,

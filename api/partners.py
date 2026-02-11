@@ -63,7 +63,7 @@ class handler(BaseHTTPRequestHandler):
 
             # Advanced filter: date range + visit count range
             elif 'filter' in params:
-                date_from = params.get('date_from', ['2024-01-01'])[0]
+                date_from = params.get('date_from', ['2022-01-01'])[0]
                 date_to = params.get('date_to', ['2099-12-31'])[0]
                 min_visits = int(params.get('min_visits', [1])[0])
                 max_visits = int(params.get('max_visits', [999999])[0])
@@ -451,11 +451,11 @@ class handler(BaseHTTPRequestHandler):
     def get_regular_partners(self, cur, frequency):
         """Get partners who visit regularly (weekly, monthly, yearly)"""
         if frequency == 'weekly':
-            # Partners who visited at least 4 different weeks in both 2024 and 2025
+            # Partners who visited at least 4 different weeks in any 2 consecutive years
             cur.execute("""
                 WITH weekly_visits AS (
                     SELECT cnp,
-                           EXTRACT(YEAR FROM date) as year,
+                           EXTRACT(YEAR FROM date)::int as year,
                            COUNT(DISTINCT DATE_TRUNC('week', date)) as weeks_visited
                     FROM transactions
                     GROUP BY cnp, EXTRACT(YEAR FROM date)
@@ -466,21 +466,20 @@ class handler(BaseHTTPRequestHandler):
                 FROM partners p
                 JOIN transactions t ON p.cnp = t.cnp
                 WHERE p.cnp IN (
-                    SELECT w1.cnp FROM weekly_visits w1
-                    JOIN weekly_visits w2 ON w1.cnp = w2.cnp
-                    WHERE w1.year = 2024 AND w2.year = 2025
-                      AND w1.weeks_visited >= 4 AND w2.weeks_visited >= 4
+                    SELECT DISTINCT w1.cnp FROM weekly_visits w1
+                    JOIN weekly_visits w2 ON w1.cnp = w2.cnp AND w2.year = w1.year + 1
+                    WHERE w1.weeks_visited >= 4 AND w2.weeks_visited >= 4
                 )
                 GROUP BY p.cnp, p.name, p.city, p.county
                 ORDER BY total_visits DESC
                 LIMIT 100
             """)
         elif frequency == 'monthly':
-            # Partners who visited at least 6 different months in both years
+            # Partners who visited at least 6 months in one year and 4 in the next
             cur.execute("""
                 WITH monthly_visits AS (
                     SELECT cnp,
-                           EXTRACT(YEAR FROM date) as year,
+                           EXTRACT(YEAR FROM date)::int as year,
                            COUNT(DISTINCT EXTRACT(MONTH FROM date)) as months_visited
                     FROM transactions
                     GROUP BY cnp, EXTRACT(YEAR FROM date)
@@ -491,10 +490,9 @@ class handler(BaseHTTPRequestHandler):
                 FROM partners p
                 JOIN transactions t ON p.cnp = t.cnp
                 WHERE p.cnp IN (
-                    SELECT m1.cnp FROM monthly_visits m1
-                    JOIN monthly_visits m2 ON m1.cnp = m2.cnp
-                    WHERE m1.year = 2024 AND m2.year = 2025
-                      AND m1.months_visited >= 6 AND m2.months_visited >= 4
+                    SELECT DISTINCT m1.cnp FROM monthly_visits m1
+                    JOIN monthly_visits m2 ON m1.cnp = m2.cnp AND m2.year = m1.year + 1
+                    WHERE m1.months_visited >= 6 AND m2.months_visited >= 4
                 )
                 GROUP BY p.cnp, p.name, p.city, p.county
                 ORDER BY total_visits DESC
@@ -596,7 +594,8 @@ class handler(BaseHTTPRequestHandler):
         """, all_params)
 
         groups = cur.fetchall()
-        current_year = 2025
+        from datetime import date as dt_date
+        current_year = dt_date.today().year
 
         return {
             'count': len(groups),
@@ -687,7 +686,8 @@ class handler(BaseHTTPRequestHandler):
         """, all_params)
 
         groups = cur.fetchall()
-        current_year = 2025
+        from datetime import date as dt_date
+        current_year = dt_date.today().year
 
         return {
             'count': len(groups),

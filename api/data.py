@@ -36,7 +36,8 @@ class handler(BaseHTTPRequestHandler):
                        COUNT(*) as transactions,
                        COUNT(DISTINCT date) as working_days,
                        COALESCE(SUM(gross_value), 0) as total_value,
-                       COALESCE(SUM(net_paid), 0) as total_paid
+                       COALESCE(SUM(net_paid), 0) as total_paid,
+                       COUNT(DISTINCT EXTRACT(MONTH FROM date)) as months_count
                 FROM transactions
                 GROUP BY EXTRACT(YEAR FROM date)
                 ORDER BY year
@@ -45,7 +46,7 @@ class handler(BaseHTTPRequestHandler):
 
             for y in yearly:
                 year = str(y['year'])
-                months_in_year = 12 if y['year'] < 2025 else 11  # Adjust for current year
+                months_in_year = y['months_count'] or 12
                 result['years'][year] = {
                     'summary': {
                         'total_value': float(y['total_value']),

@@ -144,7 +144,7 @@
         <div class="logo">PAJU Dashboard</div>
         <div class="nav-tabs">
             <button class="nav-tab active" onclick="showSection('overview')">Sumar</button>
-            <button class="nav-tab" onclick="showSection('compare')">2024 vs 2025</button>
+            <button class="nav-tab" onclick="showSection('compare')">Comparatie</button>
             <button class="nav-tab" onclick="showSection('partners')">Parteneri</button>
             <button class="nav-tab" onclick="showSection('waste')">Deseuri</button>
             <button class="nav-tab" onclick="showSection('geo')">Regiuni</button>
@@ -179,17 +179,17 @@
         <!-- COMPARE 2024 vs 2025 -->
         <div id="section-compare" class="section">
             <div class="grid grid-2">
-                <div class="card"><h2><span class="icon">📊</span> 2024 vs 2025 - Rulaj Lunar</h2><div class="chart-container tall"><canvas id="compareValueChart"></canvas></div></div>
-                <div class="card"><h2><span class="icon">👥</span> 2024 vs 2025 - Parteneri Unici/Luna</h2><div class="chart-container tall"><canvas id="comparePartnersChart"></canvas></div></div>
+                <div class="card"><h2><span class="icon">📊</span> Comparatie Anuala - Rulaj Lunar</h2><div class="chart-container tall"><canvas id="compareValueChart"></canvas></div></div>
+                <div class="card"><h2><span class="icon">👥</span> Comparatie Anuala - Parteneri Unici/Luna</h2><div class="chart-container tall"><canvas id="comparePartnersChart"></canvas></div></div>
             </div>
             <div class="card">
                 <h2><span class="icon">📋</span> Comparatie Lunara Detaliata</h2>
-                <div class="scroll-table"><table><thead><tr><th>Luna</th><th class="text-right">2024 Rulaj</th><th class="text-right">2025 Rulaj</th><th class="text-right">Dif. Rulaj</th><th class="text-right">2024 Parteneri</th><th class="text-right">2025 Parteneri</th><th class="text-right">Dif. Parteneri</th></tr></thead><tbody id="monthCompareBody"></tbody></table></div>
+                <div class="scroll-table"><table><thead id="monthCompareHead"></thead><tbody id="monthCompareBody"></tbody></table></div>
             </div>
             <div class="grid grid-3">
                 <div class="card"><h2><span class="icon">💡</span> Concluzii</h2><div id="compareInsights"></div></div>
                 <div class="card">
-                    <h2><span class="icon">📊</span> Tipare Saptamanale <div class="year-selector"><button class="year-btn active" onclick="loadWeekday(2024)">2024</button><button class="year-btn" onclick="loadWeekday(2025)">2025</button><button class="year-btn" onclick="loadWeekday(null)">Total</button></div></h2>
+                    <h2><span class="icon">📊</span> Tipare Saptamanale <div class="year-selector" id="weekdayYearSelector"><button class="year-btn active" onclick="loadWeekday(null)">Total</button></div></h2>
                     <div class="chart-container"><canvas id="weekdayChart"></canvas></div>
                 </div>
                 <div class="card"><h2><span class="icon">🥧</span> Compozitie Materiale (Total)</h2><div class="chart-container"><canvas id="materialPieChart"></canvas></div></div>
@@ -206,7 +206,7 @@
             <div class="card" style="margin-bottom:15px;">
                 <h2><span class="icon">🔍</span> Filtru Avansat</h2>
                 <div class="filter-row">
-                    <label>De la:</label><input type="date" id="filterDateFrom" value="2024-01-01">
+                    <label>De la:</label><input type="date" id="filterDateFrom" value="2022-01-01">
                     <label>Pana la:</label><input type="date" id="filterDateTo" value="2025-12-31">
                     <label>Min vizite:</label><input type="number" id="filterMinVisits" value="1" min="1">
                     <label>Max vizite:</label><input type="number" id="filterMaxVisits" value="9999" min="1">
@@ -243,7 +243,7 @@
                 <div class="card" style="margin-bottom:15px;">
                     <h2><span class="icon">🔍</span> Filtru Vizitatori dupa Numar de Vizite</h2>
                     <div class="filter-row">
-                        <label>De la:</label><input type="date" id="onetimeDateFrom" value="2024-01-01">
+                        <label>De la:</label><input type="date" id="onetimeDateFrom" value="2022-01-01">
                         <label>Pana la:</label><input type="date" id="onetimeDateTo" value="2025-12-31">
                         <label>Numar vizite:</label>
                         <input type="number" id="onetimeVisitCount" value="1" min="1" max="500" style="width:70px;">
@@ -265,9 +265,9 @@
 
             <div id="partnerTab-regulars" class="partner-tab" style="display:none;">
                 <div class="grid grid-3">
-                    <div class="card"><h2><span class="icon">📅</span> Vizitatori Saptamanali</h2><p style="color:#888;font-size:0.8em;margin-bottom:10px;"><strong>Definitie:</strong> Parteneri care au venit in MIN 4 saptamani diferite in 2024 SI in 2025. (ex: cineva care a venit sapt 1 ian, sapt 3 ian, sapt 2 feb, sapt 1 mar in 2024 SI la fel in 2025)</p><div class="scroll-table"><table><thead><tr><th>Nume</th><th class="text-right">Vizite</th><th class="text-right">Valoare</th></tr></thead><tbody id="weeklyRegulars"></tbody></table></div></div>
-                    <div class="card"><h2><span class="icon">📆</span> Vizitatori Lunari</h2><p style="color:#888;font-size:0.8em;margin-bottom:10px;"><strong>Definitie:</strong> Parteneri care au venit in MIN 6 luni diferite in 2024 SI MIN 4 luni in 2025. (ex: ian, mar, apr, mai, iun, iul 2024 SI ian, feb, mar, apr 2025)</p><div class="scroll-table"><table><thead><tr><th>Nume</th><th class="text-right">Vizite</th><th class="text-right">Valoare</th></tr></thead><tbody id="monthlyRegulars"></tbody></table></div></div>
-                    <div class="card"><h2><span class="icon">🔄</span> Vizitatori Anuali</h2><p style="color:#888;font-size:0.8em;margin-bottom:10px;"><strong>Definitie:</strong> Parteneri care au fost activi in AMBII ani (2024 SI 2025), cu cel putin 1 tranzactie in fiecare an. Ordonati dupa valoare.</p><div class="scroll-table"><table><thead><tr><th>Nume</th><th class="text-right">Vizite</th><th class="text-right">Valoare</th></tr></thead><tbody id="yearlyRegulars"></tbody></table></div></div>
+                    <div class="card"><h2><span class="icon">📅</span> Vizitatori Saptamanali</h2><p style="color:#888;font-size:0.8em;margin-bottom:10px;"><strong>Definitie:</strong> Parteneri care au venit in MIN 4 saptamani diferite in 2 ani consecutivi (ex: 2022+2023, 2023+2024 sau 2024+2025)</p><div class="scroll-table"><table><thead><tr><th>Nume</th><th class="text-right">Vizite</th><th class="text-right">Valoare</th></tr></thead><tbody id="weeklyRegulars"></tbody></table></div></div>
+                    <div class="card"><h2><span class="icon">📆</span> Vizitatori Lunari</h2><p style="color:#888;font-size:0.8em;margin-bottom:10px;"><strong>Definitie:</strong> Parteneri care au venit in MIN 6 luni intr-un an SI MIN 4 luni in anul urmator (in orice pereche de ani consecutivi 2022-2025)</p><div class="scroll-table"><table><thead><tr><th>Nume</th><th class="text-right">Vizite</th><th class="text-right">Valoare</th></tr></thead><tbody id="monthlyRegulars"></tbody></table></div></div>
+                    <div class="card"><h2><span class="icon">🔄</span> Vizitatori Anuali</h2><p style="color:#888;font-size:0.8em;margin-bottom:10px;"><strong>Definitie:</strong> Parteneri activi in cel putin 2 ani diferiti (2022-2025), cu minim 1 tranzactie/an. Ordonati dupa valoare.</p><div class="scroll-table"><table><thead><tr><th>Nume</th><th class="text-right">Vizite</th><th class="text-right">Valoare</th></tr></thead><tbody id="yearlyRegulars"></tbody></table></div></div>
                 </div>
             </div>
 
@@ -278,7 +278,7 @@
             <div id="partnerTab-family" class="partner-tab" style="display:none;">
                 <div class="filter-row" style="margin-bottom:15px;">
                     <label>De la:</label>
-                    <input type="date" id="familyDateFrom" value="2024-01-01">
+                    <input type="date" id="familyDateFrom" value="2022-01-01">
                     <label>Pana la:</label>
                     <input type="date" id="familyDateTo" value="2025-12-31">
                     <label>Judet:</label>
@@ -317,7 +317,7 @@
                     <label>Min kg:</label><input type="number" id="bigMinKg" value="100" min="1" style="width:80px;">
                     <label>Min vizite:</label><input type="number" id="bigMinVisits" value="2" min="1" style="width:60px;">
                     <label>An:</label>
-                    <select id="bigYear"><option value="">Toti anii</option><option value="2024">2024</option><option value="2025">2025</option></select>
+                    <select id="bigYear"><option value="">Toti anii</option><option value="2022">2022</option><option value="2023">2023</option><option value="2024">2024</option><option value="2025">2025</option></select>
                     <button onclick="loadBigSuppliers()">Cauta</button>
                 </div>
                 <div class="card"><h2><span class="icon">💎</span> Mari Furnizori</h2><div class="scroll-table"><table><thead><tr><th>Nume</th><th>Oras</th><th>Judet</th><th class="text-right">Total kg</th><th class="text-right">Vizite</th><th class="text-right">Pret Mediu</th><th class="text-right">Valoare</th></tr></thead><tbody id="bigSuppliersTable"></tbody></table></div></div>
@@ -351,7 +351,7 @@
                     <div class="filter-row" style="flex-wrap:wrap;gap:10px;margin-top:10px;">
                         <div style="display:flex;align-items:center;gap:5px;">
                             <label>De la:</label>
-                            <input type="date" id="listaDateFrom" value="2024-01-01">
+                            <input type="date" id="listaDateFrom" value="2022-01-01">
                         </div>
                         <div style="display:flex;align-items:center;gap:5px;">
                             <label>Pana la:</label>
@@ -522,8 +522,8 @@
                 </div>
             </div>
             <div class="grid grid-2">
-                <div class="card"><h2><span class="icon">📊</span> Estimare Decembrie 2025</h2><div class="big-stats" style="margin:0;"><div class="stat-card yellow"><h4>Rulaj Estimat</h4><div class="value yellow" id="predDec">...</div></div><div class="stat-card cyan"><h4>Tranzactii Est.</h4><div class="value cyan" id="predTrans">...</div></div></div><div id="decAlert" style="margin-top:15px;"></div></div>
-                <div class="card"><h2><span class="icon">📈</span> Perspectiva Q1 2026</h2><div class="big-stats" style="margin:0;"><div class="stat-card green"><h4>Estimare Ianuarie</h4><div class="value green" id="predJan">...</div></div><div class="stat-card purple"><h4>Total Q1 Est.</h4><div class="value purple" id="predQ1">...</div></div></div><div id="janAlert" style="margin-top:15px;"></div></div>
+                <div class="card"><h2><span class="icon">📊</span> <span id="predDecTitle">Estimare Urmatoare</span></h2><div class="big-stats" style="margin:0;"><div class="stat-card yellow"><h4>Rulaj Estimat</h4><div class="value yellow" id="predDec">...</div></div><div class="stat-card cyan"><h4>Tranzactii Est.</h4><div class="value cyan" id="predTrans">...</div></div></div><div id="decAlert" style="margin-top:15px;"></div></div>
+                <div class="card"><h2><span class="icon">📈</span> <span id="predQ1Title">Perspectiva Q1</span></h2><div class="big-stats" style="margin:0;"><div class="stat-card green"><h4>Estimare Ianuarie</h4><div class="value green" id="predJan">...</div></div><div class="stat-card purple"><h4>Total Q1 Est.</h4><div class="value purple" id="predQ1">...</div></div></div><div id="janAlert" style="margin-top:15px;"></div></div>
             </div>
             <div class="card"><h2><span class="icon">🚨</span> Alerte si Recomandari</h2><div id="alertsContainer"></div></div>
         </div>
@@ -677,7 +677,7 @@
                         datasets: years.map((y, i) => ({
                             label: y,
                             data: [monthly.years[y].summary.total_value/1e6, monthly.years[y].summary.transactions/1000, monthly.years[y].summary.working_days],
-                            backgroundColor: i===0 ? 'rgba(0,217,255,0.7)' : 'rgba(0,255,136,0.7)',
+                            backgroundColor: (yearColors[i % yearColors.length] || '#00d9ff') + 'bb',
                             borderRadius: 6,
                             rawValues: [monthly.years[y].summary.total_value, monthly.years[y].summary.transactions, monthly.years[y].summary.working_days]
                         }))
@@ -742,6 +742,9 @@
             }
         }
 
+        const yearColors = ['#ff6384', '#feca57', '#00d9ff', '#00ff88', '#9966ff', '#ff9f40'];
+        const yearBgColors = ['rgba(255,99,132,0.1)', 'rgba(254,202,87,0.1)', 'rgba(0,217,255,0.1)', 'rgba(0,255,136,0.1)', 'rgba(153,102,255,0.1)', 'rgba(255,159,64,0.1)'];
+
         function initCompare(monthly, yearly) {
             if (!monthly?.years) return;
             const years = Object.keys(monthly.years).sort();
@@ -749,53 +752,67 @@
 
             const datasets = years.map((y, i) => ({
                 label: y, data: monthNames.map((_, mi) => { const k = String(mi+1).padStart(2,'0'); return monthly.years[y].months[k]?.summary.total_value || null; }),
-                borderColor: i===0 ? '#00d9ff' : '#00ff88', backgroundColor: i===0 ? 'rgba(0,217,255,0.1)' : 'rgba(0,255,136,0.1)', fill: true, tension: 0.3
+                borderColor: yearColors[i % yearColors.length], backgroundColor: yearBgColors[i % yearBgColors.length], fill: false, tension: 0.3
             }));
             new Chart(document.getElementById('compareValueChart'), {
                 type: 'line', data: { labels: monthNames, datasets },
                 options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
                     plugins: { legend: { labels: { color: '#fff' } }, tooltip: { callbacks: {
-                        label: ctx => ctx.dataset.label + ': ' + fmt(ctx.raw) + ' RON',
-                        afterBody: items => { if (items.length >= 2 && items[0].raw && items[1].raw) { const d = items[1].raw - items[0].raw; return ['', '───────────', 'Diferenta: ' + (d>=0?'+':'') + fmt(d) + ' RON', 'Procent: ' + (d>=0?'+':'') + ((d/items[0].raw)*100).toFixed(1) + '%']; } return []; }
+                        label: ctx => ctx.dataset.label + ': ' + fmt(ctx.raw) + ' RON'
                     }}}
                 }
             });
 
             const pDatasets = years.map((y, i) => ({
                 label: y, data: monthNames.map((_, mi) => { const k = String(mi+1).padStart(2,'0'); return monthly.years[y].months[k]?.summary.unique_partners || null; }),
-                borderColor: i===0 ? '#9966ff' : '#feca57', backgroundColor: i===0 ? 'rgba(153,102,255,0.1)' : 'rgba(254,202,87,0.1)', fill: true, tension: 0.3
+                borderColor: yearColors[i % yearColors.length], backgroundColor: yearBgColors[i % yearBgColors.length], fill: false, tension: 0.3
             }));
             new Chart(document.getElementById('comparePartnersChart'), {
                 type: 'line', data: { labels: monthNames, datasets: pDatasets },
                 options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
                     plugins: { legend: { labels: { color: '#fff' } }, tooltip: { callbacks: {
-                        label: ctx => ctx.dataset.label + ': ' + ctx.raw + ' parteneri',
-                        afterBody: items => { if (items.length >= 2 && items[0].raw && items[1].raw) { const d = items[1].raw - items[0].raw; return ['', '───────────', 'Diferenta: ' + (d>=0?'+':'') + d + ' parteneri', 'Procent: ' + (d>=0?'+':'') + ((d/items[0].raw)*100).toFixed(1) + '%']; } return []; }
+                        label: ctx => ctx.dataset.label + ': ' + ctx.raw + ' parteneri'
                     }}}
                 }
             });
 
+            // Dynamic table header
+            const thead = document.getElementById('monthCompareHead');
+            thead.innerHTML = '<tr><th>Luna</th>' + years.map(y => `<th class="text-right">${y} Rulaj</th>`).join('') + '<th class="text-right">Dif. Ultimii 2</th>' + years.map(y => `<th class="text-right">${y} Part.</th>`).join('') + '</tr>';
+
             const tbody = document.getElementById('monthCompareBody');
             tbody.innerHTML = '';
+            const lastY = years[years.length - 1];
+            const prevY = years[years.length - 2];
             for (let i = 0; i < 12; i++) {
                 const k = String(i+1).padStart(2,'0');
-                const m24 = monthly.years['2024']?.months[k], m25 = monthly.years['2025']?.months[k];
-                const v24 = m24?.summary.total_value || 0, v25 = m25?.summary.total_value || 0;
-                const p24 = m24?.summary.unique_partners || 0, p25 = m25?.summary.unique_partners || 0;
-                // Rulaj difference %
-                const ch = v24 && v25 ? ((v25-v24)/v24*100).toFixed(1) : '-';
+                const vals = years.map(y => monthly.years[y]?.months[k]?.summary.total_value || 0);
+                const parts = years.map(y => monthly.years[y]?.months[k]?.summary.unique_partners || 0);
+                const vLast = monthly.years[lastY]?.months[k]?.summary.total_value || 0;
+                const vPrev = monthly.years[prevY]?.months[k]?.summary.total_value || 0;
+                const ch = vPrev && vLast ? ((vLast-vPrev)/vPrev*100).toFixed(1) : '-';
                 const chClass = ch !== '-' ? (parseFloat(ch) >= 0 ? 'color:#00ff88' : 'color:#ff6b6b') : '';
-                // Partner difference % - separate column
-                const pDiffPct = p24 && p25 ? ((p25-p24)/p24*100).toFixed(1) : '-';
-                const pDiffClass = pDiffPct !== '-' ? (parseFloat(pDiffPct) >= 0 ? 'color:#00ff88' : 'color:#ff6b6b') : '';
-                tbody.innerHTML += `<tr><td>${monthNamesFull[i]}</td><td class="text-right">${v24 ? fmt(v24) : '-'}</td><td class="text-right">${v25 ? fmt(v25) : '-'}</td><td class="text-right" style="${chClass}">${ch !== '-' ? (parseFloat(ch) >= 0 ? '+' : '') + ch + '%' : '-'}</td><td class="text-right">${p24 || '-'}</td><td class="text-right">${p25 || '-'}</td><td class="text-right" style="${pDiffClass}">${pDiffPct !== '-' ? (parseFloat(pDiffPct) >= 0 ? '+' : '') + pDiffPct + '%' : '-'}</td></tr>`;
+                tbody.innerHTML += `<tr><td>${monthNamesFull[i]}</td>` + vals.map(v => `<td class="text-right">${v ? fmt(v) : '-'}</td>`).join('') + `<td class="text-right" style="${chClass}">${ch !== '-' ? (parseFloat(ch) >= 0 ? '+' : '') + ch + '%' : '-'}</td>` + parts.map(p => `<td class="text-right">${p || '-'}</td>`).join('') + '</tr>';
             }
+            // Totals row
+            const totVals = years.map(y => monthly.years[y]?.summary.total_value || 0);
+            tbody.innerHTML += `<tr style="font-weight:bold;border-top:2px solid #00d9ff;"><td>TOTAL</td>` + totVals.map(v => `<td class="text-right">${fmt(v)}</td>`).join('') + `<td class="text-right">${totVals.length >= 2 ? ((totVals[totVals.length-1]-totVals[totVals.length-2])/totVals[totVals.length-2]*100).toFixed(1) + '%' : '-'}</td>` + years.map(y => '<td></td>').join('') + '</tr>';
 
-            const y24 = monthly.years['2024']?.summary, y25 = monthly.years['2025']?.summary;
-            if (y24 && y25) {
-                const yoy = ((y25.total_value - y24.total_value) / y24.total_value * 100).toFixed(1);
-                document.getElementById('compareInsights').innerHTML = `<div class="insight-box ${parseFloat(yoy) < 0 ? 'danger' : ''}"><strong>YoY:</strong> ${yoy}%</div><div class="insight-box"><strong>2024 Best:</strong> Aprilie - 7.64M</div><div class="insight-box warning"><strong>August:</strong> Cea mai slaba luna (concedii)</div>`;
+            // Dynamic insights
+            let insightsHtml = '';
+            for (let yi = 1; yi < years.length; yi++) {
+                const yPrev = monthly.years[years[yi-1]]?.summary;
+                const yCurr = monthly.years[years[yi]]?.summary;
+                if (yPrev && yCurr) {
+                    const yoy = ((yCurr.total_value - yPrev.total_value) / yPrev.total_value * 100).toFixed(1);
+                    insightsHtml += `<div class="insight-box ${parseFloat(yoy) < 0 ? 'danger' : ''}"><strong>${years[yi-1]} → ${years[yi]}:</strong> ${parseFloat(yoy) >= 0 ? '+' : ''}${yoy}%</div>`;
+                }
             }
+            document.getElementById('compareInsights').innerHTML = insightsHtml || '<div class="insight-box">Nu sunt date suficiente</div>';
+
+            // Populate weekday year buttons dynamically
+            const weekdaySel = document.getElementById('weekdayYearSelector');
+            weekdaySel.innerHTML = years.map(y => `<button class="year-btn" onclick="loadWeekday(${y})">${y}</button>`).join('') + '<button class="year-btn active" onclick="loadWeekday(null)">Total</button>';
 
             loadWeekday(null);
 
@@ -808,21 +825,20 @@
             }
         }
 
-        let weekdayData2024 = null, weekdayData2025 = null;
+        let weekdayDataByYear = {};
 
         async function loadWeekday(year) {
             document.querySelectorAll('.year-selector .year-btn').forEach(b => b.classList.remove('active'));
             event?.target?.classList.add('active');
 
-            // For TOTAL view, fetch both years for comparison
             if (!year) {
-                const [d24, d25, dTotal] = await Promise.all([
-                    fetch('/api/analytics?type=weekday&year=2024').then(r => r.json()),
-                    fetch('/api/analytics?type=weekday&year=2025').then(r => r.json()),
-                    fetch('/api/analytics?type=weekday').then(r => r.json())
-                ]);
-                weekdayData2024 = d24.weekday_patterns;
-                weekdayData2025 = d25.weekday_patterns;
+                // Fetch total + all individual years for tooltip comparison
+                const availableYears = Object.keys(monthlyData?.years || {}).sort();
+                const fetches = [fetch('/api/analytics?type=weekday').then(r => r.json())];
+                availableYears.forEach(y => fetches.push(fetch(`/api/analytics?type=weekday&year=${y}`).then(r => r.json())));
+                const results = await Promise.all(fetches);
+                const dTotal = results[0];
+                availableYears.forEach((y, i) => { weekdayDataByYear[y] = results[i+1].weekday_patterns; });
 
                 const days = ['Luni', 'Marti', 'Miercuri', 'Joi', 'Vineri', 'Sambata'];
                 if (weekdayChart) weekdayChart.destroy();
@@ -833,25 +849,18 @@
                         responsive: true, maintainAspectRatio: false,
                         plugins: {
                             legend: { display: false },
-                            title: { display: true, text: 'Total 2024+2025', color: '#888' },
+                            title: { display: true, text: 'Total ' + availableYears.join('+'), color: '#888' },
                             tooltip: {
                                 callbacks: {
                                     label: ctx => 'Total: ' + fmt(ctx.raw) + ' RON/zi',
                                     afterLabel: ctx => {
                                         const idx = ctx.dataIndex;
-                                        const v24 = weekdayData2024?.[idx]?.avg_per_day || 0;
-                                        const v25 = weekdayData2025?.[idx]?.avg_per_day || 0;
-                                        const diff = v25 - v24;
-                                        const diffPct = v24 ? ((diff / v24) * 100).toFixed(1) : 0;
-                                        const diffColor = diff >= 0 ? '🟢' : '🔴';
-                                        return [
-                                            '───────────',
-                                            '2024: ' + fmt(v24) + ' RON/zi',
-                                            '2025: ' + fmt(v25) + ' RON/zi',
-                                            '───────────',
-                                            diffColor + ' Diferenta: ' + (diff >= 0 ? '+' : '') + fmt(diff) + ' RON',
-                                            diffColor + ' Procent: ' + (diff >= 0 ? '+' : '') + diffPct + '%'
-                                        ];
+                                        const lines = ['───────────'];
+                                        availableYears.forEach(y => {
+                                            const v = weekdayDataByYear[y]?.[idx]?.avg_per_day || 0;
+                                            lines.push(y + ': ' + fmt(v) + ' RON/zi');
+                                        });
+                                        return lines;
                                     }
                                 }
                             }
@@ -906,7 +915,7 @@
 
             const bestTable = document.getElementById('bestNonFerrousTable');
             bestTable.innerHTML = '';
-            Object.keys(monthlyBest).sort().reverse().slice(0, 12).forEach(k => {
+            Object.keys(monthlyBest).sort().reverse().forEach(k => {
                 const [y, m] = k.split('-');
                 const d = monthlyBest[k];
                 const best = Object.entries(d).sort((a,b) => b[1] - a[1])[0];
@@ -941,99 +950,96 @@
             const allData = [];
             years.forEach(y => Object.entries(monthly.years[y].months).sort((a,b) => a[0].localeCompare(b[0])).forEach(([m, d]) => allData.push({ label: monthNames[parseInt(m)-1] + "'" + y.slice(2), year: parseInt(y), month: parseInt(m), value: d.summary.total_value, trans: d.summary.transactions, partners: d.summary.unique_partners })));
 
-            // Get data for both years for comparison
-            const data2024 = allData.filter(d => d.year === 2024);
-            const data2025 = allData.filter(d => d.year === 2025);
+            // Dynamic: use last 2 years
+            const latestYear = parseInt(years[years.length - 1]);
+            const prevYear = parseInt(years[years.length - 2]);
+            const dataLatest = allData.filter(d => d.year === latestYear);
+            const dataPrev = allData.filter(d => d.year === prevYear);
 
-            // 2024 specific months
-            const jan24 = data2024.find(d => d.month === 1);
-            const feb24 = data2024.find(d => d.month === 2);
-            const mar24 = data2024.find(d => d.month === 3);
-            const apr24 = data2024.find(d => d.month === 4);
-            const dec24 = data2024.find(d => d.month === 12);
-            const nov24 = data2024.find(d => d.month === 11);
+            // Helper to get month value
+            const getVal = (data, m) => data.find(d => d.month === m)?.value || 0;
 
-            // 2025 specific months
-            const jan25 = data2025.find(d => d.month === 1);
-            const feb25 = data2025.find(d => d.month === 2);
-            const mar25 = data2025.find(d => d.month === 3);
-            const apr25 = data2025.find(d => d.month === 4);
+            const jan_prev = getVal(dataPrev, 1), feb_prev = getVal(dataPrev, 2), mar_prev = getVal(dataPrev, 3);
+            const dec_prev = getVal(dataPrev, 12);
+            const jan_lat = getVal(dataLatest, 1), feb_lat = getVal(dataLatest, 2), mar_lat = getVal(dataLatest, 3);
 
-            const jan24Val = jan24?.value || 0;
-            const feb24Val = feb24?.value || 0;
-            const mar24Val = mar24?.value || 0;
-            const apr24Val = apr24?.value || 0;
-            const dec24Val = dec24?.value || 0;
-            const nov24Val = nov24?.value || 0;
-            const jan25Val = jan25?.value || 0;
-            const feb25Val = feb25?.value || 0;
-            const mar25Val = mar25?.value || 0;
-            const apr25Val = apr25?.value || 0;
-
-            // YoY trend analysis - compare same months between years
-            // Get 2025 months from Aug onwards (most recent complete months)
-            const aug25 = data2025.find(d => d.month === 8);
-            const sep25 = data2025.find(d => d.month === 9);
-            const oct25 = data2025.find(d => d.month === 10);
-            const nov25 = data2025.find(d => d.month === 11);
-
-            // Compare YoY for same months to get trend %
-            const aug24 = data2024.find(d => d.month === 8);
-            const sep24 = data2024.find(d => d.month === 9);
-            const oct24 = data2024.find(d => d.month === 10);
-
-            // Calculate YoY change % for recent months
+            // YoY trend: compare last 3 available months of latest year vs same months in previous year
+            const latestMonths = dataLatest.map(d => d.month).sort((a,b) => b-a);
             const yoyChanges = [];
-            if (aug24?.value && aug25?.value) yoyChanges.push((aug25.value - aug24.value) / aug24.value * 100);
-            if (sep24?.value && sep25?.value) yoyChanges.push((sep25.value - sep24.value) / sep24.value * 100);
-            if (oct24?.value && oct25?.value) yoyChanges.push((oct25.value - oct24.value) / oct24.value * 100);
+            for (const m of latestMonths.slice(0, 5)) {
+                const vLat = getVal(dataLatest, m);
+                const vPrev = getVal(dataPrev, m);
+                if (vLat && vPrev) yoyChanges.push((vLat - vPrev) / vPrev * 100);
+            }
+            // Also use multi-year average YoY if we have 3+ years
+            if (years.length >= 3) {
+                for (let yi = 1; yi < years.length - 1; yi++) {
+                    const yData = allData.filter(d => d.year === parseInt(years[yi]));
+                    const yPrevData = allData.filter(d => d.year === parseInt(years[yi-1]));
+                    for (const m of [8, 9, 10, 11]) {
+                        const v1 = getVal(yPrevData, m), v2 = getVal(yData, m);
+                        if (v1 && v2) yoyChanges.push((v2 - v1) / v1 * 100);
+                    }
+                }
+            }
             const avgYoY = yoyChanges.length > 0 ? yoyChanges.reduce((a,b) => a+b, 0) / yoyChanges.length : -10;
 
-            // Last 3 months trend within 2025
-            const last3 = allData.slice(-3);
-            const avgLast3 = last3.reduce((a,b) => a + b.value, 0) / 3;
+            // Prediction: next month after last available
+            const lastMonth = latestMonths[0]; // e.g., 11 for November
+            const predDec = dec_prev * (1 + avgYoY / 100);
 
-            // Prediction Dec 2025: based on Dec 2024 + YoY trend
-            const predDec = dec24Val * (1 + avgYoY / 100);
-
-            // Jan 2026: based on Jan 2025 + YoY trend (Jan is WEAK!)
-            const predJan = jan25Val * (1 + avgYoY / 100);
-
-            // Feb 2026: based on Feb 2025 + YoY trend
-            const predFeb = feb25Val * (1 + avgYoY / 100);
-
-            // Mar 2026: based on Mar 2025 + YoY trend
-            const predMar = mar25Val * (1 + avgYoY / 100);
+            // Next year months
+            const predJan = jan_lat * (1 + avgYoY / 100);
+            const predFeb = feb_lat * (1 + avgYoY / 100);
+            const predMar = mar_lat * (1 + avgYoY / 100);
 
             // Q1 estimate
             const predQ1 = predJan + predFeb + predMar;
 
+            document.getElementById('predDecTitle').textContent = `Estimare Decembrie ${latestYear}`;
+            document.getElementById('predQ1Title').textContent = `Perspectiva Q1 ${nextYear}`;
             document.getElementById('predDec').textContent = fmt(Math.round(predDec));
             document.getElementById('predTrans').textContent = fmt(Math.round(predDec / 2400));
             document.getElementById('predJan').textContent = fmt(Math.round(predJan));
             document.getElementById('predQ1').textContent = fmt(Math.round(predQ1));
 
             // Calculate % change from Dec to Jan (historical pattern)
-            const decToJanDrop24 = dec24Val > 0 ? ((jan25Val - dec24Val) / dec24Val * 100).toFixed(1) : 0;
+            const decToJanDrop = dec_prev > 0 ? ((jan_lat - dec_prev) / dec_prev * 100).toFixed(1) : 0;
+            const nextYear = latestYear + 1;
+
+            // Build methodology table with all available years
+            let methTableHead = '<th style="text-align:left;color:#00d9ff;padding:5px;">Luna</th>';
+            years.forEach(y => methTableHead += `<th style="text-align:right;padding:5px;">${y}</th>`);
+            methTableHead += `<th style="text-align:right;padding:5px;">Predictie ${nextYear}</th>`;
+
+            const methRow = (label, month, pred, color) => {
+                let row = `<td style="padding:5px;${color ? 'color:'+color : ''}">${label}</td>`;
+                years.forEach(y => {
+                    const v = getVal(allData.filter(d => d.year === parseInt(y)), month);
+                    row += `<td style="text-align:right;padding:5px;">${v ? fmt(v) : '-'}</td>`;
+                });
+                row += `<td style="text-align:right;padding:5px;color:${color || '#feca57'};">${fmt(Math.round(pred))}</td>`;
+                return row;
+            };
 
             document.getElementById('predictionMethodology').innerHTML = `
-                <p><strong style="color:#00d9ff;">Metodologie: Trend YoY (Aug-Oct 2025 vs 2024)</strong></p>
+                <p><strong style="color:#00d9ff;">Metodologie: Trend YoY (${years.length} ani de date: ${years.join(', ')})</strong></p>
                 <p style="margin:8px 0;color:#888;">Media schimbare YoY: <strong style="color:${avgYoY >= 0 ? '#00ff88' : '#ff6b6b'};">${avgYoY >= 0 ? '+' : ''}${avgYoY.toFixed(1)}%</strong></p>
                 <table style="width:100%;margin:10px 0;font-size:0.85em;color:#aaa;border-collapse:collapse;">
-                    <tr style="border-bottom:1px solid rgba(255,255,255,0.1);"><th style="text-align:left;color:#00d9ff;padding:5px;">Luna</th><th style="text-align:right;padding:5px;">2024</th><th style="text-align:right;padding:5px;">2025</th><th style="text-align:right;padding:5px;">Predictie 2026</th></tr>
-                    <tr><td style="padding:5px;">Decembrie</td><td style="text-align:right;padding:5px;">${fmt(dec24Val)}</td><td style="text-align:right;padding:5px;">-</td><td style="text-align:right;padding:5px;color:#feca57;">${fmt(Math.round(predDec))}</td></tr>
-                    <tr style="background:rgba(255,107,107,0.1);"><td style="padding:5px;color:#ff6b6b;">Ianuarie ⬇️</td><td style="text-align:right;padding:5px;">${fmt(jan24Val)}</td><td style="text-align:right;padding:5px;">${fmt(jan25Val)}</td><td style="text-align:right;padding:5px;color:#ff6b6b;">${fmt(Math.round(predJan))}</td></tr>
-                    <tr style="background:rgba(255,107,107,0.1);"><td style="padding:5px;color:#ff6b6b;">Februarie</td><td style="text-align:right;padding:5px;">${fmt(feb24Val)}</td><td style="text-align:right;padding:5px;">${fmt(feb25Val)}</td><td style="text-align:right;padding:5px;color:#ff6b6b;">${fmt(Math.round(predFeb))}</td></tr>
-                    <tr style="background:rgba(0,255,136,0.1);"><td style="padding:5px;color:#00ff88;">Martie ⬆️</td><td style="text-align:right;padding:5px;">${fmt(mar24Val)}</td><td style="text-align:right;padding:5px;">${fmt(mar25Val)}</td><td style="text-align:right;padding:5px;color:#00ff88;">${fmt(Math.round(predMar))}</td></tr>
+                    <tr style="border-bottom:1px solid rgba(255,255,255,0.1);">${methTableHead}</tr>
+                    <tr>${methRow('Decembrie', 12, predDec, '#feca57')}</tr>
+                    <tr style="background:rgba(255,107,107,0.1);">${methRow('Ianuarie', 1, predJan, '#ff6b6b')}</tr>
+                    <tr style="background:rgba(255,107,107,0.1);">${methRow('Februarie', 2, predFeb, '#ff6b6b')}</tr>
+                    <tr style="background:rgba(0,255,136,0.1);">${methRow('Martie', 3, predMar, '#00ff88')}</tr>
                 </table>
-                <p style="margin-top:10px;"><strong>Formula:</strong> Valoare luna 2025 × (1 + ${avgYoY.toFixed(1)}%)</p>
-                <p style="color:#ff6b6b;margin-top:8px;"><strong>⚠️ Atentie:</strong> Dec→Ian scade cu ~${Math.abs(decToJanDrop24)}% (istoric)</p>
-                <p style="color:#feca57;margin-top:10px;"><strong>Q1 2026 Total:</strong> ${fmt(Math.round(predQ1))} RON</p>`;
+                <p style="margin-top:10px;"><strong>Formula:</strong> Valoare luna ${latestYear} x (1 + ${avgYoY.toFixed(1)}%)</p>
+                <p style="color:#ff6b6b;margin-top:8px;"><strong>Atentie:</strong> Dec-Ian scade cu ~${Math.abs(decToJanDrop)}% (istoric)</p>
+                <p style="color:#feca57;margin-top:10px;"><strong>Q1 ${nextYear} Total:</strong> ${fmt(Math.round(predQ1))} RON</p>`;
 
-            document.getElementById('decAlert').innerHTML = `<div class="alert-card info"><div class="icon">📊</div><div class="content"><div class="title">Trend YoY: ${avgYoY >= 0 ? '+' : ''}${avgYoY.toFixed(1)}%</div><div class="desc">Bazat pe Aug-Oct 2025 vs 2024</div></div></div>`;
-            document.getElementById('janAlert').innerHTML = `<div class="alert-card danger"><div class="icon">⚠️</div><div class="content"><div class="title">Ianuarie = Luna SLABA!</div><div class="desc">2024: ${fmt(jan24Val)} | 2025: ${fmt(jan25Val)} → 2026: ~${fmt(Math.round(predJan))} RON</div></div></div>`;
+            document.getElementById('decAlert').innerHTML = `<div class="alert-card info"><div class="icon">📊</div><div class="content"><div class="title">Trend YoY: ${avgYoY >= 0 ? '+' : ''}${avgYoY.toFixed(1)}%</div><div class="desc">Bazat pe ${years.length} ani de date (${years[0]}-${years[years.length-1]})</div></div></div>`;
+            document.getElementById('janAlert').innerHTML = `<div class="alert-card danger"><div class="icon">⚠️</div><div class="content"><div class="title">Ianuarie = Luna SLABA!</div><div class="desc">${prevYear}: ${fmt(jan_prev)} | ${latestYear}: ${fmt(jan_lat)} - ${nextYear}: ~${fmt(Math.round(predJan))} RON</div></div></div>`;
 
-            const labels = [...allData.map(d => d.label), "Dec'25", "Ian'26", "Feb'26", "Mar'26"];
+            const labels = [...allData.map(d => d.label), `Dec'${String(latestYear).slice(2)}`, `Ian'${String(nextYear).slice(2)}`, `Feb'${String(nextYear).slice(2)}`, `Mar'${String(nextYear).slice(2)}`];
             const actualData = [...allData.map(d => d.value), null, null, null, null];
             const predData = new Array(allData.length - 1).fill(null);
             predData.push(allData[allData.length-1].value, predDec, predJan, predFeb, predMar);
@@ -1062,11 +1068,12 @@
                 }
             });
 
-            const y24 = monthly.years['2024']?.summary, y25 = monthly.years['2025']?.summary;
+            const yLatest = monthly.years[String(latestYear)]?.summary;
+            const yPrev = monthly.years[String(prevYear)]?.summary;
             let alerts = '';
-            if (y24 && y25) {
-                const yoy = ((y25.total_value - y24.total_value) / y24.total_value * 100).toFixed(1);
-                if (parseFloat(yoy) < 0) alerts += `<div class="alert-card danger"><div class="icon">📉</div><div class="content"><div class="title">Rulaj 2025 mai mic cu ${Math.abs(yoy)}%</div><div class="desc">Comparativ cu 2024</div></div></div>`;
+            if (yLatest && yPrev) {
+                const yoy = ((yLatest.total_value - yPrev.total_value) / yPrev.total_value * 100).toFixed(1);
+                if (parseFloat(yoy) < 0) alerts += `<div class="alert-card danger"><div class="icon">📉</div><div class="content"><div class="title">Rulaj ${latestYear} mai mic cu ${Math.abs(yoy)}%</div><div class="desc">Comparativ cu ${prevYear}</div></div></div>`;
             }
             alerts += `<div class="alert-card warning"><div class="icon">😴</div><div class="content"><div class="title">Parteneri inactivi</div><div class="desc">Multi parteneri nu au mai vizitat de 60+ zile</div></div></div>`;
             alerts += `<div class="alert-card success"><div class="icon">⭐</div><div class="content"><div class="title">VIP-urile sunt stabile</div><div class="desc">Top 100 continua sa fie activi</div></div></div>`;
@@ -1149,7 +1156,8 @@
             if (topPartners?.partners) {
                 document.getElementById('vipTable').innerHTML = topPartners.partners.map(p => `<tr onclick="showPartnerProfile('${p.cnp}')" style="cursor:pointer;"><td>${p.name}</td><td class="text-right">${fmt(p.total_value)}</td><td class="text-right">${p.visit_count}</td><td><button onclick="event.stopPropagation();showPartnerProfile('${p.cnp}')" style="background:#00d9ff;border:none;color:#000;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:0.75em;">Profil</button></td></tr>`).join('');
                 const totalVip = topPartners.partners.reduce((a,p) => a + p.total_value, 0);
-                document.getElementById('vipStats').innerHTML = `<div class="insight-box"><strong>Top 20 = ${fmt(totalVip)} RON</strong> (${(totalVip/118700000*100).toFixed(1)}% din total)</div>`;
+                const overallTotal = Object.values(monthlyData?.years || {}).reduce((a, y) => a + (y.summary?.total_value || 0), 0) || 1;
+                document.getElementById('vipStats').innerHTML = `<div class="insight-box"><strong>Top 20 = ${fmt(totalVip)} RON</strong> (${(totalVip/overallTotal*100).toFixed(1)}% din total)</div>`;
             }
 
             Promise.all([fetch('/api/partners?regulars=weekly').then(r=>r.json()), fetch('/api/partners?regulars=monthly').then(r=>r.json()), fetch('/api/partners?regulars=yearly').then(r=>r.json())]).then(([w,m,y]) => {
@@ -1374,7 +1382,7 @@
             document.getElementById('listaCounty').value = '';
             document.getElementById('listaCity').value = '';
             document.getElementById('listaStreet').value = '';
-            document.getElementById('listaDateFrom').value = '2024-01-01';
+            document.getElementById('listaDateFrom').value = '2022-01-01';
             document.getElementById('listaDateTo').value = '2025-12-31';
             document.getElementById('listaCategory').value = '';
             document.getElementById('listaMinVisits').value = '0';
