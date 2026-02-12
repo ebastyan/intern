@@ -995,6 +995,7 @@
 
             // Q1 estimate
             const predQ1 = predJan + predFeb + predMar;
+            const nextYear = latestYear + 1;
 
             document.getElementById('predDecTitle').textContent = `Estimare Decembrie ${latestYear}`;
             document.getElementById('predQ1Title').textContent = `Perspectiva Q1 ${nextYear}`;
@@ -1005,7 +1006,6 @@
 
             // Calculate % change from Dec to Jan (historical pattern)
             const decToJanDrop = dec_prev > 0 ? ((jan_lat - dec_prev) / dec_prev * 100).toFixed(1) : 0;
-            const nextYear = latestYear + 1;
 
             // Build methodology table with all available years
             let methTableHead = '<th style="text-align:left;color:#00d9ff;padding:5px;">Luna</th>';
