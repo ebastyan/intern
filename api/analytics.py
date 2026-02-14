@@ -70,6 +70,10 @@ class handler(BaseHTTPRequestHandler):
                 result = self.get_city_details(cur, city)
             elif analysis_type == 'all_cities':
                 result = self.get_all_cities(cur)
+            elif analysis_type == 'custom_compare':
+                months = params.get('months', ['1,2,3,4,5,6,7,8,9,10,11,12'])[0]
+                category = params.get('category', [None])[0]
+                result = self.get_custom_compare(cur, months, category)
             else:
                 result = {
                     'error': 'Unknown analysis type',
@@ -615,7 +619,13 @@ class handler(BaseHTTPRequestHandler):
                             'after_start': '2025-01-01', 'after_end': '2025-01-14'},
             'mos_nicolae_2024': {'start': '2024-12-01', 'end': '2024-12-08', 'name': 'Mos Nicolae 2024',
                                 'before_start': '2024-11-17', 'before_end': '2024-11-30',
-                                'after_start': '2024-12-09', 'after_end': '2024-12-16'}
+                                'after_start': '2024-12-09', 'after_end': '2024-12-16'},
+            'craciun_2025': {'start': '2025-12-20', 'end': '2025-12-31', 'name': 'Craciun 2025',
+                            'before_start': '2025-12-06', 'before_end': '2025-12-19',
+                            'after_start': '2026-01-01', 'after_end': '2026-01-14'},
+            'mos_nicolae_2025': {'start': '2025-12-01', 'end': '2025-12-08', 'name': 'Mos Nicolae 2025',
+                                'before_start': '2025-11-17', 'before_end': '2025-11-30',
+                                'after_start': '2025-12-09', 'after_end': '2025-12-16'}
         }
 
         results = {}
@@ -917,4 +927,273 @@ class handler(BaseHTTPRequestHandler):
             'by_category': by_category,
             'top_by_visits': top_by_visits,
             'top_by_value': top_by_value
+        }
+
+    def get_custom_compare(self, cur, months_str, category):
+        """Custom comparison: selected months across all years, optionally filtered by waste category.
+        Returns per-year: transactions, value, weight, unique partners, demographics."""
+        month_list = [int(m.strip()) for m in months_str.split(',') if m.strip().isdigit()]
+        if not month_list:
+            return {'error': 'No valid months specified'}
+
+        month_placeholders = ','.join(['%s'] * len(month_list))
+
+        # Base: all transactions in selected months
+        # If category filter: only partners/transactions that have items in that category
+        if category:
+            # Per year stats - filtered by category
+            cur.execute(f"""
+                SELECT EXTRACT(YEAR FROM t.date)::int as year,
+                       COUNT(DISTINCT t.document_id) as transactions,
+                       COALESCE(SUM(t.gross_value), 0) as total_value,
+                       COALESCE(SUM(t.net_paid), 0) as total_paid,
+                       COUNT(DISTINCT t.cnp) as unique_partners,
+                       COUNT(DISTINCT t.date) as working_days
+                FROM transactions t
+                JOIN transaction_items ti ON t.document_id = ti.document_id
+                JOIN waste_types wt ON ti.waste_type_id = wt.id
+                JOIN waste_categories wc ON wt.category_id = wc.id
+                WHERE EXTRACT(MONTH FROM t.date) IN ({month_placeholders})
+                  AND wc.name ILIKE %s
+                GROUP BY EXTRACT(YEAR FROM t.date)
+                ORDER BY year
+            """, month_list + [category])
+
+            year_stats = cur.fetchall()
+
+            # Category-specific weight/value
+            cur.execute(f"""
+                SELECT EXTRACT(YEAR FROM t.date)::int as year,
+                       COALESCE(SUM(ti.weight_kg), 0) as total_kg,
+                       COALESCE(SUM(ti.value), 0) as category_value,
+                       COUNT(DISTINCT t.cnp) as category_partners,
+                       ROUND(AVG(ti.price_per_kg)::numeric, 2) as avg_price
+                FROM transaction_items ti
+                JOIN waste_types wt ON ti.waste_type_id = wt.id
+                JOIN waste_categories wc ON wt.category_id = wc.id
+                JOIN transactions t ON ti.document_id = t.document_id
+                WHERE EXTRACT(MONTH FROM t.date) IN ({month_placeholders})
+                  AND wc.name ILIKE %s
+                GROUP BY EXTRACT(YEAR FROM t.date)
+                ORDER BY year
+            """, month_list + [category])
+            category_stats = {r['year']: r for r in cur.fetchall()}
+
+            # Demographics for partners who brought this category in selected months
+            cur.execute(f"""
+                SELECT EXTRACT(YEAR FROM t.date)::int as year,
+                       p.sex,
+                       COUNT(DISTINCT p.cnp) as cnt
+                FROM partners p
+                JOIN transactions t ON p.cnp = t.cnp
+                JOIN transaction_items ti ON t.document_id = ti.document_id
+                JOIN waste_types wt ON ti.waste_type_id = wt.id
+                JOIN waste_categories wc ON wt.category_id = wc.id
+                WHERE EXTRACT(MONTH FROM t.date) IN ({month_placeholders})
+                  AND wc.name ILIKE %s
+                  AND p.sex IS NOT NULL AND p.sex != ''
+                GROUP BY EXTRACT(YEAR FROM t.date), p.sex
+                ORDER BY year
+            """, month_list + [category])
+            sex_data = cur.fetchall()
+
+            # Age groups for category partners
+            cur.execute(f"""
+                SELECT EXTRACT(YEAR FROM t.date)::int as year,
+                       CASE
+                           WHEN p.birth_year IS NULL OR p.birth_year = 0 THEN 'Necunoscut'
+                           WHEN EXTRACT(YEAR FROM t.date) - p.birth_year < 25 THEN '18-24'
+                           WHEN EXTRACT(YEAR FROM t.date) - p.birth_year < 35 THEN '25-34'
+                           WHEN EXTRACT(YEAR FROM t.date) - p.birth_year < 45 THEN '35-44'
+                           WHEN EXTRACT(YEAR FROM t.date) - p.birth_year < 55 THEN '45-54'
+                           WHEN EXTRACT(YEAR FROM t.date) - p.birth_year < 65 THEN '55-64'
+                           ELSE '65+'
+                       END as age_group,
+                       COUNT(DISTINCT p.cnp) as cnt
+                FROM partners p
+                JOIN transactions t ON p.cnp = t.cnp
+                JOIN transaction_items ti ON t.document_id = ti.document_id
+                JOIN waste_types wt ON ti.waste_type_id = wt.id
+                JOIN waste_categories wc ON wt.category_id = wc.id
+                WHERE EXTRACT(MONTH FROM t.date) IN ({month_placeholders})
+                  AND wc.name ILIKE %s
+                GROUP BY EXTRACT(YEAR FROM t.date), age_group
+                ORDER BY year
+            """, month_list + [category])
+            age_data = cur.fetchall()
+
+            # County breakdown for category partners
+            cur.execute(f"""
+                SELECT EXTRACT(YEAR FROM t.date)::int as year,
+                       COALESCE(p.county, 'Necunoscut') as county,
+                       COUNT(DISTINCT p.cnp) as cnt
+                FROM partners p
+                JOIN transactions t ON p.cnp = t.cnp
+                JOIN transaction_items ti ON t.document_id = ti.document_id
+                JOIN waste_types wt ON ti.waste_type_id = wt.id
+                JOIN waste_categories wc ON wt.category_id = wc.id
+                WHERE EXTRACT(MONTH FROM t.date) IN ({month_placeholders})
+                  AND wc.name ILIKE %s
+                GROUP BY EXTRACT(YEAR FROM t.date), p.county
+                ORDER BY year, cnt DESC
+            """, month_list + [category])
+            county_data = cur.fetchall()
+
+        else:
+            # No category filter - all transactions in selected months
+            cur.execute(f"""
+                SELECT EXTRACT(YEAR FROM t.date)::int as year,
+                       COUNT(DISTINCT t.document_id) as transactions,
+                       COALESCE(SUM(t.gross_value), 0) as total_value,
+                       COALESCE(SUM(t.net_paid), 0) as total_paid,
+                       COUNT(DISTINCT t.cnp) as unique_partners,
+                       COUNT(DISTINCT t.date) as working_days
+                FROM transactions t
+                WHERE EXTRACT(MONTH FROM t.date) IN ({month_placeholders})
+                GROUP BY EXTRACT(YEAR FROM t.date)
+                ORDER BY year
+            """, month_list)
+            year_stats = cur.fetchall()
+
+            # Total weight by category per year
+            cur.execute(f"""
+                SELECT EXTRACT(YEAR FROM t.date)::int as year,
+                       wc.name as category,
+                       COALESCE(SUM(ti.weight_kg), 0) as total_kg,
+                       COALESCE(SUM(ti.value), 0) as total_value
+                FROM transaction_items ti
+                JOIN waste_types wt ON ti.waste_type_id = wt.id
+                JOIN waste_categories wc ON wt.category_id = wc.id
+                JOIN transactions t ON ti.document_id = t.document_id
+                WHERE EXTRACT(MONTH FROM t.date) IN ({month_placeholders})
+                GROUP BY EXTRACT(YEAR FROM t.date), wc.name
+                ORDER BY year, total_kg DESC
+            """, month_list)
+            cat_breakdown_rows = cur.fetchall()
+            category_stats = {}
+            for r in cat_breakdown_rows:
+                yr = r['year']
+                if yr not in category_stats:
+                    category_stats[yr] = {'categories': []}
+                category_stats[yr]['categories'].append({
+                    'name': r['category'],
+                    'kg': float(r['total_kg']),
+                    'value': float(r['total_value'])
+                })
+
+            # Demographics - sex
+            cur.execute(f"""
+                SELECT EXTRACT(YEAR FROM t.date)::int as year,
+                       p.sex,
+                       COUNT(DISTINCT p.cnp) as cnt
+                FROM partners p
+                JOIN transactions t ON p.cnp = t.cnp
+                WHERE EXTRACT(MONTH FROM t.date) IN ({month_placeholders})
+                  AND p.sex IS NOT NULL AND p.sex != ''
+                GROUP BY EXTRACT(YEAR FROM t.date), p.sex
+                ORDER BY year
+            """, month_list)
+            sex_data = cur.fetchall()
+
+            # Age groups
+            cur.execute(f"""
+                SELECT EXTRACT(YEAR FROM t.date)::int as year,
+                       CASE
+                           WHEN p.birth_year IS NULL OR p.birth_year = 0 THEN 'Necunoscut'
+                           WHEN EXTRACT(YEAR FROM t.date) - p.birth_year < 25 THEN '18-24'
+                           WHEN EXTRACT(YEAR FROM t.date) - p.birth_year < 35 THEN '25-34'
+                           WHEN EXTRACT(YEAR FROM t.date) - p.birth_year < 45 THEN '35-44'
+                           WHEN EXTRACT(YEAR FROM t.date) - p.birth_year < 55 THEN '45-54'
+                           WHEN EXTRACT(YEAR FROM t.date) - p.birth_year < 65 THEN '55-64'
+                           ELSE '65+'
+                       END as age_group,
+                       COUNT(DISTINCT p.cnp) as cnt
+                FROM partners p
+                JOIN transactions t ON p.cnp = t.cnp
+                WHERE EXTRACT(MONTH FROM t.date) IN ({month_placeholders})
+                GROUP BY EXTRACT(YEAR FROM t.date), age_group
+                ORDER BY year
+            """, month_list)
+            age_data = cur.fetchall()
+
+            # County breakdown
+            cur.execute(f"""
+                SELECT EXTRACT(YEAR FROM t.date)::int as year,
+                       COALESCE(p.county, 'Necunoscut') as county,
+                       COUNT(DISTINCT p.cnp) as cnt
+                FROM partners p
+                JOIN transactions t ON p.cnp = t.cnp
+                WHERE EXTRACT(MONTH FROM t.date) IN ({month_placeholders})
+                GROUP BY EXTRACT(YEAR FROM t.date), p.county
+                ORDER BY year, cnt DESC
+            """, month_list)
+            county_data = cur.fetchall()
+
+        # Also get TOTAL partners per year (all months) for comparison
+        cur.execute("""
+            SELECT EXTRACT(YEAR FROM date)::int as year,
+                   COUNT(DISTINCT cnp) as total_partners
+            FROM transactions
+            GROUP BY EXTRACT(YEAR FROM date)
+            ORDER BY year
+        """)
+        total_partners_by_year = {r['year']: r['total_partners'] for r in cur.fetchall()}
+
+        # Build result
+        years_result = {}
+        for ys in year_stats:
+            yr = ys['year']
+            # Sex breakdown
+            sex_breakdown = {}
+            for sd in sex_data:
+                if sd['year'] == yr:
+                    sex_breakdown[sd['sex']] = sd['cnt']
+
+            # Age breakdown
+            age_breakdown = {}
+            age_order = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+', 'Necunoscut']
+            for ad in age_data:
+                if ad['year'] == yr:
+                    age_breakdown[ad['age_group']] = ad['cnt']
+
+            # County breakdown (top 10)
+            counties = []
+            for cd in county_data:
+                if cd['year'] == yr:
+                    counties.append({'county': cd['county'], 'partners': cd['cnt']})
+            counties = counties[:10]
+
+            year_data = {
+                'transactions': ys['transactions'],
+                'total_value': float(ys['total_value']),
+                'total_paid': float(ys['total_paid']),
+                'unique_partners': ys['unique_partners'],
+                'total_partners_year': total_partners_by_year.get(yr, 0),
+                'working_days': ys['working_days'],
+                'avg_per_day': float(ys['total_value']) / ys['working_days'] if ys['working_days'] > 0 else 0,
+                'sex': sex_breakdown,
+                'age_groups': age_breakdown,
+                'top_counties': counties
+            }
+
+            if category:
+                cs = category_stats.get(yr, {})
+                year_data['category_kg'] = float(cs.get('total_kg', 0)) if cs else 0
+                year_data['category_value'] = float(cs.get('category_value', 0)) if cs else 0
+                year_data['category_partners'] = cs.get('category_partners', 0) if cs else 0
+                year_data['avg_price'] = float(cs.get('avg_price', 0)) if cs else 0
+            else:
+                year_data['category_breakdown'] = category_stats.get(yr, {}).get('categories', [])
+
+            years_result[yr] = year_data
+
+        # Get available categories for filter
+        cur.execute("SELECT name FROM waste_categories ORDER BY name")
+        available_categories = [r['name'] for r in cur.fetchall()]
+
+        return {
+            'months': month_list,
+            'category': category,
+            'years': years_result,
+            'available_categories': available_categories
         }

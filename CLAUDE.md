@@ -31,7 +31,7 @@ PAJU hulladekfelvásárlási dashboard - komplex adatkezelő és analitikai rend
 
 ### Tables
 ```
-partners          - Partnerek (30,000+)
+partners          - Partnerek (30,300+)
 ├── cnp (PK)      - 13 jegyű azonosító
 ├── name          - Teljes név
 ├── city          - Város
@@ -43,7 +43,7 @@ partners          - Partnerek (30,000+)
 ├── sex           - M/F
 └── county_from_cnp - CNP-ből kiolvasott megye
 
-transactions      - Tranzakciók (51,000+)
+transactions      - Tranzakciók (106,000+)
 ├── document_id (PK) - Dokumentum azonosító (PJ-XXXXXX)
 ├── date          - Dátum
 ├── cnp (FK)      - Partner CNP
@@ -88,6 +88,7 @@ waste_categories  - Hulladék kategóriák
 | `type=age` | Korosztály elemzés |
 | `type=trends` | Trend összehasonlítás |
 | `type=waste_by_region` | Hulladék regionális bontás |
+| `type=custom_compare&months=1,2&category=X` | Egyedi összehasonlítás: hónapok + kategória szűrés, demográfia |
 
 ### `/api/partners`
 | Parameter | Description |
@@ -137,10 +138,16 @@ Dashboard fő adatok (summary cards)
 - Top 10 partnerek
 - Kategória megoszlás
 
-### 2. 2024 vs 2025
-- Havi összehasonlító grafikonok
-- Részletes táblázat
-- Trend elemzés
+### 2. Comparatie Anuala
+- **Comparatie Personalizata** - Egyedi összehasonlítás:
+  - Hónap választó (checkbox, bármely kombináció)
+  - Kategória szűrő (opcionális)
+  - Eredmény: tranzakciók, érték, partnerek minden évre
+  - Demográfia: nem (M/F), korosztály (18-24, 25-34, stb.), top megyék
+  - Kategória-specifikus: kg, érték, átlagár, partnerek
+- Dinamikus éves összehasonlítás (minden év: 2022-2026+)
+- Részletes táblázat YoY változásokkal
+- Trend elemzés, dinamikus színek évekhez
 
 ### 3. Parteneri
 **Tabs:**
@@ -171,8 +178,8 @@ Dashboard fő adatok (summary cards)
 - Korosztály elemzés
 
 ### 6. Predictii
-- Előrejelzési grafikon
-- Metodológia leírás
+- Előrejelzési grafikon (összes történeti adatból)
+- Dinamikus metodológia (multi-éves YoY átlag)
 
 ### 7. Statistice
 - Részletes statisztikák
@@ -215,9 +222,11 @@ paju/
 │   ├── data.py        - Dashboard adat API
 │   └── monthly.py     - Havi részletek API
 ├── index.html         - Főoldal (teljes SPA)
+├── firme.html         - Firme B2B dashboard (SPA)
 ├── vercel.json        - Vercel konfiguráció
 ├── requirements.txt   - Python függőségek
 ├── CLAUDE.md          - Ez a fájl (memoria)
+├── MEMORIA.md         - Részletes projekt dokumentáció
 └── README.md          - Projekt dokumentáció
 ```
 
@@ -236,13 +245,23 @@ Use `= %s` for exact match (CNP, sex)
 - `LEFT JOIN` when showing partners even without transactions
 - `JOIN` when filtering requires transaction data
 
-## Statistics (as of Nov 2024)
-- Total turnover: ~118.7M RON
-- Transactions: 51,000+
-- Registered partners: 30,000+
-- Active partners: 13,000+
+## Statistics (as of Feb 2026)
+- Total turnover: ~250.3M RON (2022-2026)
+- Transactions: 112,765+
+- Transaction items: 225,089+
+- Registered partners: 30,853+
 - Waste categories: 16
-- Period: 2024.01 - 2025.11
+- Waste types: 47
+- Period: 2022.01 - 2026.02
+
+### Yearly breakdown
+| Year | Transactions | Partners | Working days | Total RON |
+|------|-------------|----------|-------------|-----------|
+| 2022 | 28,389 | ~8,500 | 271 | ~60.9M |
+| 2023 | 28,355 | ~8,750 | 272 | ~61.0M |
+| 2024 | 28,029 | 8,790 | 280 | ~70.8M |
+| 2025 | 25,284 | ~8,800 | 272 | ~52.1M |
+| 2026 | 2,708 | ~2,500 | 30 | ~5.4M |
 
 ## Development
 

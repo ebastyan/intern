@@ -1,6 +1,9 @@
 # Data files (nagy xls mappak)
+2022/
+2023/
 2024/
 2025/
+2026/
 situatie vanzari/
 
 # Excel files
@@ -21,3 +24,4 @@ __pycache__/
 .idea/
 
 .vercel
+.env*.local

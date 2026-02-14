@@ -74,7 +74,7 @@ db_url = os.environ.get('POSTGRES_URL')
 ### 4.1 Persoane Fizice tablak
 
 ```sql
--- Partnerek (maganszemelyek) - 30,000+ rekord
+-- Partnerek (maganszemelyek) - 30,300+ rekord
 partners (
     cnp VARCHAR(13) PRIMARY KEY,  -- Roman szemelyi szam (13 jegy)
     name VARCHAR(255),
@@ -88,7 +88,7 @@ partners (
     county_from_cnp VARCHAR(50)   -- CNP-bol kiolvasott megye
 )
 
--- Tranzakciok - 51,000+ rekord
+-- Tranzakciok - 106,000+ rekord
 transactions (
     document_id VARCHAR(20) PRIMARY KEY,  -- Format: PJ-XXXXXX
     date DATE,
@@ -274,7 +274,7 @@ transporturi_firme (
 
 **Tabok:**
 1. **Sumar** - 6 nagy stat kartya, top 10 partnerek, kategoria megoszlas
-2. **2024 vs 2025** - Havi osszehasonlito grafikonok, reszletes tablazat
+2. **Comparatie Anuala** - Dinamikus eves osszehasonlitas (minden ev), grafikonok, reszletes tablazat
 3. **Parteneri** - 7 sub-tab:
    - VIP (Top 20)
    - O Singura Data (egyszeri latogatok)
@@ -425,17 +425,27 @@ POSTGRES_URL = postgresql://neondb_owner:npg_L2AyrcXul8km@ep-ancient-firefly-a47
 
 ---
 
-## 11. STATISZTIKAK (2024 December)
+## 11. STATISZTIKAK (2026 Februar)
 
 ### Persoane Fizice
 | Mutato | Ertek |
 |--------|-------|
-| Osszes rulaj | ~118.7M RON |
-| Tranzakciok | 51,000+ |
-| Regisztralt partnerek | 30,000+ |
-| Aktiv partnerek | 13,000+ |
+| Osszes rulaj | ~250.3M RON |
+| Tranzakciok | 112,765+ |
+| Tranzakcio tetelek | 225,089+ |
+| Regisztralt partnerek | 30,853+ |
 | Hulladek kategoriak | 16 |
-| Idoszak | 2024.01 - 2025.11 |
+| Hulladek tipusok | 47 |
+| Idoszak | 2022.01 - 2026.02 |
+
+#### Eves bontas (Persoane Fizice)
+| Ev | Tranzakciok | Partnerek | Munkanapok | Rulaj RON |
+|----|-------------|-----------|------------|-----------|
+| 2022 | 28,389 | ~8,500 | 271 | ~60.9M |
+| 2023 | 28,355 | ~8,750 | 272 | ~61.0M |
+| 2024 | 28,029 | 8,790 | 280 | ~70.8M |
+| 2025 | 25,284 | ~8,800 | 272 | ~52.1M |
+| 2026 | 2,708 | ~2,500 | 30 | ~5.4M |
 
 ### Firme (B2B)
 | Mutato | Ertek |
@@ -457,6 +467,74 @@ POSTGRES_URL = postgresql://neondb_owner:npg_L2AyrcXul8km@ep-ancient-firefly-a47
 ---
 
 ## 13. FEJLESZTESI NAPLO (Legutobbi)
+
+### 2026-02-14 - 2025 Nov-Dec + 2026 Jan-Feb Adat Import es Frontend Adaptacio
+- **Adat import:**
+  - 2025 november 24-29 (6 nap, ~676 tranzakcio)
+  - 2025 december teljes (19 nap, ~1,637 tranzakcio)
+  - 2026 januar teljes (20 nap, ~1,815 tranzakcio) - 1 serult fajl (12.01.2026) megoldva Excel COM konverzioval
+  - 2026 februar 02-12 (10 nap, ~893 tranzakcio uj) + 103 uj partner
+  - 1 uj hulladek tipus: Deseu Ambalaj Metalic (Fier kategoria)
+  - 1 rosszul elnevezett fajl: 02.02.2024.xls → 2026-02-02 datummal importalva
+  - Ossz: +5,021 uj tranzakcio, +4,552 uj tetel
+- **Frontend valtoztatasok (index.html):**
+  - Datum szurok: 5 helyen 2025-12-31 → 2026-12-31 (filterDateTo, onetimeDateTo, familyDateTo, listaDateTo, resetPartnerListFilters)
+  - Big suppliers dropdown: 2026 ev opció hozzaadva
+  - Regulati leirasok frissitve (2022-2026)
+  - Predictii logika teljesen ujrairva: dinamikusan kezeli a reszleges eveket (pl. 2026 csak Jan-Feb), eves becslest mutat, base ev automatikus valasztas
+- **Backend valtoztatasok:**
+  - `api/transactions.py`: Default date_from 2024-01-01 → 2022-01-01
+  - `api/analytics.py`: Craciun 2025, Mos Nicolae 2025 unnepnapok hozzaadva
+- **DB statisztikak:** 112,765 tranzakcio, 225,089 tetel, 30,853 partner, 2022.01 - 2026.02
+- **Uj feature: Comparatie Personalizata**
+  - Backend: `api/analytics.py` - `?type=custom_compare` endpoint
+    - Tetszoleges honapok kivalasztasa (checkbox)
+    - Opcionalis hulladek kategoria szures
+    - Per-ev visszaadott adatok: tranzakciok, ertek, netto, partnerek, munkanapok
+    - Demografia: nem (M/F), korcsoport (18-24, 25-34, 35-44, 45-54, 55-64, 65+), top megyek
+    - Kategoria-specifikus: kg, ertek, atlag ar, partnerek szama
+    - Osszes partner/ev (kontextushoz)
+  - Frontend: `index.html` - Comparatie tab elejen
+    - Honap checkboxok (Jan-Dec), kategoria dropdown
+    - Eredmeny tablazat (minden indikator, trend szazalekkal)
+    - 4 grafikon: Rulaj/Ev, Partnerek/Ev, Nem/Ev (stacked bar), Korcsoport/Ev (stacked bar)
+    - Top megyek tablazat
+    - Kategoria bontas tablazat (ha nincs szuro)
+
+### 2026-02-11 - Frontend/Backend Adaptacio 2022-2025 Teljes Lefedettseggel
+- **MINDEN hardcoded ev hivatkozas eltavolitva** - frontend es backend egyarant dinamikus
+- **Backend valtoztatasok:**
+  - `api/analytics.py`: Korosztaly szamitas dinamikus (`EXTRACT(YEAR FROM CURRENT_DATE)` a hardcoded ev helyett)
+  - `api/partners.py`: Default datum 2024-01-01 → 2022-01-01, regulars query dinamikus (egymast koveto evek osszehasonlitasa), `current_year` dinamikus
+  - `api/data.py`: `months_in_year` szamitas dinamikus (`COUNT(DISTINCT EXTRACT(MONTH FROM date))` SQL-bol)
+- **Frontend valtoztatasok (index.html):**
+  - "2024 vs 2025" tab → "Comparatie" (dinamikus, osszes ev)
+  - Dinamikus yearColors tomb a Chart.js grafikonokhoz (6 szin, bovitheto)
+  - `initCompare()`: teljes ujrairas - dinamikus ev szinek, tablazat, insights YoY minden evparhoz
+  - `loadWeekday()`: ujrairas - osszes ev adatait lekeeri
+  - Neferos tablazat: `.slice(0, 12)` eltavolitva → osszes honap megjelenik (~48)
+  - `initPredictions()`: ujrairas - dinamikus latestYear/prevYear, tobbeves YoY atlag
+  - VIP statisztikak: hardcoded 118700000 → dinamikus osszes ev osszeg
+  - Overview chart: dinamikus ev szinek
+  - Datum szurok: 5 helyen 2024-01-01 → 2022-01-01 (filterDateFrom, onetimeDateFrom, familyDateFrom, listaDateFrom, resetPartnerListFilters)
+  - Big suppliers dropdown: 2022/2023 ev opciok hozzaadva
+  - Regulati leirasok altalanositva ("orice 2 ani consecutivi")
+  - Weekday gombok: dinamikus generalas evekbol
+- **Hibajavitas:** `nextYear` valtozo deklaralas attelepitese (const TDZ hiba initPredictions-ben)
+
+### 2026-02-09 - 2022/2023 Adat Import
+- 55,856 uj tranzakcio importalva (2022: 27,855 + 2023: 28,001)
+- 114,451 tranzakcio tetel importalva
+- 3 uj hulladek tipus letrehozva:
+  - Deseu Ambalaj Plastic (ladite si navete) [Plastic]
+  - Deseuri DEEE ( Mufe, Cabluri IDE ) [DEEE]
+  - nu - Deseuri DEEE [DEEE]
+- 106 belso duplikat kiszurve (azonos document_id)
+- 7 serult XLS fajl (utf-16-le codec hiba) - MEGOLDVA Excel COM konverzioval:
+  - 2022: 11.04, 25.08, 05.12, 13.12, 21.12
+  - 2023: 01.03, 30.06, 01.11
+  - +388 uj tranzakcio es +308 tetel importalva beloluk
+- DB most 4 evet fed le: 2022.01 - 2025.11
 
 ### 2024-12-04 - Cleanup
 - Torolve 31 felesleges fajl:
@@ -504,4 +582,4 @@ POSTGRES_URL = postgresql://neondb_owner:npg_L2AyrcXul8km@ep-ancient-firefly-a47
 
 ---
 
-*Utolso frissites: 2024-12-04*
+*Utolso frissites: 2026-02-14*

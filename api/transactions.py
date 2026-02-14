@@ -50,7 +50,7 @@ class handler(BaseHTTPRequestHandler):
 
             # Get transactions by date range and optional filters
             elif 'date_from' in params or 'date_to' in params:
-                date_from = params.get('date_from', ['2024-01-01'])[0]
+                date_from = params.get('date_from', ['2022-01-01'])[0]
                 date_to = params.get('date_to', ['2099-12-31'])[0]
                 category = params.get('category', [None])[0]
                 min_value = params.get('min_value', [None])[0]
