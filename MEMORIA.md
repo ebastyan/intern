@@ -203,6 +203,7 @@ transporturi_firme (
 ?type=waste_by_region - Hulladek regionalis bontas
 ?type=tops            - Top statisztikak
 ?type=holidays        - Unnepnapok elemzese
+?type=custom_compare&months=1,2&category=X - Egyedi osszehasonlitas honapok+kategoria+demografia
 ```
 
 #### `/api/partners`
@@ -275,6 +276,11 @@ transporturi_firme (
 **Tabok:**
 1. **Sumar** - 6 nagy stat kartya, top 10 partnerek, kategoria megoszlas
 2. **Comparatie Anuala** - Dinamikus eves osszehasonlitas (minden ev), grafikonok, reszletes tablazat
+   - **Comparatie Personalizata** (uj!): honap valaszto checkboxok + kategoria szuro
+     - Eredmeny tablazat: tranzakciok, rulaj, partnerek, munkanapok, media/zi, trend % (minden evre)
+     - 4 grafikon: Rulaj/Ev, Partnerek (szelekcio vs osszes), Nem M/F (stacked), Korcsoport (stacked)
+     - Top megyek tablazat, kategoria bontas (kg+RON evre/kategorianként)
+     - Pld: valaszd ki "Ianuarie" + "Cupru" = latod ki hozott rezet januarban, evrol-evre, demografiaval
 3. **Parteneri** - 7 sub-tab:
    - VIP (Top 20)
    - O Singura Data (egyszeri latogatok)

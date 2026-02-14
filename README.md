@@ -32,11 +32,20 @@ Sistemul contine doua module principale:
 - Top 10 parteneri dupa valoare
 - Distributie pe categorii de deseuri
 
-### Comparatie Anuala (2024 vs 2025)
-- Grafice comparative lunare
-- Analiza rulaj si parteneri unici
-- Tabel detaliat cu diferente procentuale
+### Comparatie Anuala (Toti Anii)
+- **Comparatie Personalizata** - Instrument avansat de analiza:
+  - Selector luni (checkbox-uri Ian-Dec, orice combinatie)
+  - Filtru optional pe categorie deseu (Cupru, Alama, Fier, etc.)
+  - Tabel comparativ cu: tranzactii, rulaj, parteneri, medie/zi, trend %
+  - Grafice: Rulaj pe ani, Parteneri pe ani (selectie vs total)
+  - **Demografie detaliata**: Sex (M/F stacked bar), Grupe varsta (18-24 pana la 65+), Top judete
+  - Detalii categorie: kg, valoare RON, pret mediu/kg, numar parteneri
+  - Exemplu: selectezi doar "Ianuarie" + "Cupru" = vezi cati au adus cupru in ianuarie, comparativ pe toti anii
+- Grafice comparative lunare dinamice (2022-2026+)
+- Analiza rulaj si parteneri unici pentru fiecare an
+- Tabel detaliat cu diferente procentuale YoY
 - Identificare cea mai buna luna/perioada
+- Culori distincte per an, actualizare automata
 
 ### Gestionare Parteneri
 - **VIP (Top 20)** - Cei mai valorosi parteneri
@@ -67,8 +76,8 @@ Sistemul contine doua module principale:
 - Filtrare deseuri pe regiune/varsta
 
 ### Predictii
-- Grafic predictie bazat pe tendinte
-- Metodologie explicata
+- Grafic predictie bazat pe tendinte (toate datele istorice 2022+)
+- Metodologie dinamica cu media YoY multi-anuala
 
 ### Statistici Detaliate
 - Carduri lunare cu detalii complete
@@ -155,12 +164,13 @@ waste_types                    waste_categories
 
 | Indicator | Valoare |
 |-----------|---------|
-| Rulaj Total | **~118.7M RON** |
-| Numar Tranzactii | **51,000+** |
-| Parteneri Inregistrati | **30,000+** |
-| Parteneri Activi | **13,000+** |
+| Rulaj Total | **~250.3M RON** |
+| Numar Tranzactii | **112,765+** |
+| Articole Tranzactii | **225,089+** |
+| Parteneri Inregistrati | **30,853+** |
 | Categorii Deseuri | **16** |
-| Perioada | 2024.01 - 2025.11 |
+| Tipuri Deseuri | **47** |
+| Perioada | 2022.01 - 2026.02 |
 
 ---
 
@@ -221,6 +231,7 @@ paju/
 - `GET /api/analytics?type=monthly&year=2024` - Date lunare
 - `GET /api/analytics?type=county` - Statistici pe judete
 - `GET /api/analytics?type=city_details&city=Oradea` - Detalii localitate
+- `GET /api/analytics?type=custom_compare&months=1,2&category=Cupru` - Comparatie personalizata cu demografie
 
 ### Partners
 - `GET /api/partners?q=nume` - Cautare parteneri
@@ -269,6 +280,6 @@ Proiectul se deployeaza automat pe Vercel la fiecare push pe branch-ul `main`.
 
 ---
 
-**2024-2025** | PAJU
+**2022-2026** | PAJU
 
 </div>
