@@ -1346,11 +1346,12 @@
             });
 
             const yLatest = monthly.years[String(latestYear)]?.summary;
-            const yPrev = monthly.years[String(prevYear)]?.summary;
+            const compareYear = latestYear - 1;
+            const yPrev = monthly.years[String(compareYear)]?.summary;
             let alerts = '';
             if (yLatest && yPrev) {
                 const yoy = ((yLatest.total_value - yPrev.total_value) / yPrev.total_value * 100).toFixed(1);
-                if (parseFloat(yoy) < 0) alerts += `<div class="alert-card danger"><div class="icon">📉</div><div class="content"><div class="title">Rulaj ${latestYear} mai mic cu ${Math.abs(yoy)}%</div><div class="desc">Comparativ cu ${prevYear}</div></div></div>`;
+                if (parseFloat(yoy) < 0) alerts += `<div class="alert-card danger"><div class="icon">📉</div><div class="content"><div class="title">Rulaj ${latestYear} mai mic cu ${Math.abs(yoy)}%</div><div class="desc">Comparativ cu ${compareYear}</div></div></div>`;
             }
             alerts += `<div class="alert-card warning"><div class="icon">😴</div><div class="content"><div class="title">Parteneri inactivi</div><div class="desc">Multi parteneri nu au mai vizitat de 60+ zile</div></div></div>`;
             alerts += `<div class="alert-card success"><div class="icon">⭐</div><div class="content"><div class="title">VIP-urile sunt stabile</div><div class="desc">Top 100 continua sa fie activi</div></div></div>`;
