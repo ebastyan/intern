@@ -474,6 +474,17 @@ POSTGRES_URL = postgresql://neondb_owner:npg_L2AyrcXul8km@ep-ancient-firefly-a47
 
 ## 13. FEJLESZTESI NAPLO (Legutobbi)
 
+### 2026-02-18 - Hibajavitas: prevYear is not defined (initPredictions)
+- **Hiba:** `ReferenceError: prevYear is not defined` az `initPredictions` fuggvenyben (index.html:1349)
+  - A "RULAJ TOTAL" kartya "Eroare!" feliratot mutatott a dashboard-on
+  - A Predictii szekció sem toltodott be
+- **Ok:** A 2026-02-14-es atiras soran a regi `prevYear` valtozot lecsereltuk `baseYear`/`predYear`-re, de a fuggveny vegen az alerts szekcioban (eves rulaj osszehasonlitas) maradt ket hivatkozas a mar nem letezo `prevYear` valtozora
+- **Javitas:** `prevYear` → `compareYear` (= `latestYear - 1`) uj valtozo bevezetve
+  - Nem lehetett `prevFullYear`-t hasznalni, mert az mar definialva volt feljebb mint adattomb (1276. sor)
+  - A `compareYear` nev pontosan tukorzi a celit: az elozo evet hasonlitja ossze az aktualis evvel
+- **Erintett fajl:** `index.html` (3 sor modositva a ~1349-1354 kornyeken)
+- **Tanulsag:** Valtozo atnevezes/torles utan mindig keresni kell az osszes hivatkozast a regi nevre!
+
 ### 2026-02-14 - 2025 Nov-Dec + 2026 Jan-Feb Adat Import es Frontend Adaptacio
 - **Adat import:**
   - 2025 november 24-29 (6 nap, ~676 tranzakcio)
@@ -588,4 +599,4 @@ POSTGRES_URL = postgresql://neondb_owner:npg_L2AyrcXul8km@ep-ancient-firefly-a47
 
 ---
 
-*Utolso frissites: 2026-02-14*
+*Utolso frissites: 2026-02-18*
