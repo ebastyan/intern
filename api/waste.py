@@ -65,10 +65,16 @@ class handler(BaseHTTPRequestHandler):
                 date_to = params.get('date_to', [None])[0]
                 limit = int(params.get('limit', [100])[0])
                 result = self.search_waste_transactions(cur, waste_type, min_price, max_price, date_from, date_to, limit)
+            elif query_type == 'analysis':
+                waste_type_ids = params.get('waste_type_ids', [None])[0]
+                date_from = params.get('date_from', [None])[0]
+                date_to = params.get('date_to', [None])[0]
+                aggregation = params.get('aggregation', ['monthly'])[0]
+                result = self.get_waste_analysis(cur, waste_type_ids, date_from, date_to, aggregation)
             else:
                 result = {
                     'error': 'Unknown query type',
-                    'available': ['categories', 'types', 'prices', 'top', 'monthly', 'search']
+                    'available': ['categories', 'types', 'prices', 'top', 'monthly', 'search', 'analysis']
                 }
 
             cur.close()
@@ -349,4 +355,116 @@ class handler(BaseHTTPRequestHandler):
                 'weight_kg': float(r['weight_kg']),
                 'value': float(r['value']) if r['value'] else None
             } for r in results]
+        }
+
+    def get_waste_analysis(self, cur, waste_type_ids, date_from, date_to, aggregation):
+        """Detailed waste analysis by type with time aggregation"""
+        if not waste_type_ids:
+            return {'error': 'Specify waste_type_ids parameter (comma-separated IDs)'}
+
+        ids = [int(x.strip()) for x in waste_type_ids.split(',') if x.strip().isdigit()]
+        if not ids:
+            return {'error': 'No valid waste type IDs provided'}
+        if len(ids) > 20:
+            return {'error': 'Maximum 20 waste types allowed'}
+
+        # Period grouping
+        if aggregation == 'daily':
+            period_expr = "TO_CHAR(t.date, 'YYYY-MM-DD')"
+            order_expr = "period"
+        elif aggregation == 'yearly':
+            period_expr = "TO_CHAR(t.date, 'YYYY')"
+            order_expr = "period"
+        else:
+            period_expr = "TO_CHAR(t.date, 'YYYY-MM')"
+            order_expr = "period"
+
+        placeholders = ','.join(['%s'] * len(ids))
+        query = f"""
+            SELECT {period_expr} as period,
+                   wt.id as waste_type_id,
+                   wt.name as waste_name,
+                   wc.name as category,
+                   COALESCE(SUM(ti.weight_kg), 0) as total_kg,
+                   COALESCE(SUM(ti.value), 0) as total_value,
+                   COUNT(DISTINCT t.document_id) as transaction_count,
+                   AVG(ti.price_per_kg) as avg_price
+            FROM transaction_items ti
+            JOIN waste_types wt ON ti.waste_type_id = wt.id
+            JOIN waste_categories wc ON wt.category_id = wc.id
+            JOIN transactions t ON ti.document_id = t.document_id
+            WHERE wt.id IN ({placeholders})
+        """
+        params = list(ids)
+
+        if date_from:
+            query += " AND t.date >= %s"
+            params.append(date_from)
+        if date_to:
+            query += " AND t.date <= %s"
+            params.append(date_to)
+
+        query += f"""
+            GROUP BY {period_expr}, wt.id, wt.name, wc.name
+            ORDER BY {order_expr}, wt.name
+        """
+
+        cur.execute(query, params)
+        rows = cur.fetchall()
+
+        # Collect unique periods and build series
+        periods = []
+        series_map = {}
+        for r in rows:
+            p = r['period']
+            if p not in periods:
+                periods.append(p)
+            wid = r['waste_type_id']
+            if wid not in series_map:
+                series_map[wid] = {
+                    'waste_type_id': wid,
+                    'name': r['waste_name'],
+                    'category': r['category'],
+                    'data': {},
+                    'totals': {'kg': 0, 'value': 0, 'transactions': 0}
+                }
+            series_map[wid]['data'][p] = {
+                'kg': float(r['total_kg']),
+                'value': float(r['total_value']),
+                'transactions': r['transaction_count'],
+                'avg_price': round(float(r['avg_price']), 2) if r['avg_price'] else None
+            }
+            series_map[wid]['totals']['kg'] += float(r['total_kg'])
+            series_map[wid]['totals']['value'] += float(r['total_value'])
+            series_map[wid]['totals']['transactions'] += r['transaction_count']
+
+        periods.sort()
+
+        # Build final series with ordered data arrays
+        series = []
+        total_kg = 0
+        total_value = 0
+        for wid, s in series_map.items():
+            ordered_data = []
+            for p in periods:
+                ordered_data.append(s['data'].get(p, {'kg': 0, 'value': 0, 'transactions': 0, 'avg_price': None}))
+            s['data'] = ordered_data
+            s['totals']['kg'] = round(s['totals']['kg'], 2)
+            s['totals']['value'] = round(s['totals']['value'], 2)
+            total_kg += s['totals']['kg']
+            total_value += s['totals']['value']
+            series.append(s)
+
+        period_count = len(periods) if periods else 1
+
+        return {
+            'aggregation': aggregation,
+            'periods': periods,
+            'series': series,
+            'summary': {
+                'total_kg': round(total_kg, 2),
+                'total_value': round(total_value, 2),
+                'period_count': len(periods),
+                'avg_kg_per_period': round(total_kg / period_count, 2)
+            }
         }

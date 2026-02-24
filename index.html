@@ -124,6 +124,18 @@
         .tabs { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
         .tab-btn { padding: 6px 14px; background: transparent; border: none; color: #666; cursor: pointer; border-radius: 4px; font-size: 0.85em; }
         .tab-btn.active { background: rgba(0,217,255,0.15); color: #00d9ff; }
+        .waste-analysis-types { max-height: 300px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 8px; }
+        .waste-cat-group { margin-bottom: 4px; }
+        .waste-cat-group .cat-header { display: flex; align-items: center; gap: 6px; padding: 4px 8px; background: rgba(0,217,255,0.08); border-radius: 6px; cursor: pointer; font-size: 0.82em; font-weight: 600; color: #00d9ff; }
+        .waste-cat-group .cat-header input { accent-color: #00d9ff; }
+        .waste-type-cb-label { display: flex; align-items: center; gap: 5px; padding: 3px 8px 3px 20px; font-size: 0.8em; color: #ccc; cursor: pointer; border-radius: 4px; transition: background 0.15s; }
+        .waste-type-cb-label:hover { background: rgba(255,255,255,0.05); }
+        .waste-type-cb-label input { accent-color: #00d9ff; }
+        .waste-type-cb-label input:checked + span { color: #00d9ff; }
+        .wa-summary-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 15px; }
+        .wa-summary-card { background: rgba(0,217,255,0.06); border: 1px solid rgba(0,217,255,0.15); border-radius: 10px; padding: 14px; text-align: center; }
+        .wa-summary-card .wa-val { font-size: 1.4em; font-weight: 700; color: #00d9ff; }
+        .wa-summary-card .wa-label { font-size: 0.75em; color: #888; margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -513,6 +525,46 @@
                 <div class="card"><h2><span class="icon">🏆</span> Cel Mai Bun Neferos pe Luna (kg)</h2><div class="scroll-table"><table><thead><tr><th>Luna</th><th>Al</th><th>Cu</th><th>Alama</th><th>Inox</th><th class="text-right">Castigator</th></tr></thead><tbody id="bestNonFerrousTable"></tbody></table></div></div>
                 <div class="card"><h2><span class="icon">💰</span> Statistici Preturi (RON/kg)</h2><div class="scroll-table"><table><thead><tr><th>Tip Deseu</th><th class="text-right">Min</th><th class="text-right">Max</th><th class="text-right">Medie</th></tr></thead><tbody id="priceStatsTable"></tbody></table></div></div>
             </div>
+
+            <!-- ANALIZA DETALIATA -->
+            <div class="card">
+                <h2><span class="icon">🔬</span> Analiza Detaliata Deseuri</h2>
+                <div class="filter-row" style="align-items:flex-end;">
+                    <div><label>De la</label><br><input type="date" id="waDateFrom" value="2024-01-01"></div>
+                    <div><label>Pana la</label><br><input type="date" id="waDateTo" value="2026-02-28"></div>
+                    <div><label>Agregare</label><br>
+                        <select id="waAggregation" style="padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:0.85em;">
+                            <option value="monthly">Lunar</option>
+                            <option value="daily">Zilnic</option>
+                            <option value="yearly">Anual</option>
+                        </select>
+                    </div>
+                    <button onclick="loadWasteAnalysis()" class="search-box" style="background:linear-gradient(135deg,#00d9ff,#00ff88);border:none;border-radius:6px;padding:8px 20px;color:#000;font-weight:600;cursor:pointer;">Analizeaza</button>
+                </div>
+                <div style="margin-bottom:10px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <span style="color:#888;font-size:0.82em;">Selecteaza tipuri de deseuri:</span>
+                        <div style="display:flex;gap:8px;">
+                            <button onclick="waSelectAll()" style="background:rgba(0,217,255,0.15);border:1px solid rgba(0,217,255,0.3);color:#00d9ff;border-radius:4px;padding:3px 10px;cursor:pointer;font-size:0.75em;">Selecteaza tot</button>
+                            <button onclick="waDeselectAll()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#888;border-radius:4px;padding:3px 10px;cursor:pointer;font-size:0.75em;">Deselecteaza tot</button>
+                        </div>
+                    </div>
+                    <div id="waTypeSelector" class="waste-analysis-types"></div>
+                </div>
+                <div id="waResults" style="display:none;">
+                    <div id="waSummary" class="wa-summary-cards"></div>
+                    <div class="chart-container tall"><canvas id="waChart"></canvas></div>
+                    <div class="scroll-table" style="margin-top:15px;max-height:400px;">
+                        <table>
+                            <thead id="waTableHead"></thead>
+                            <tbody id="waTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div id="waEmpty" style="display:none;text-align:center;padding:30px;color:#666;">
+                    <p>Selecteaza cel putin un tip de deseu si apasa "Analizeaza"</p>
+                </div>
+            </div>
         </div>
 
         <!-- GEO -->
@@ -662,7 +714,7 @@
             document.getElementById('dashboardSelect').style.display = 'block';
         }
 
-        let monthlyData = null, wasteData = null, weekdayChart = null;
+        let monthlyData = null, wasteData = null, weekdayChart = null, wasteAnalysisChart = null;
         const monthNames = ['Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun', 'Iul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const monthNamesFull = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie', 'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'];
         Chart.defaults.color = '#888';
@@ -705,6 +757,7 @@
                 initCompare(data, yearly);
                 initCustomCategoryDropdown();
                 initWaste(waste, wasteTypes);
+                initWasteAnalysisSelector(wasteTypes);
                 initGeo(county);
                 initPredictions(data, yearly);
                 initPartners(topPartners);
@@ -1858,6 +1911,140 @@
             } catch (e) {
                 console.error('Waste by region error:', e);
             }
+        }
+
+        // ===== WASTE ANALYSIS (ANALIZA DETALIATA) =====
+        function initWasteAnalysisSelector(wasteTypes) {
+            if (!wasteTypes?.types) return;
+            const container = document.getElementById('waTypeSelector');
+            // Group by category
+            const cats = {};
+            wasteTypes.types.forEach(t => {
+                if (!cats[t.category]) cats[t.category] = [];
+                cats[t.category].push(t);
+            });
+            let html = '';
+            Object.keys(cats).sort().forEach(cat => {
+                const catId = 'waCat_' + cat.replace(/\s+/g, '_');
+                html += `<div class="waste-cat-group">
+                    <label class="cat-header"><input type="checkbox" id="${catId}" onchange="waToggleCategory('${cat}', this.checked)">${cat} (${cats[cat].length})</label>`;
+                cats[cat].forEach(t => {
+                    html += `<label class="waste-type-cb-label"><input type="checkbox" class="wa-type-cb" data-cat="${cat}" value="${t.id}"><span>${t.name}</span></label>`;
+                });
+                html += `</div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function waToggleCategory(cat, checked) {
+            document.querySelectorAll(`.wa-type-cb[data-cat="${cat}"]`).forEach(cb => cb.checked = checked);
+        }
+
+        function waSelectAll() {
+            document.querySelectorAll('.wa-type-cb').forEach(cb => cb.checked = true);
+            document.querySelectorAll('#waTypeSelector .cat-header input').forEach(cb => cb.checked = true);
+        }
+
+        function waDeselectAll() {
+            document.querySelectorAll('.wa-type-cb').forEach(cb => cb.checked = false);
+            document.querySelectorAll('#waTypeSelector .cat-header input').forEach(cb => cb.checked = false);
+        }
+
+        async function loadWasteAnalysis() {
+            const ids = Array.from(document.querySelectorAll('.wa-type-cb:checked')).map(cb => cb.value);
+            if (ids.length === 0) {
+                document.getElementById('waResults').style.display = 'none';
+                document.getElementById('waEmpty').style.display = 'block';
+                return;
+            }
+            if (ids.length > 20) {
+                alert('Maximum 20 tipuri de deseuri! Ai selectat ' + ids.length + '.');
+                return;
+            }
+            const dateFrom = document.getElementById('waDateFrom').value;
+            const dateTo = document.getElementById('waDateTo').value;
+            const agg = document.getElementById('waAggregation').value;
+            const url = `/api/waste?type=analysis&waste_type_ids=${ids.join(',')}&date_from=${dateFrom}&date_to=${dateTo}&aggregation=${agg}`;
+
+            document.getElementById('waEmpty').style.display = 'none';
+            document.getElementById('waResults').style.display = 'block';
+            document.getElementById('waSummary').innerHTML = '<div class="loading">Se incarca...</div>';
+
+            try {
+                const data = await fetch(url).then(r => r.json());
+                if (data.error) { alert(data.error); return; }
+                renderWasteAnalysis(data);
+                renderWasteAnalysisTable(data);
+            } catch (e) {
+                console.error('Waste analysis error:', e);
+                document.getElementById('waSummary').innerHTML = '<div style="color:#ff6b6b;">Eroare la incarcare</div>';
+            }
+        }
+
+        function renderWasteAnalysis(data) {
+            const s = data.summary;
+            document.getElementById('waSummary').innerHTML = `
+                <div class="wa-summary-card"><div class="wa-val">${fmt(s.total_kg)}</div><div class="wa-label">Total KG</div></div>
+                <div class="wa-summary-card"><div class="wa-val">${fmt(s.total_value)}</div><div class="wa-label">Total Valoare (RON)</div></div>
+                <div class="wa-summary-card"><div class="wa-val">${fmt(s.avg_kg_per_period)}</div><div class="wa-label">Medie KG / Perioada</div></div>
+            `;
+
+            if (wasteAnalysisChart) wasteAnalysisChart.destroy();
+            const colors = ['#ff6384','#00d9ff','#00ff88','#9966ff','#ffce56','#ff9f40','#4bc0c0','#36a2eb','#e7e9ed','#c9cbcf','#ff6b6b','#1dd1a1','#feca57','#48dbfb','#a55eea','#778ca3','#e056fd','#badc58','#686de0','#30336b'];
+            const useStacked = data.series.length > 6;
+
+            const datasets = data.series.map((s, i) => ({
+                label: s.name,
+                data: s.data.map(d => d.kg),
+                borderColor: colors[i % colors.length],
+                backgroundColor: useStacked ? colors[i % colors.length] + '99' : 'transparent',
+                tension: 0.3,
+                borderWidth: useStacked ? 0 : 2,
+                pointRadius: useStacked ? 0 : 3
+            }));
+
+            wasteAnalysisChart = new Chart(document.getElementById('waChart'), {
+                type: useStacked ? 'bar' : 'line',
+                data: { labels: data.periods, datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#fff', font: { size: 11 } } } },
+                    scales: {
+                        x: { stacked: useStacked, ticks: { maxRotation: 45, color: '#888' } },
+                        y: { stacked: useStacked, ticks: { callback: v => fmt(v) + ' kg', color: '#888' } }
+                    }
+                }
+            });
+        }
+
+        function renderWasteAnalysisTable(data) {
+            const head = document.getElementById('waTableHead');
+            const body = document.getElementById('waTableBody');
+            let hRow = '<tr><th>Perioada</th>';
+            data.series.forEach(s => hRow += `<th class="text-right">${s.name} (kg)</th>`);
+            hRow += '<th class="text-right">TOTAL (kg)</th></tr>';
+            head.innerHTML = hRow;
+
+            let rows = '';
+            const colTotals = new Array(data.series.length).fill(0);
+            let grandTotal = 0;
+            data.periods.forEach((p, pi) => {
+                let rowTotal = 0;
+                rows += `<tr><td>${p}</td>`;
+                data.series.forEach((s, si) => {
+                    const kg = s.data[pi]?.kg || 0;
+                    rowTotal += kg;
+                    colTotals[si] += kg;
+                    rows += `<td class="text-right">${kg > 0 ? fmt(kg) : '-'}</td>`;
+                });
+                grandTotal += rowTotal;
+                rows += `<td class="text-right" style="font-weight:600;">${fmt(rowTotal)}</td></tr>`;
+            });
+            // Totals row
+            rows += '<tr style="background:rgba(0,217,255,0.08);font-weight:600;"><td>TOTAL</td>';
+            data.series.forEach((s, si) => rows += `<td class="text-right">${fmt(colTotals[si])}</td>`);
+            rows += `<td class="text-right">${fmt(grandTotal)}</td></tr>`;
+            body.innerHTML = rows;
         }
 
         // ===== ALL CITIES LIST =====
