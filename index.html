@@ -1937,7 +1937,11 @@
         }
 
         function waToggleCategory(cat, checked) {
-            document.querySelectorAll(`.wa-type-cb[data-cat="${cat}"]`).forEach(cb => cb.checked = checked);
+            // Category header acts independently - checking it means "entire category"
+            // Only uncheck subtypes when unchecking the category header
+            if (!checked) {
+                document.querySelectorAll(`.wa-type-cb[data-cat="${cat}"]`).forEach(cb => cb.checked = false);
+            }
         }
 
         function waSelectAll() {
@@ -1951,20 +1955,31 @@
         }
 
         async function loadWasteAnalysis() {
+            // Collect individually checked type IDs
             const ids = Array.from(document.querySelectorAll('.wa-type-cb:checked')).map(cb => cb.value);
-            if (ids.length === 0) {
+            // Collect category-level selections (header checked, but NOT all subtypes checked individually)
+            const catCbs = document.querySelectorAll('#waTypeSelector .cat-header input:checked');
+            const selectedCats = [];
+            catCbs.forEach(cb => {
+                const catName = cb.id.replace('waCat_', '').replace(/_/g, ' ');
+                const typeCbs = document.querySelectorAll(`.wa-type-cb[data-cat="${catName}"]`);
+                const checkedTypeCbs = document.querySelectorAll(`.wa-type-cb[data-cat="${catName}"]:checked`);
+                // If category is checked but no individual types are checked, send as category
+                if (checkedTypeCbs.length === 0) {
+                    selectedCats.push(catName);
+                }
+            });
+            if (ids.length === 0 && selectedCats.length === 0) {
                 document.getElementById('waResults').style.display = 'none';
                 document.getElementById('waEmpty').style.display = 'block';
-                return;
-            }
-            if (ids.length > 20) {
-                alert('Maximum 20 tipuri de deseuri! Ai selectat ' + ids.length + '.');
                 return;
             }
             const dateFrom = document.getElementById('waDateFrom').value;
             const dateTo = document.getElementById('waDateTo').value;
             const agg = document.getElementById('waAggregation').value;
-            const url = `/api/waste?type=analysis&waste_type_ids=${ids.join(',')}&date_from=${dateFrom}&date_to=${dateTo}&aggregation=${agg}`;
+            let url = `/api/waste?type=analysis&date_from=${dateFrom}&date_to=${dateTo}&aggregation=${agg}`;
+            if (ids.length > 0) url += `&waste_type_ids=${ids.join(',')}`;
+            if (selectedCats.length > 0) url += `&categories=${selectedCats.map(c => encodeURIComponent(c)).join(',')}`;
 
             document.getElementById('waEmpty').style.display = 'none';
             document.getElementById('waResults').style.display = 'block';

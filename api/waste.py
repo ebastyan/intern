@@ -67,10 +67,11 @@ class handler(BaseHTTPRequestHandler):
                 result = self.search_waste_transactions(cur, waste_type, min_price, max_price, date_from, date_to, limit)
             elif query_type == 'analysis':
                 waste_type_ids = params.get('waste_type_ids', [None])[0]
+                categories = params.get('categories', [None])[0]
                 date_from = params.get('date_from', [None])[0]
                 date_to = params.get('date_to', [None])[0]
                 aggregation = params.get('aggregation', ['monthly'])[0]
-                result = self.get_waste_analysis(cur, waste_type_ids, date_from, date_to, aggregation)
+                result = self.get_waste_analysis(cur, waste_type_ids, categories, date_from, date_to, aggregation)
             else:
                 result = {
                     'error': 'Unknown query type',
@@ -357,29 +358,65 @@ class handler(BaseHTTPRequestHandler):
             } for r in results]
         }
 
-    def get_waste_analysis(self, cur, waste_type_ids, date_from, date_to, aggregation):
-        """Detailed waste analysis by type with time aggregation"""
-        if not waste_type_ids:
-            return {'error': 'Specify waste_type_ids parameter (comma-separated IDs)'}
+    def get_waste_analysis(self, cur, waste_type_ids, categories, date_from, date_to, aggregation):
+        """Detailed waste analysis by type with time aggregation.
+        Supports waste_type_ids (individual types) and/or categories (whole categories).
+        Categories are grouped as a single series per category name."""
+        ids = []
+        cat_names = []
 
-        ids = [int(x.strip()) for x in waste_type_ids.split(',') if x.strip().isdigit()]
-        if not ids:
-            return {'error': 'No valid waste type IDs provided'}
-        if len(ids) > 20:
-            return {'error': 'Maximum 20 waste types allowed'}
+        if waste_type_ids:
+            ids = [int(x.strip()) for x in waste_type_ids.split(',') if x.strip().isdigit()]
+        if categories:
+            cat_names = [c.strip() for c in categories.split(',') if c.strip()]
+
+        if not ids and not cat_names:
+            return {'error': 'Specify waste_type_ids and/or categories parameter'}
+
+        # Resolve categories: find which type IDs belong to selected categories
+        cat_type_ids = {}  # cat_name -> set of type IDs
+        if cat_names:
+            cat_ph = ','.join(['%s'] * len(cat_names))
+            cur.execute(f"""
+                SELECT wt.id, wc.name as category
+                FROM waste_types wt
+                JOIN waste_categories wc ON wt.category_id = wc.id
+                WHERE wc.name IN ({cat_ph})
+            """, cat_names)
+            for row in cur.fetchall():
+                cat = row['category']
+                if cat not in cat_type_ids:
+                    cat_type_ids[cat] = set()
+                cat_type_ids[cat].add(row['id'])
+
+        # Build mapping: type_id -> group_key (either type_id for individual, or "cat:CatName" for category)
+        type_to_group = {}
+        for cat, type_ids_in_cat in cat_type_ids.items():
+            for tid in type_ids_in_cat:
+                type_to_group[tid] = f"cat:{cat}"
+
+        # Individual type IDs override category grouping
+        for tid in ids:
+            type_to_group[tid] = f"type:{tid}"
+
+        # All type IDs to query
+        all_ids = set(ids)
+        for type_ids_in_cat in cat_type_ids.values():
+            all_ids.update(type_ids_in_cat)
+
+        if not all_ids:
+            return {'error': 'No matching waste types found'}
 
         # Period grouping
         if aggregation == 'daily':
             period_expr = "TO_CHAR(t.date, 'YYYY-MM-DD')"
-            order_expr = "period"
         elif aggregation == 'yearly':
             period_expr = "TO_CHAR(t.date, 'YYYY')"
-            order_expr = "period"
         else:
             period_expr = "TO_CHAR(t.date, 'YYYY-MM')"
-            order_expr = "period"
 
-        placeholders = ','.join(['%s'] * len(ids))
+        id_list = list(all_ids)
+        placeholders = ','.join(['%s'] * len(id_list))
         query = f"""
             SELECT {period_expr} as period,
                    wt.id as waste_type_id,
@@ -395,7 +432,7 @@ class handler(BaseHTTPRequestHandler):
             JOIN transactions t ON ti.document_id = t.document_id
             WHERE wt.id IN ({placeholders})
         """
-        params = list(ids)
+        params = list(id_list)
 
         if date_from:
             query += " AND t.date >= %s"
@@ -406,37 +443,55 @@ class handler(BaseHTTPRequestHandler):
 
         query += f"""
             GROUP BY {period_expr}, wt.id, wt.name, wc.name
-            ORDER BY {order_expr}, wt.name
+            ORDER BY period, wt.name
         """
 
         cur.execute(query, params)
         rows = cur.fetchall()
 
-        # Collect unique periods and build series
+        # Collect unique periods and build series, merging by group key
         periods = []
-        series_map = {}
+        series_map = {}  # group_key -> series data
         for r in rows:
             p = r['period']
             if p not in periods:
                 periods.append(p)
+
             wid = r['waste_type_id']
-            if wid not in series_map:
-                series_map[wid] = {
+            group_key = type_to_group.get(wid, f"type:{wid}")
+
+            if group_key not in series_map:
+                if group_key.startswith('cat:'):
+                    display_name = group_key[4:]  # category name
+                else:
+                    display_name = r['waste_name']
+                series_map[group_key] = {
                     'waste_type_id': wid,
-                    'name': r['waste_name'],
+                    'name': display_name,
                     'category': r['category'],
                     'data': {},
                     'totals': {'kg': 0, 'value': 0, 'transactions': 0}
                 }
-            series_map[wid]['data'][p] = {
-                'kg': float(r['total_kg']),
-                'value': float(r['total_value']),
-                'transactions': r['transaction_count'],
-                'avg_price': round(float(r['avg_price']), 2) if r['avg_price'] else None
-            }
-            series_map[wid]['totals']['kg'] += float(r['total_kg'])
-            series_map[wid]['totals']['value'] += float(r['total_value'])
-            series_map[wid]['totals']['transactions'] += r['transaction_count']
+
+            s = series_map[group_key]
+            kg = float(r['total_kg'])
+            val = float(r['total_value'])
+            trans = r['transaction_count']
+
+            if p in s['data']:
+                s['data'][p]['kg'] += kg
+                s['data'][p]['value'] += val
+                s['data'][p]['transactions'] += trans
+            else:
+                s['data'][p] = {
+                    'kg': kg,
+                    'value': val,
+                    'transactions': trans,
+                    'avg_price': round(float(r['avg_price']), 2) if r['avg_price'] else None
+                }
+            s['totals']['kg'] += kg
+            s['totals']['value'] += val
+            s['totals']['transactions'] += trans
 
         periods.sort()
 
