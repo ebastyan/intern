@@ -236,6 +236,7 @@ transporturi_firme (
 ?type=types&category=X - Tipusok listaja
 ?type=prices&category=X - Arfolyam tortenet
 ?type=monthly&category=X - Havi bontas
+?type=analysis&waste_type_ids=1,2&categories=Fier&date_from=X&date_to=X&aggregation=monthly - Reszletes hulladek elemzes
 ```
 
 #### `/api/monthly`
@@ -289,7 +290,7 @@ transporturi_firme (
    - Familii/Adresa (csaladtagok, azonos cim)
    - Mari Furnizori (nagy beszallitok)
    - Lista Completa (teljes lista, filterek, pagination)
-4. **Deseuri** - Kategoria osszesites, kordiagram, trend
+4. **Deseuri** - Kategoria osszesites, kordiagram, trend, **Analiza Detaliata** (datum + tipus/kategoria valaszto, grafikon, tablazat)
 5. **Regiuni** - Megye/varos megoszlas, korosztaly
 6. **Predictii** - Elojelzes grafikon
 7. **Statistice** - Reszletes statisztikak
@@ -474,6 +475,26 @@ POSTGRES_URL = postgresql://neondb_owner:npg_L2AyrcXul8km@ep-ancient-firefly-a47
 
 ## 13. FEJLESZTESI NAPLO (Legutobbi)
 
+### 2026-02-24 - Analiza Detaliata Deseuri (uj funkcio)
+- **Uj feature a Deseuri szekcioban**: reszletes hulladek elemzo panel
+- **Backend (`api/waste.py`):**
+  - Uj endpoint: `?type=analysis`
+  - Parameterek: `waste_type_ids` (egyedi tipusok), `categories` (egesz kategoriak), `date_from`, `date_to`, `aggregation` (daily/monthly/yearly)
+  - Kategoriak feloldasa: a megadott kategoria nevek alapjan lekerdezi az osszes altipus ID-t, majd egyetlen sorozatkent osszesiti
+  - Egyedi tipus ID-k felulirjak a kategoria csoportositast (ha mindketto meg van adva)
+  - Visszaadott adat: `periods[]`, `series[]` (tipusonkent/kategorianként: kg, ertek, tranzakciok, atlag ar), `summary` (osszes kg, ertek, atlag/periodus)
+- **Frontend (`index.html`):**
+  - Uj HTML panel: datum valaszto (De la / Pana la), aggregacio valaszto (Zilnic/Lunar/Anual), hulladek tipus checkbox-ok kategorianként csoportositva
+  - Kategoria fejlec checkbox = egesz kategoria kivalasztasa (nem kell altipusokat kulon bejelolni)
+  - Egyedi altipus checkbox-ok = reszletes bontas
+  - "Selecteaza tot" / "Deselecteaza tot" gombok
+  - Eredmeny: 3 osszefoglalo kartya (Total KG, Total Valoare, Medie/Perioada)
+  - Chart.js grafikon: vonal (<=6 tipus) vagy stacked bar (>6 tipus)
+  - Tooltip: `mode: 'index'` - hovereleskor az osszes ertek megjelenik, nem csak az adott pont
+  - Adattablazat: sorok = idoszakok, oszlopok = tipusonkent kg + TOTAL, TOTAL sor alul
+  - Dinamikus default datumok: jan 1. aktualis ev → mai nap (nem hardcoded)
+- **CSS:** `.waste-analysis-types`, `.waste-cat-group`, `.waste-type-cb-label`, `.wa-summary-cards` stilusok
+
 ### 2026-02-18 - Hibajavitas: prevYear is not defined (initPredictions)
 - **Hiba:** `ReferenceError: prevYear is not defined` az `initPredictions` fuggvenyben (index.html:1349)
   - A "RULAJ TOTAL" kartya "Eroare!" feliratot mutatott a dashboard-on
@@ -599,4 +620,4 @@ POSTGRES_URL = postgresql://neondb_owner:npg_L2AyrcXul8km@ep-ancient-firefly-a47
 
 ---
 
-*Utolso frissites: 2026-02-18*
+*Utolso frissites: 2026-02-24*

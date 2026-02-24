@@ -67,6 +67,13 @@ Sistemul contine doua module principale:
 - Tendinte lunare pe categorii
 - Statistici preturi (min/max/medie)
 - Cel mai bun neferos pe luna
+- **Analiza Detaliata** - Instrument avansat de analiza deseuri:
+  - Selectie interval date (de la / pana la)
+  - Agregare: zilnic, lunar sau anual
+  - Selectie tipuri deseuri individual sau pe categorii intregi (ex: tot Fier, tot DEEE)
+  - 3 carduri sumar: Total KG, Total Valoare RON, Medie KG/Perioada
+  - Grafic interactiv: linie (<=6 tipuri) sau stacked bar (>6 tipuri), tooltip cu toate valorile
+  - Tabel detaliat: perioade x tipuri, cu totale pe rand si coloana
 
 ### Analiza Regionala
 - Distributie pe judete
@@ -246,6 +253,7 @@ paju/
 ### Waste
 - `GET /api/waste?type=categories` - Sumar categorii
 - `GET /api/waste?type=monthly&category=Cupru` - Evolutie lunara
+- `GET /api/waste?type=analysis&waste_type_ids=1,2&categories=Fier&date_from=2024-01-01&date_to=2024-12-31&aggregation=monthly` - Analiza detaliata
 
 ---
 

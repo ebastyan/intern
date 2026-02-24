@@ -121,6 +121,7 @@ waste_categories  - Hulladék kategóriák
 | `type=types&category=X` | Típusok listája |
 | `type=prices&category=X` | Árfolyam történet |
 | `type=monthly&category=X` | Havi bontás |
+| `type=analysis&waste_type_ids=1,2&categories=Fier&date_from=X&date_to=X&aggregation=monthly` | Részletes hulladék elemzés (típusonként/kategóriánként, daily/monthly/yearly) |
 
 ### `/api/monthly`
 | Parameter | Description |
@@ -169,6 +170,12 @@ Dashboard fő adatok (summary cards)
 - Trend grafikon
 - Havi "bajnok" kategória
 - Árstatisztikák
+- **Analiza Detaliata** - Részletes hulladék elemzés:
+  - Dátum tartomány (De la / Pana la), aggregáció (Zilnic/Lunar/Anual)
+  - Hulladék típus választó: kategóriánként csoportosított checkbox-ok
+  - Kategória fejléc checkbox = egész kategória egyben (pl. összes Fier)
+  - Egyedi altípus checkbox = típusonkénti bontás
+  - Összefoglaló kártyák + Chart.js grafikon + adattáblázat
 
 ### 5. Regiuni
 - Megye megoszlás
