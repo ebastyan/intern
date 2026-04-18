@@ -2721,8 +2721,61 @@
                 host.innerHTML = `<p style="color:#ff6b6b">Eroare: ${e.message}</p>`;
             }
         }
+        const METEO_BUCKET_VARS = [
+            { key: "rain_sum",        title: "🌧️ Ploaie (mm)" },
+            { key: "snowfall_sum",    title: "❄️ Zapada (cm)" },
+            { key: "temp_max",        title: "🌡️ Temp. maxima (°C)" },
+            { key: "wind_gusts_max",  title: "💨 Rafale vant (km/h)" },
+            { key: "humidity_mean",   title: "💧 Umiditate (%)" },
+            { key: "cloudcover_mean", title: "☁️ Nori (%)" },
+        ];
+        const _meteoBucketCharts = {};
+
         async function loadMeteoBuckets(df, dt, metric) {
-            document.getElementById('meteoBuckets').innerHTML = '<p style="color:#888">Se incarca...</p>';
+            const host = document.getElementById('meteoBuckets');
+            host.innerHTML = '<div id="meteoBucketGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px;"></div>';
+            const grid = document.getElementById('meteoBucketGrid');
+            await Promise.all(METEO_BUCKET_VARS.map(async v => {
+                const wrap = document.createElement('div');
+                wrap.innerHTML = `<div style="color:#aaa;font-weight:600;margin-bottom:6px;">${v.title}</div>
+                    <div style="position:relative;height:220px;"><canvas></canvas></div>`;
+                grid.appendChild(wrap);
+                try {
+                    const url = `/api/weather?type=buckets&metric=${encodeURIComponent(metric)}&variable=${v.key}&date_from=${df}&date_to=${dt}`;
+                    const data = await (await fetch(url)).json();
+                    const buckets = (data.buckets || []).filter(b => b.mean_residual_pct !== null && b.n >= 5);
+                    if (!buckets.length) {
+                        wrap.querySelector('div[style*="height"]').innerHTML = '<p style="color:#555">Nu sunt date suficiente.</p>';
+                        return;
+                    }
+                    const labels = buckets.map(b => b.bucket);
+                    const values = buckets.map(b => parseFloat(b.mean_residual_pct));
+                    const bg = values.map(x => x > 0 ? 'rgba(0,255,136,0.4)' : 'rgba(255,107,107,0.4)');
+                    const border = values.map(x => x > 0 ? '#00ff88' : '#ff6b6b');
+                    const canvas = wrap.querySelector('canvas');
+                    if (_meteoBucketCharts[v.key]) _meteoBucketCharts[v.key].destroy();
+                    _meteoBucketCharts[v.key] = new Chart(canvas.getContext('2d'), {
+                        type: 'bar',
+                        data: { labels, datasets: [{ label: '% vs baseline', data: values, backgroundColor: bg, borderColor: border, borderWidth: 1 }] },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: { callbacks: { label: ctx => {
+                                    const b = buckets[ctx.dataIndex];
+                                    return `${ctx.parsed.y.toFixed(1)}% · n=${b.n}`;
+                                } } }
+                            },
+                            scales: {
+                                y: { ticks: { color: '#aaa', callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                                x: { ticks: { color: '#aaa', font: { size: 10 } }, grid: { display: false } }
+                            }
+                        }
+                    });
+                } catch (e) {
+                    wrap.innerHTML += `<p style="color:#ff6b6b">Eroare: ${e.message}</p>`;
+                }
+            }));
         }
         async function loadMeteoLag(df, dt, metric) {
             document.getElementById('meteoLag').innerHTML = '<p style="color:#888">Se incarca...</p>';
