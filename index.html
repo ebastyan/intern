@@ -2834,7 +2834,44 @@
             }));
         }
         async function loadMeteoExtreme(df, dt, metric) {
-            document.getElementById('meteoExtreme').innerHTML = '<p style="color:#888">Se incarca...</p>';
+            const host = document.getElementById('meteoExtreme');
+            host.innerHTML = '<p style="color:#888">Se incarca...</p>';
+            try {
+                const url = `/api/weather?type=extreme_days&metric=${encodeURIComponent(metric)}&date_from=${df}&date_to=${dt}&limit=20`;
+                const data = await (await fetch(url)).json();
+                const rows = data.extreme_days || [];
+                if (!rows.length) { host.innerHTML = '<p style="color:#555">Nu sunt date.</p>'; return; }
+                let html = '<table><thead><tr>';
+                html += '<th>Data</th><th class="text-right">Actual</th><th class="text-right">Baseline</th><th class="text-right">Δ</th><th class="text-right">Δ%</th>';
+                html += '<th class="text-right">Temp max</th><th class="text-right">Temp min</th><th class="text-right">Ploaie</th><th class="text-right">Zapada</th><th class="text-right">Vant max</th><th class="text-right">Cod</th>';
+                html += '</tr></thead><tbody>';
+                rows.forEach(r => {
+                    const pct = r.residual_pct;
+                    const color = pct > 0 ? '#00ff88' : '#ff6b6b';
+                    const sign = pct >= 0 ? '+' : '';
+                    const v = parseFloat(r.value);
+                    const b = r.baseline !== null && r.baseline !== undefined ? parseFloat(r.baseline) : null;
+                    const res = r.residual !== null && r.residual !== undefined ? parseFloat(r.residual) : null;
+                    const pctStr = pct !== null && pct !== undefined ? sign + pct.toFixed(1) + '%' : '–';
+                    html += `<tr>
+                        <td>${r.date}</td>
+                        <td class="text-right">${v.toFixed(0)}</td>
+                        <td class="text-right" style="color:#888">${b !== null ? b.toFixed(1) : '–'}</td>
+                        <td class="text-right" style="color:${color}">${sign}${res !== null ? res.toFixed(1) : '–'}</td>
+                        <td class="text-right" style="color:${color};font-weight:600;">${pctStr}</td>
+                        <td class="text-right">${r.temp_max ?? '–'}</td>
+                        <td class="text-right">${r.temp_min ?? '–'}</td>
+                        <td class="text-right">${r.precipitation_sum ?? '–'}</td>
+                        <td class="text-right">${r.snowfall_sum ?? '–'}</td>
+                        <td class="text-right">${r.wind_speed_max ?? '–'}</td>
+                        <td class="text-right" style="color:#888">${r.weather_code ?? '–'}</td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                host.innerHTML = html;
+            } catch (e) {
+                host.innerHTML = `<p style="color:#ff6b6b">Eroare: ${e.message}</p>`;
+            }
         }
     </script>
 </body>
