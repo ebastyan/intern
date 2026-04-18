@@ -53,6 +53,57 @@ class handler(BaseHTTPRequestHandler):
             cur.execute("SELECT date, name, type, is_official FROM holidays ORDER BY date")
         return [dict(r) for r in cur.fetchall()]
 
+    def list_closures(self, cur):
+        cur.execute(
+            """
+            SELECT date, reason, detected_automatically, validated_at
+            FROM company_closures
+            WHERE reason IS DISTINCT FROM '__ignored__'
+            ORDER BY date
+            """
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+    def closure_candidates(self, cur):
+        cur.execute(
+            """
+            WITH bounds AS (
+              SELECT MIN(date) AS dmin, MAX(date) AS dmax FROM transactions
+            ),
+            days AS (
+              SELECT generate_series(b.dmin, b.dmax, '1 day'::interval)::date AS d FROM bounds b
+            ),
+            official_holiday_dates AS (
+              SELECT DISTINCT date FROM holidays WHERE is_official
+            ),
+            known_closures AS (
+              SELECT date FROM company_closures
+            ),
+            tx_days AS (
+              SELECT DISTINCT date FROM transactions
+            )
+            SELECT d AS date,
+                   TO_CHAR(d, 'Dy') AS dow_label,
+                   EXTRACT(ISODOW FROM d)::int AS dow
+            FROM days
+            WHERE EXTRACT(ISODOW FROM d) <> 7
+              AND d NOT IN (SELECT date FROM official_holiday_dates)
+              AND d NOT IN (SELECT date FROM known_closures)
+              AND d NOT IN (SELECT date FROM tx_days)
+            ORDER BY d
+            """
+        )
+        singles = [dict(r) for r in cur.fetchall()]
+
+        runs = []
+        for row in singles:
+            if runs and (row['date'] - runs[-1]['date_to']).days == 1:
+                runs[-1]['date_to'] = row['date']
+                runs[-1]['working_days'] += 1
+            else:
+                runs.append({'date_from': row['date'], 'date_to': row['date'], 'working_days': 1})
+        return {'runs': runs, 'total_days': len(singles)}
+
     def do_GET(self):
         try:
             parsed = urlparse(self.path)
@@ -67,6 +118,10 @@ class handler(BaseHTTPRequestHandler):
             elif query_type == 'holidays':
                 year = params.get('year', [None])[0]
                 result = {'holidays': self.list_holidays(cur, year)}
+            elif query_type == 'closures':
+                result = {'closures': self.list_closures(cur)}
+            elif query_type == 'closure_candidates':
+                result = self.closure_candidates(cur)
             else:
                 result = {'error': 'Unknown query type', 'got': query_type}
 
