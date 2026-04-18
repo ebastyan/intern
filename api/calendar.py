@@ -143,6 +143,47 @@ class handler(BaseHTTPRequestHandler):
         )
         return [dict(r) for r in cur.fetchall()]
 
+    def monthly_pattern(self, cur, year):
+        year = int(year) if year else None
+        where = ["EXTRACT(ISODOW FROM t.date) <> 7",
+                 "t.date NOT IN (SELECT date FROM holidays WHERE is_official)",
+                 "t.date NOT IN (SELECT date FROM company_closures WHERE reason IS DISTINCT FROM '__ignored__')"]
+        args = []
+        if year:
+            where.append("EXTRACT(year FROM t.date) = %s")
+            args.append(year)
+        cur.execute(
+            f"""
+            WITH daily AS (
+              SELECT t.date,
+                     EXTRACT(month FROM t.date)::int AS month,
+                     COUNT(DISTINCT t.cnp) AS partners,
+                     COUNT(*) AS tx_count,
+                     COALESCE(SUM(i.weight_kg), 0) AS kg,
+                     COALESCE(SUM(t.gross_value), 0) AS ron
+              FROM transactions t
+              LEFT JOIN transaction_items i ON i.document_id = t.document_id
+              WHERE {' AND '.join(where)}
+              GROUP BY t.date
+            )
+            SELECT month,
+                   COUNT(*) AS working_days,
+                   ROUND(AVG(partners)::numeric, 1) AS avg_partners_per_day,
+                   ROUND(AVG(tx_count)::numeric, 1) AS avg_transactions_per_day,
+                   ROUND(AVG(kg)::numeric, 1) AS avg_kg_per_day,
+                   ROUND(AVG(ron)::numeric, 2) AS avg_ron_per_day,
+                   ROUND(SUM(partners)::numeric, 0) AS total_partners,
+                   SUM(tx_count) AS total_transactions,
+                   ROUND(SUM(kg)::numeric, 1) AS total_kg,
+                   ROUND(SUM(ron)::numeric, 2) AS total_ron
+            FROM daily
+            GROUP BY month
+            ORDER BY month
+            """,
+            args,
+        )
+        return [dict(r) for r in cur.fetchall()]
+
     def do_GET(self):
         try:
             parsed = urlparse(self.path)
@@ -165,6 +206,9 @@ class handler(BaseHTTPRequestHandler):
                 df = params.get('date_from', [None])[0]
                 dt = params.get('date_to', [None])[0]
                 result = {'weekly_pattern': self.weekly_pattern(cur, df, dt)}
+            elif query_type == 'monthly_pattern':
+                year = params.get('year', [None])[0]
+                result = {'monthly_pattern': self.monthly_pattern(cur, year)}
             else:
                 result = {'error': 'Unknown query type', 'got': query_type}
 
