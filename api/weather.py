@@ -551,7 +551,73 @@ class handler(BaseHTTPRequestHandler):
 
         ranking.sort(key=lambda r: r["effect_pct"])
 
-        return {"metric": data["metric"], "ranking": ranking, "insights": insights}
+        # Period context: how does this date range compare to the same
+        # calendar window in OTHER years of the dataset?
+        context = self._period_context(cur, metric_name, date_from, date_to)
+
+        return {"metric": data["metric"], "ranking": ranking, "insights": insights, "context": context}
+
+    def _period_context(self, cur, metric_name, date_from, date_to):
+        if not date_from or not date_to:
+            return None
+        try:
+            from datetime import date as _date
+            df = _date.fromisoformat(date_from)
+            dt = _date.fromisoformat(date_to)
+        except Exception:
+            return None
+        agg_sql, _ = resolve_metric(metric_name)
+        # Current period average daily metric
+        cur.execute(f"""
+            WITH daily AS (
+              SELECT t.date, {agg_sql} AS value FROM transactions t
+              LEFT JOIN transaction_items i ON i.document_id = t.document_id
+              WHERE t.date BETWEEN %s AND %s AND EXTRACT(ISODOW FROM t.date) <> 7
+              GROUP BY t.date
+            )
+            SELECT AVG(value)::float AS avg_val, COUNT(*) AS n FROM daily
+        """, (df, dt))
+        r = cur.fetchone()
+        if not r or not r["n"]:
+            return None
+        current_avg = r["avg_val"]
+
+        # Other years, same day-of-year range
+        cur.execute(f"""
+            WITH daily AS (
+              SELECT t.date,
+                     EXTRACT(year FROM t.date)::int AS yr,
+                     {agg_sql} AS value
+              FROM transactions t
+              LEFT JOIN transaction_items i ON i.document_id = t.document_id
+              WHERE EXTRACT(ISODOW FROM t.date) <> 7
+                AND NOT (t.date BETWEEN %s AND %s)
+                AND EXTRACT(doy FROM t.date) BETWEEN %s AND %s
+              GROUP BY t.date, EXTRACT(year FROM t.date)
+            )
+            SELECT yr, AVG(value)::float AS avg_val, COUNT(*) AS n
+            FROM daily GROUP BY yr ORDER BY yr
+        """, (df, dt, df.timetuple().tm_yday, dt.timetuple().tm_yday))
+        years_rows = cur.fetchall()
+        if not years_rows:
+            return {
+                "current_avg": round(current_avg, 1),
+                "other_years_avg": None,
+                "pct_vs_other": None,
+                "years": [],
+                "selected_year": df.year if df.year == dt.year else None,
+            }
+        other_total = sum(y["avg_val"] * y["n"] for y in years_rows)
+        other_n = sum(y["n"] for y in years_rows)
+        other_avg = other_total / other_n if other_n else None
+        pct_vs = ((current_avg - other_avg) / other_avg * 100) if other_avg else None
+        return {
+            "current_avg": round(current_avg, 1),
+            "other_years_avg": round(other_avg, 1) if other_avg else None,
+            "pct_vs_other": round(pct_vs, 1) if pct_vs is not None else None,
+            "years": [{"year": y["yr"], "avg": round(y["avg_val"], 1), "n": y["n"]} for y in years_rows],
+            "selected_year": df.year if df.year == dt.year else None,
+        }
 
     def do_GET(self):
         try:

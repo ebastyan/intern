@@ -2697,6 +2697,40 @@
             ]);
         }
 
+        function renderContextBanner(ctx, metricUnit) {
+            if (!ctx) return '';
+            const pct = ctx.pct_vs_other;
+            const cur = ctx.current_avg;
+            const oth = ctx.other_years_avg;
+            if (cur == null) return '';
+            let color, label, icon;
+            if (pct == null) {
+                color = '#aaa'; label = 'nu sunt alti ani pentru comparatie'; icon = 'ℹ️';
+            } else if (pct <= -5) {
+                color = '#ff6b6b'; label = `SUB NORMAL cu ${Math.abs(pct).toFixed(1)}%`; icon = '⚠️';
+            } else if (pct >= 5) {
+                color = '#00ff88'; label = `PESTE NORMAL cu ${pct.toFixed(1)}%`; icon = '✨';
+            } else {
+                color = '#aaa'; label = `aproape normal (${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%)`; icon = '✓';
+            }
+            let years = '';
+            if (ctx.years && ctx.years.length) {
+                years = ctx.years.map(y => `<span style="color:#888;">${y.year}: ${y.avg}</span>`).join(' · ');
+            }
+            let html = `<div style="margin-bottom:16px;padding:10px 14px;border-left:3px solid ${color};background:rgba(0,217,255,0.03);border-radius:4px;font-size:0.88em;">`;
+            html += `<div style="color:${color};font-weight:600;margin-bottom:3px;">${icon} Contextul perioadei — ${label}</div>`;
+            html += `<div style="color:#aaa;line-height:1.5;">`;
+            html += `In perioada selectata: <strong style="color:#ddd;">${cur}</strong> ${metricUnit}/zi in medie.`;
+            if (oth != null) {
+                html += ` Aceleasi zile in anii anteriori: <strong style="color:#ddd;">${oth}</strong> in medie (${years}).`;
+            }
+            if (pct != null && Math.abs(pct) >= 5) {
+                html += ` <em style="color:#ff9f40;">Atentie: verdictele meteo de mai jos trebuie cititie avand in minte ca perioada asta a fost un ${pct < 0 ? 'sezon slab' : 'sezon puternic'} in general.</em>`;
+            }
+            html += `</div></div>`;
+            return html;
+        }
+
         function renderTeachingCard(ranking) {
             const byName = {};
             ranking.forEach(r => byName[r.name] = r);
@@ -2758,15 +2792,15 @@
                     const c = it.effect_pct <= -2 ? '#ff6b6b' : (it.effect_pct >= 2 ? '#00ff88' : '#777');
                     const sign = it.effect_pct >= 0 ? '+' : '';
                     const barW = Math.min(50, Math.abs(it.effect_pct) / maxAbs * 50);
-                    const marker = isStrong && Math.abs(it.effect_pct) >= 5 ? '  ⚠' : '';
-                    html += `<div style="display:grid;grid-template-columns:210px 1fr 80px 30px;gap:10px;align-items:center;padding:2px 0;font-size:0.87em;">`;
+                    const marker = isStrong && Math.abs(it.effect_pct) >= 5 ? '⚠' : '';
+                    html += `<div style="display:grid;grid-template-columns:minmax(180px,230px) 75px 1fr 20px;gap:10px;align-items:center;padding:3px 0;font-size:0.87em;">`;
                     html += `<div style="color:${isStrong ? '#ddd' : '#999'};">${it.name} <span style="color:#666;font-size:0.88em;">${it.range}</span></div>`;
+                    html += `<div style="color:${c};text-align:right;font-weight:${isStrong ? 700 : 500};font-size:0.95em;">${sign}${it.effect_pct.toFixed(1)}%</div>`;
                     html += `<div style="height:10px;background:rgba(255,255,255,0.03);border-radius:3px;overflow:hidden;position:relative;">
                         <div style="position:absolute;top:0;bottom:0;left:50%;width:1px;background:rgba(255,255,255,0.25);z-index:1;"></div>
                         <div style="position:absolute;top:0;bottom:0;${it.effect_pct < 0 ? `right:50%;left:${50-barW}%` : `left:50%;right:${50-barW}%`};background:${c};border-radius:2px;"></div>
                     </div>`;
-                    html += `<div style="color:${c};text-align:right;font-weight:${isStrong ? 700 : 400};font-size:0.95em;">${sign}${it.effect_pct.toFixed(1)}%</div>`;
-                    html += `<div style="color:#ff9f40;font-size:0.8em;">${marker}</div>`;
+                    html += `<div style="color:#ff9f40;font-size:0.85em;">${marker}</div>`;
                     html += `</div>`;
                 });
                 html += `</div>`;
@@ -2836,12 +2870,14 @@
                 const metricUnit0 = {partners:'parteneri', transactions:'tranzactii', kg:'kg', ron:'RON'}[metric] || '';
 
                 const ranking = data.ranking || [];
-                // Teaching card (synthesis + gradients)
+                // Teaching card (context banner + synthesis + gradients)
                 if (teachHost) {
                     if (!ranking.length) {
                         teachHost.innerHTML = '<p style="color:#888">Nu sunt suficiente date pentru sinteza.</p>';
                     } else {
-                        teachHost.innerHTML = renderTeachingCard(ranking);
+                        const ctx = data.context;
+                        const ctxBanner = renderContextBanner(ctx, metricUnit0);
+                        teachHost.innerHTML = ctxBanner + renderTeachingCard(ranking);
                     }
                 }
                 // "Bad" = avg clearly negative OR 3+ strongly-bad days (even if avg is small)
