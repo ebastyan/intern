@@ -2694,25 +2694,32 @@
                         const maxAbs = Math.max(...ranking.map(r => Math.abs(r.effect_pct))) || 1;
                         let rh = '';
                         ranking.forEach((r, idx) => {
-                            const c = r.effect_pct < -2 ? '#ff6b6b' : (r.effect_pct > 2 ? '#00ff88' : '#aaa');
+                            const isNeutral = Math.abs(r.effect_pct) < 2;
+                            const c = r.effect_pct <= -2 ? '#ff6b6b' : (r.effect_pct >= 2 ? '#00ff88' : '#888');
                             const barW = Math.min(100, (Math.abs(r.effect_pct) / maxAbs) * 100);
                             const sign = r.effect_pct >= 0 ? '+' : '';
-                            const ex = r.worst_day || r.best_day;
+                            // Only show example day when the category has a real consistent effect
+                            const ex = !isNeutral ? (r.worst_day || r.best_day) : null;
                             rh += `<div style="display:grid;grid-template-columns:36px 1fr 90px;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">`;
                             rh += `<div style="color:#666;font-size:0.9em;text-align:center;">#${idx + 1}</div>`;
                             rh += `<div>`;
-                            rh += `<div style="font-size:0.98em;"><span style="font-size:1.15em;margin-right:4px;">${r.emoji}</span><strong style="color:#eee;">${r.name}</strong> <span style="color:#888;font-size:0.85em;">(${r.range})</span> <span style="color:#666;font-size:0.82em;margin-left:6px;">${r.n} zile</span></div>`;
+                            rh += `<div style="font-size:0.98em;"><span style="font-size:1.15em;margin-right:4px;">${r.emoji}</span><strong style="color:${isNeutral ? '#aaa' : '#eee'};">${r.name}</strong> <span style="color:#888;font-size:0.85em;">(${r.range})</span> <span style="color:#666;font-size:0.82em;margin-left:6px;" title="Cate zile lucratoare au avut aceasta vreme in perioada selectata">${r.n} zile lucratoare cu aceasta vreme</span></div>`;
                             rh += `<div style="height:8px;margin-top:5px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${barW}%;background:${c};"></div></div>`;
                             if (ex) {
                                 const exPct = ex.residual_pct != null ? `${ex.residual_pct >= 0 ? '+' : ''}${ex.residual_pct.toFixed(1)}%` : '';
                                 const act = ex.actual != null ? Math.round(ex.actual) : '–';
                                 const bas = ex.baseline != null ? Math.round(ex.baseline) : '–';
-                                rh += `<div style="color:#888;font-size:0.82em;margin-top:5px;">cea mai extrema: <span style="color:#aaa;">${ex.date} ${ex.dow}</span> — ${ex.weather} → ${act} vs ${bas} ${metricUnit0} <strong style="color:${c};margin-left:4px;">${exPct}</strong></div>`;
+                                rh += `<div style="color:#888;font-size:0.82em;margin-top:5px;">cel mai ilustrativ: <span style="color:#aaa;">${ex.date} ${ex.dow}</span> — ${ex.weather} → ${act} vs ${bas} ${metricUnit0} <strong style="color:${c};margin-left:4px;">${exPct}</strong></div>`;
+                            } else if (isNeutral) {
+                                rh += `<div style="color:#666;font-size:0.82em;margin-top:5px;font-style:italic;">efecte mixte — nu e o tendinta clara</div>`;
                             }
                             rh += `</div>`;
                             rh += `<div style="color:${c};font-size:1.15em;font-weight:600;text-align:right;">${sign}${r.effect_pct.toFixed(1)}%</div>`;
                             rh += `</div>`;
                         });
+                        rh += `<div style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.05);font-size:0.8em;color:#666;line-height:1.6;">
+                            <strong style="color:#888;">Cum se citeste:</strong> Numarul de la dreapta = procentul mediu pe <strong>toate zilele</strong> din perioada cu aceasta vreme. <strong>N zile lucratoare</strong> = cate zile au avut acea vreme. Procentele peste <strong>±2%</strong> au colori (rosu = mai putini, verde = mai multi). Sub ±2% = efect nesigur / sub zgomot.
+                        </div>`;
                         rankHost.innerHTML = rh;
                     }
                 }
