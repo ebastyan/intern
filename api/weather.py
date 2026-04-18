@@ -219,10 +219,31 @@ class handler(BaseHTTPRequestHandler):
         data = self.residuals(cur, metric_name, date_from, date_to)
         rows = [r for r in data["residuals"] if r["residual"] is not None]
         if len(rows) < 30:
-            return {"metric": data["metric"], "insights": [], "note": "Not enough data"}
+            return {"metric": data["metric"], "insights": [], "note": "Nu sunt suficiente date"}
         insights = []
 
-        # Family A: bucket comparisons — top bucket by |mean_residual_pct| per variable
+        # Plain-language labels for narratives
+        METRIC_LABEL = {"partners": "parteneri", "transactions": "tranzactii",
+                        "kg": "kg de material", "ron": "RON"}
+        mlabel = METRIC_LABEL.get(metric_name, metric_name)
+        VAR_LABEL = {
+            "rain_sum": "ploaia",
+            "snowfall_sum": "zapada",
+            "temp_max": "temperatura maxima",
+            "temp_min": "temperatura minima",
+            "wind_gusts_max": "rafalele de vant",
+            "wind_speed_max": "viteza vantului",
+            "humidity_mean": "umiditatea",
+            "cloudcover_mean": "norii",
+            "precipitation_sum": "precipitatiile totale",
+        }
+        VAR_UNIT = {
+            "rain_sum": "mm", "snowfall_sum": "cm", "temp_max": "°C", "temp_min": "°C",
+            "wind_gusts_max": "km/h", "wind_speed_max": "km/h",
+            "humidity_mean": "%", "cloudcover_mean": "%", "precipitation_sum": "mm",
+        }
+
+        # Family A: bucket comparisons — narrative form
         for var in ["rain_sum", "temp_max", "wind_gusts_max", "snowfall_sum",
                     "humidity_mean", "cloudcover_mean"]:
             bres = self.buckets(cur, metric_name, var, date_from, date_to)
@@ -231,38 +252,51 @@ class handler(BaseHTTPRequestHandler):
             if not candidates:
                 continue
             top = max(candidates, key=lambda b: abs(b["mean_residual_pct"]))
-            if abs(top["mean_residual_pct"]) >= 5:
-                insights.append({
-                    "kind": "bucket",
-                    "variable": var,
-                    "bucket": top["bucket"],
-                    "effect_pct": top["mean_residual_pct"],
-                    "n": top["n"],
-                    "text": f"{var}={top['bucket']}: residual mediu {top['mean_residual']:+.1f} "
-                            f"({top['mean_residual_pct']:+.1f}% fata de baseline, n={top['n']})",
-                })
+            pct = top["mean_residual_pct"]
+            if abs(pct) < 5:
+                continue
+            direction = "mai multi" if pct > 0 else "mai putini"
+            vlbl = VAR_LABEL.get(var, var)
+            text = (f"Cand {vlbl} e in categoria \"{top['bucket']}\", "
+                    f"vin cu {abs(pct):.0f}% {direction} {mlabel} decat intr-o zi normala. "
+                    f"Observat pe {top['n']} zile.")
+            insights.append({
+                "kind": "bucket",
+                "variable": var,
+                "bucket": top["bucket"],
+                "effect_pct": pct,
+                "n": top["n"],
+                "text": text,
+            })
 
-        # Family B: threshold detection (continuous variables)
+        # Family B: threshold detection — narrative form
         for var in ["temp_max", "temp_min", "wind_speed_max", "wind_gusts_max",
                     "precipitation_sum", "humidity_mean"]:
             pairs = [(float(r[var]), r["residual"]) for r in rows if r.get(var) is not None]
             t = find_threshold(pairs)
-            if t and t["t_stat"] >= 2.0:
-                insights.append({
-                    "kind": "threshold",
-                    "variable": var,
-                    "threshold": round(t["threshold"], 2),
-                    "above_effect": round(t["above_mean"], 1),
-                    "below_effect": round(t["below_mean"], 1),
-                    "t_stat": round(t["t_stat"], 2),
-                    "n_above": t["n_above"],
-                    "n_below": t["n_below"],
-                    "text": f"{var} >= {round(t['threshold'], 2)}: residual {t['above_mean']:+.1f} "
-                            f"(n={t['n_above']}) vs sub prag: {t['below_mean']:+.1f} "
-                            f"(n={t['n_below']}), t={t['t_stat']:.2f}",
-                })
+            if not t or t["t_stat"] < 2.0:
+                continue
+            above_minus_below = t["above_mean"] - t["below_mean"]
+            direction = "CRESTE" if above_minus_below > 0 else "SCADE"
+            diff_abs = abs(above_minus_below)
+            vlbl = VAR_LABEL.get(var, var)
+            unit = VAR_UNIT.get(var, "")
+            text = (f"Am gasit un prag la {vlbl} = {t['threshold']:.1f}{unit}. "
+                    f"Cand e peste acest prag, traficul {direction} cu ~{diff_abs:.0f} {mlabel}/zi "
+                    f"fata de zilele sub prag. ({t['n_above']} zile peste, {t['n_below']} sub.)")
+            insights.append({
+                "kind": "threshold",
+                "variable": var,
+                "threshold": round(t["threshold"], 2),
+                "above_effect": round(t["above_mean"], 1),
+                "below_effect": round(t["below_mean"], 1),
+                "t_stat": round(t["t_stat"], 2),
+                "n_above": t["n_above"],
+                "n_below": t["n_below"],
+                "text": text,
+            })
 
-        # Family C: lag analysis
+        # Family C: lag analysis — narrative form
         for var in ["rain_sum", "snowfall_sum", "temp_max", "wind_gusts_max"]:
             lc = self.lag_curve(cur, metric_name, var, date_from, date_to)
             lags = [l for l in lc.get("lags", []) if l.get("correlation") is not None]
@@ -270,19 +304,27 @@ class handler(BaseHTTPRequestHandler):
                 continue
             peak = max(lags, key=lambda l: abs(l["correlation"]))
             zero = next((l for l in lags if l["lag"] == 0), None)
-            if peak["lag"] != 0 and abs(peak["correlation"]) >= 0.15 and zero and \
-               abs(peak["correlation"]) > abs(zero["correlation"]):
-                insights.append({
-                    "kind": "lag",
-                    "variable": var,
-                    "lag": peak["lag"],
-                    "correlation_at_peak": peak["correlation"],
-                    "correlation_at_zero": zero["correlation"],
-                    "text": f"{var} efect maxim la lag={peak['lag']} (r={peak['correlation']:+.2f}), "
-                            f"nu in aceeasi zi (r0={zero['correlation']:+.2f})",
-                })
+            if peak["lag"] == 0 or abs(peak["correlation"]) < 0.15 or \
+               not zero or abs(peak["correlation"]) <= abs(zero["correlation"]):
+                continue
+            vlbl = VAR_LABEL.get(var, var)
+            lag_label = (f"{peak['lag']} zile dupa" if peak["lag"] > 0
+                         else f"{abs(peak['lag'])} zile inainte")
+            direction_desc = ("creste" if peak["correlation"] > 0 else "scade")
+            text = (f"{vlbl.capitalize()} NU are efect imediat, dar la {lag_label} "
+                    f"traficul {direction_desc} (corelatie {peak['correlation']:+.2f} la lag={peak['lag']} "
+                    f"vs {zero['correlation']:+.2f} in aceeasi zi). "
+                    f"Oamenii reactioneaza cu intarziere.")
+            insights.append({
+                "kind": "lag",
+                "variable": var,
+                "lag": peak["lag"],
+                "correlation_at_peak": peak["correlation"],
+                "correlation_at_zero": zero["correlation"],
+                "text": text,
+            })
 
-        # Family D: curated interaction patterns
+        # Family D: curated interaction patterns — narrative form
         def avg_res(filter_fn):
             vals = [r["residual"] for r in rows if filter_fn(r)]
             n = len(vals)
@@ -294,22 +336,24 @@ class handler(BaseHTTPRequestHandler):
         hot_dry = avg_res(lambda r: r.get("temp_max") is not None and float(r["temp_max"]) > 30
                           and r.get("precipitation_sum") is not None and float(r["precipitation_sum"]) < 0.5)
         if cold_wet[1] >= 5:
-            patterns.append(("Frig + umed (temp<5°C AND precip>2mm)", cold_wet[0], cold_wet[1]))
+            patterns.append(("Frig + ploaie (sub 5°C si peste 2mm)", cold_wet[0], cold_wet[1]))
         if hot_dry[1] >= 5:
-            patterns.append(("Canicula uscata (temp>30°C AND precip<0.5mm)", hot_dry[0], hot_dry[1]))
+            patterns.append(("Canicula uscata (peste 30°C, fara ploaie)", hot_dry[0], hot_dry[1]))
 
         for name, val, n in patterns:
             if val is None or abs(val) < 3:
                 continue
+            direction = "mai multi" if val > 0 else "mai putini"
+            text = (f"{name}: au venit in medie {abs(val):.0f} {mlabel} {direction} "
+                    f"decat intr-o zi normala. Observat pe {n} zile.")
             insights.append({
                 "kind": "interaction",
                 "pattern": name,
                 "effect": round(val, 1),
                 "n": n,
-                "text": f"{name}: residual mediu {val:+.1f} (n={n})",
+                "text": text,
             })
 
-        # Sort by importance
         def score(i):
             return abs(i.get("effect_pct") or i.get("above_effect") or
                        (i.get("correlation_at_peak") or 0) * 100 or

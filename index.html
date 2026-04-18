@@ -781,25 +781,38 @@
             </div>
 
             <div class="card">
-                <h2><span class="icon">💡</span> Insights auto-detectate</h2>
+                <h2><span class="icon">💡</span> Ce spune vremea despre trafic</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Cele mai importante observatii gasite in datele meteo vs trafic. Fiecare card e o propozitie — spune clar ce efect are un tip de vreme asupra numarului de parteneri (sau tranzactii/kg/RON, in functie de ce alegi). Sortate dupa importanta, cele mai mari efecte sus.
+                </p>
                 <div id="meteoInsights"></div>
             </div>
 
             <div class="card">
-                <h2><span class="icon">🌧️</span> Buckets: ploaie, zapada, temperatura, vant</h2>
-                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">Cum se comporta traficul pe diferite conditii. <strong style="color:#00ff88">Verde</strong> = mai mult decat baseline, <strong style="color:#ff6b6b">rosu</strong> = mai putin.</p>
+                <h2><span class="icon">📊</span> Grafice pe categorii de vreme</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Fiecare grafic imparte vremea in categorii (ex. "fara ploaie", "ploaie slaba", "medie", "puternica") si arata cat <strong style="color:#00ff88">mai multi (verde)</strong> sau <strong style="color:#ff6b6b">mai putini (rosu)</strong> oameni au venit in acea categorie, <strong style="color:#aaa">in procente</strong>, fata de o zi normala. <span style="color:#888">n=N</span> pe hover = pe cate zile se bazeaza calculul.
+                </p>
                 <div id="meteoBuckets"></div>
             </div>
 
             <div class="card">
-                <h2><span class="icon">⏱️</span> Analiza lag (efect la 0, 1, 2, 3 zile dupa)</h2>
-                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">Corelatie intre vreme si residual la diferite decalaje. Efect maxim nu e mereu in aceeasi zi.</p>
+                <h2><span class="icon">⏱️</span> Efecte cu intarziere (lag)</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Vremea NU afecteaza mereu traficul in aceeasi zi. Exemplu: daca ploua azi, oamenii pot veni abia peste 1-2 zile (cand se opreste si au material acumulat). Graficele arata <strong style="color:#aaa">corelatia</strong> intre vreme si trafic la diferite decalaje: <strong>azi</strong>, <strong>+1 zi</strong>, <strong>+2 zile</strong>, etc.<br>
+                    → Valori aproape de <strong>0</strong> = fara efect<br>
+                    → <strong style="color:#00ff88">Pozitive</strong> = vremea X aduce mai multi oameni<br>
+                    → <strong style="color:#ff6b6b">Negative</strong> = aduce mai putini<br>
+                    → <span style="color:#ff9f40">Punct portocaliu</span> = lag-ul cu efectul cel mai mare
+                </p>
                 <div id="meteoLag"></div>
             </div>
 
             <div class="card">
-                <h2><span class="icon">🔥</span> Zile extreme</h2>
-                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">Cele mai atipice zile: cel mai mare ecart fata de baseline.</p>
+                <h2><span class="icon">🔥</span> Cele mai atipice 20 zile</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Zilele cu cel mai mare ecart fata de <strong style="color:#aaa">normalul asteptat</strong> (medianul ultimelor 28 zile lucratoare cu aceeasi zi a saptamanii). Uita-te la coloanele meteo pentru a vedea ce era in ziua respectiva si poate intelege de ce. <strong style="color:#00ff88">Verde</strong> = au venit mult mai multi decat normal. <strong style="color:#ff6b6b">Rosu</strong> = mult mai putini.
+                </p>
                 <div id="meteoExtreme" class="scroll-table"></div>
             </div>
         </div>
@@ -2706,13 +2719,18 @@
                     if (v < -2) return "#ff6b6b";
                     return "#aaa";
                 };
-                const kindLabel = { bucket: "BUCKET", threshold: "PRAG", lag: "LAG", interaction: "COMBO" };
-                let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;">';
+                const kindLabel = {
+                    bucket: "Categorie de vreme",
+                    threshold: "Prag critic",
+                    lag: "Efect cu intarziere",
+                    interaction: "Combinatie"
+                };
+                let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:12px;">';
                 insights.forEach(ins => {
                     const c = colorFor(ins);
-                    html += `<div style="padding:12px;background:rgba(0,217,255,0.04);border-left:3px solid ${c};border-radius:4px;">`;
-                    html += `<div style="font-size:0.75em;color:#888;letter-spacing:1px;margin-bottom:4px;">${emojiFor(ins)} ${kindLabel[ins.kind] || ins.kind}</div>`;
-                    html += `<div style="color:#ddd;font-size:0.92em;line-height:1.5;">${ins.text}</div>`;
+                    html += `<div style="padding:14px;background:rgba(0,217,255,0.04);border-left:3px solid ${c};border-radius:4px;">`;
+                    html += `<div style="font-size:0.75em;color:#888;margin-bottom:6px;">${emojiFor(ins)} <span style="letter-spacing:0.5px;text-transform:uppercase;">${kindLabel[ins.kind] || ins.kind}</span></div>`;
+                    html += `<div style="color:#ddd;font-size:0.95em;line-height:1.55;">${ins.text}</div>`;
                     html += '</div>';
                 });
                 html += '</div>';
@@ -2842,8 +2860,15 @@
                 const rows = data.extreme_days || [];
                 if (!rows.length) { host.innerHTML = '<p style="color:#555">Nu sunt date.</p>'; return; }
                 let html = '<table><thead><tr>';
-                html += '<th>Data</th><th class="text-right">Actual</th><th class="text-right">Baseline</th><th class="text-right">Δ</th><th class="text-right">Δ%</th>';
-                html += '<th class="text-right">Temp max</th><th class="text-right">Temp min</th><th class="text-right">Ploaie</th><th class="text-right">Zapada</th><th class="text-right">Vant max</th><th class="text-right">Cod</th>';
+                html += '<th>Data</th>';
+                html += '<th class="text-right" title="Cati au venit efectiv in ziua asta">Au venit</th>';
+                html += '<th class="text-right" title="Medianul ultimelor 28 zile cu aceeasi zi a saptamanii">Asteptat</th>';
+                html += '<th class="text-right" title="Diferenta (au venit - asteptat)">Diferenta</th>';
+                html += '<th class="text-right" title="Procentual fata de asteptat">Δ%</th>';
+                html += '<th class="text-right">Temp max (°C)</th><th class="text-right">Temp min (°C)</th>';
+                html += '<th class="text-right">Ploaie (mm)</th><th class="text-right">Zapada (cm)</th>';
+                html += '<th class="text-right">Vant max (km/h)</th>';
+                html += '<th class="text-right" title="Cod WMO (0=senin, 61=ploaie, 71=zapada, etc.)">Vreme</th>';
                 html += '</tr></thead><tbody>';
                 rows.forEach(r => {
                     const pct = r.residual_pct;
