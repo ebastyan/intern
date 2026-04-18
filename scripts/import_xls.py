@@ -110,9 +110,16 @@ def parse_date_from_filename(filename, folder_year=None, folder_month=None):
         dd, mm, yy = m.group(1), m.group(2), m.group(3)
         try:
             d = date(int(yy), int(mm), int(dd))
-            # Sanity: if the parsed year disagrees with folder_year by more
-            # than 1, something is wrong — prefer folder hint.
-            if folder_year and abs(d.year - folder_year) > 1:
+            # Trust folder over filename: if folder disagrees on year or
+            # month, the file is misnamed (we've seen this repeatedly). Use
+            # folder + day_from_filename as the authoritative date.
+            if folder_year and folder_month:
+                if d.year != folder_year or d.month != folder_month:
+                    try:
+                        return date(folder_year, folder_month, int(dd))
+                    except ValueError:
+                        pass
+            elif folder_year and abs(d.year - folder_year) > 1:
                 raise ValueError("year mismatch with folder")
             return d
         except ValueError:

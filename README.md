@@ -172,8 +172,8 @@ waste_types                    waste_categories
 | Indicator | Valoare |
 |-----------|---------|
 | Rulaj Total | **~250.3M RON** |
-| Numar Tranzactii | **157,424+** |
-| Articole Tranzactii | **316,409+** |
+| Numar Tranzactii | **160,769+** |
+| Articole Tranzactii | **~323,000+** |
 | Parteneri Inregistrati | **31,220+** |
 | Categorii Deseuri | **16** |
 | Tipuri Deseuri | **47** |

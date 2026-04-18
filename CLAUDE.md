@@ -295,23 +295,23 @@ Use `= %s` for exact match (CNP, sex)
 - `JOIN` when filtering requires transaction data
 
 ## Statistics (as of Apr 2026)
-- Transactions: 157,424+
-- Transaction items: 316,409+
+- Transactions: 160,769+
+- Transaction items: ~323,000+
 - Registered partners: 31,220+
 - Waste categories: 16
 - Waste types: 47
 - Period: 2020.01 - 2026.04
 
 ### Yearly breakdown
-| Year | Transactions | Partners (distinct) | Date range |
-|------|-------------|--------------------|-------------|
-| 2020 | 16,102 | 5,334 | Jan 7 – Nov 28 (no Dec) |
-| 2021 | 25,838 | 7,745 | Jan 4 – Dec 18 |
-| 2022 | 28,389 | 8,558 | full year |
-| 2023 | 28,355 | 8,769 | full year |
-| 2024 | 28,029 | 8,790 | full year |
-| 2025 | 25,284 | 8,663 | full year |
-| 2026 | 5,427 | 2,851 | Jan 8 – Apr 17 |
+| Year | Transactions | Working days | RON (thousand) | Notes |
+|------|-------------|-------------|----------------|-------|
+| 2020 | 16,102 | 243 | 15,886 | Jan-Nov (no Dec folder), Apr COVID lockdown (4 days only) |
+| 2021 | 26,692 | 278 | 48,910 | full year |
+| 2022 | 28,389 | 276 | 60,928 | full year |
+| 2023 | 28,355 | 275 | 61,039 | full year |
+| 2024 | 28,029 | 280 | 70,818 | full year |
+| 2025 | 25,284 | 278 | 52,063 | full year |
+| 2026 | 7,918 | 81 | 14,636 | Jan-Apr partial |
 
 ## Development
 

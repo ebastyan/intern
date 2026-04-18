@@ -559,7 +559,14 @@ POSTGRES_URL = postgresql://neondb_owner:npg_L2AyrcXul8km@ep-ancient-firefly-a47
   - Big suppliers dropdown: 2020, 2021 hozzaadva
   - Meteo tab default datum: 2022-01-03 -> 2020-01-01
   - `api/partners.py`, `api/transactions.py`: default date_from 2022-01-01 -> 2020-01-01
-- **DB FINAL: 157,424 tranzakcio, 316,409 tetel, 31,220 partner, 2020.01.07 - 2026.04.17**
+- **DB FINAL: 160,769 tranzakcio, ~323,000 tetel, 31,220 partner, 2020.01.07 - 2026.04.17** (all 602 file-dates accounted for, 0 missing)
+
+#### Utolag talalt es kijavitott bugok az importhoz:
+- **commit-every=20 + deadlock rollback**: parhuzamos 2021+2026 import deadlockokat kapott. Mivel `conn.rollback()` az egesz batch-et torli, az elozo ~20 fajl ertekei elvesztek. Javítás: commit-every=1 + serial re-run → 2021-be +854 tx, 2026-ba +2,491 tx.
+- **2 misnamed xls fájl**:
+  - `2020/03_martie/13.02.2020.xls` (valodi datum: 2020-03-13, PJ 76189-76280)
+  - `2021/12_decembrie/10.01.2021.xls` (valodi datum: 2021-12-10, PJ kontinuus)
+  - Javítás: parser frissítve — folder_month > filename_month precedenssel. DB-ben 205 sor `UPDATE date` -el korrigalva.
 
 ### 2026-02-24 - Analiza Detaliata Deseuri (uj funkcio)
 - **Uj feature a Deseuri szekcioban**: reszletes hulladek elemzo panel
