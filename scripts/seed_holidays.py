@@ -6,6 +6,7 @@ Usage:
   python scripts/seed_holidays.py --year-from 2022 --year-to 2030
 """
 import argparse, os, sys
+import psycopg2
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -106,6 +107,28 @@ def generate_holidays(year_from: int, year_to: int):
         yield (oe + timedelta(days=49), 'Rusalii ortodoxe', 'orthodox', True)
         yield (oe + timedelta(days=50), 'A doua zi de Rusalii (ortodoxe)', 'orthodox', True)
 
+def upsert_holidays(year_from: int, year_to: int):
+    url = os.environ.get('POSTGRES_URL')
+    if not url:
+        raise RuntimeError('POSTGRES_URL not set (check .env.local)')
+    conn = psycopg2.connect(url)
+    conn.autocommit = False
+    rows = list(generate_holidays(year_from, year_to))
+    with conn.cursor() as cur:
+        cur.executemany(
+            """
+            INSERT INTO holidays (date, name, type, is_official)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (date, type) DO UPDATE
+              SET name = EXCLUDED.name,
+                  is_official = EXCLUDED.is_official
+            """,
+            rows,
+        )
+    conn.commit()
+    conn.close()
+    return len(rows)
+
 def self_test():
     for y, expected in KNOWN_CATHOLIC_EASTER.items():
         assert catholic_easter(y) == expected
@@ -138,4 +161,6 @@ if __name__ == '__main__':
     if args.self_test:
         self_test()
         sys.exit(0)
-    print("Seeding not yet implemented in this task; run --self-test for now.")
+    load_env_local()
+    n = upsert_holidays(args.year_from, args.year_to)
+    print(f"Upserted {n} holidays for {args.year_from}-{args.year_to}")
