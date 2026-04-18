@@ -791,7 +791,10 @@
             <div class="card">
                 <h2><span class="icon">📊</span> Grafice pe categorii de vreme</h2>
                 <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
-                    Fiecare grafic imparte vremea in categorii (ex. "fara ploaie", "ploaie slaba", "medie", "puternica") si arata cat <strong style="color:#00ff88">mai multi (verde)</strong> sau <strong style="color:#ff6b6b">mai putini (rosu)</strong> oameni au venit in acea categorie, <strong style="color:#aaa">in procente</strong>, fata de o zi normala. <span style="color:#888">n=N</span> pe hover = pe cate zile se bazeaza calculul.
+                    Fiecare grafic imparte vremea in categorii (ex. "fara ploaie", "ploaie slaba", "medie", "puternica") si arata cat <strong style="color:#00ff88">mai multi (verde)</strong> sau <strong style="color:#ff6b6b">mai putini (rosu)</strong> oameni au venit in acea categorie, <strong style="color:#aaa">in procente</strong>, fata de o zi normala. Hover pe o bara = vezi efectul + <strong style="color:#aaa">cate zile</strong> au avut acea vreme (cu cat mai multe zile, cu atat mai de incredere e procentul).
+                </p>
+                <p style="color:#555;font-size:0.8em;margin-bottom:10px;font-style:italic;">
+                    Exemplu: daca bara "ploaie puternica" arata -7% cu 49 zile, inseamna ca in cele 49 de zile cu ploaie &gt;10mm au venit in medie cu 7% mai putini parteneri decat intr-o zi normala similara.
                 </p>
                 <div id="meteoBuckets"></div>
             </div>
@@ -2781,7 +2784,12 @@
                                 legend: { display: false },
                                 tooltip: { callbacks: { label: ctx => {
                                     const b = buckets[ctx.dataIndex];
-                                    return `${ctx.parsed.y.toFixed(1)}% · n=${b.n}`;
+                                    const pct = ctx.parsed.y;
+                                    const sign = pct >= 0 ? '+' : '';
+                                    const dir = pct > 0 ? 'mai multi' : 'mai putini';
+                                    return [`${sign}${pct.toFixed(1)}% fata de normal`,
+                                            `(${Math.abs(pct).toFixed(1)}% ${dir})`,
+                                            `Bazat pe ${b.n} zile cu aceasta vreme`];
                                 } } }
                             },
                             scales: {
