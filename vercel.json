@@ -22,6 +22,7 @@
     { "src": "/api/analytics", "dest": "/api/analytics.py" },
     { "src": "/api/waste", "dest": "/api/waste.py" },
     { "src": "/api/firme", "dest": "/api/firme.py" },
+    { "src": "/api/calendar", "dest": "/api/calendar.py" },
     { "src": "/(.*\\.html)", "dest": "/$1" },
     { "src": "/(.*\\.json)", "dest": "/$1" },
     { "src": "/", "dest": "/index.html" }
