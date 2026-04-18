@@ -703,32 +703,19 @@
             </div>
 
             <div class="card">
-                <h2><span class="icon">🎉</span> Impactul sarbatorilor (±3 zile)</h2>
+                <h2><span class="icon">🎉</span> Impactul sarbatorilor</h2>
                 <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
-                    Numarul mediu de <strong style="color:#aaa">parteneri/zi</strong> in zilele din jurul fiecarei sarbatori nationale, pe toata perioada (n = cate ocazii).
-                    Coloana <strong style="color:#aaa">"Sarbatoare"</strong> e ziua oficiala (de obicei "–" pentru ca magazinul e inchis).
-                    <strong style="color:#aaa">"-1 zi"</strong> = ziua dinaintea sarbatorii, <strong style="color:#aaa">"+1 zi"</strong> = ziua de dupa, etc.
-                    Compara cu media din <em>Tipar saptamanal</em> pentru a vedea daca sarbatoarea aglomereaza sau incetineste traficul.
+                    Numarul mediu de <strong style="color:#aaa">parteneri/zi</strong> pe cele <strong style="color:#aaa">3 cele mai apropiate zile DESCHISE</strong> inainte si dupa fiecare sarbatoare oficiala.
+                    <br>Exemplu: daca am fost inchisi 24 Dec – 2 Ian, atunci pentru <em>Anul Nou</em> coloana "-1" arata ziua de dinainte de Craciun (cand am fost ultima data deschisi), nu 31 Dec.
+                    <br>Asa vezi daca sarbatoarea aduce un <strong style="color:#00ff88">varf de trafic</strong> dupa, sau un <strong style="color:#ff6b6b">mort</strong> inainte. <code>n</code> = de cate ori a avut loc sarbatoarea in perioada.
                 </p>
                 <div id="sezHolidayTable" class="scroll-table"></div>
             </div>
 
             <div class="card">
-                <h2><span class="icon">🌉</span> Bridge days</h2>
+                <h2><span class="icon">🗓️</span> Perioade inchise (auto-detectate)</h2>
                 <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
-                    O zi lucratoare <strong style="color:#aaa">blocata intre doua zile inchise</strong> — de exemplu, o Sambata prinsa intre o Vineri sarbatoare si Duminica libera.
-                    De obicei traficul scade brutal pe astfel de zile (oamenii prefera sa-si ia zi libera completa). Daca vezi valori mari de parteneri = oamenii vin oricum = e ok sa deschizi. Daca vezi 0 = degeaba deschizi.
-                </p>
-                <div id="sezBridgeTable" class="scroll-table"></div>
-            </div>
-
-            <div class="card">
-                <h2><span class="icon">🗓️</span> Zile fara tranzactii (de validat)</h2>
-                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
-                    Intervale de zile <strong style="color:#aaa">lucratoare (Luni-Sambata)</strong> in care <strong style="color:#aaa">nu au fost tranzactii deloc</strong> si nu erau sarbatori nationale.
-                    Probabil magazinul era inchis (concediu de vara, prelungire Craciun, zi libera interna, etc.).
-                    <strong style="color:#00ff88">Confirma</strong> (cu motiv optional, ex. "Concediu de vara") pentru a inregistra ca inchidere reala — astfel nu mai incurca mediile.
-                    <strong style="color:#888">Ignora</strong> daca NU a fost inchidere (cu adevarat 0 clienti aleator).
+                    Zile Luni-Sambata (non-sarbatoare) cu <strong style="color:#aaa">zero tranzactii</strong> — probabil concedii companie (vara, prelungiri Craciun, etc.). Deja <strong style="color:#00ff88">excluse din toate mediile</strong> — informational.
                 </p>
                 <div id="sezClosureCandidates"></div>
             </div>
@@ -2243,7 +2230,7 @@
         let _sezWeeklyMetric = 'partners';
 
         async function loadSezonalitate() {
-            await Promise.all([loadSezWeekly(), loadSezMonthly(), loadSezHolidayEffect(), loadSezBridges(), loadSezClosureCandidates(), loadSezAudit()]);
+            await Promise.all([loadSezWeekly(), loadSezMonthly(), loadSezHolidayEffect(), loadSezClosureCandidates(), loadSezAudit()]);
         }
 
         async function loadSezWeekly() {
@@ -2381,8 +2368,8 @@
                 });
                 const offsets = [-3, -2, -1, 0, 1, 2, 3];
                 const offsetLabels = {
-                    '-3': '-3 zile', '-2': '-2 zile', '-1': '-1 zi',
-                    '0': 'Sarbatoare', '1': '+1 zi', '2': '+2 zile', '3': '+3 zile'
+                    '-3': '-3 deschis', '-2': '-2 deschis', '-1': '-1 deschis',
+                    '0': 'SARBATOARE', '1': '+1 deschis', '2': '+2 deschis', '3': '+3 deschis'
                 };
                 let html = '<table><thead><tr><th>Sarbatoare</th>' +
                            offsets.map(o => `<th class="text-right" style="${o === 0 ? 'color:#ff9f40' : ''}">${offsetLabels[String(o)]}</th>`).join('') +
@@ -2402,30 +2389,6 @@
             }
         }
 
-        async function loadSezBridges() {
-            try {
-                const res = await fetch('/api/calendar?type=bridge_days');
-                const data = await res.json();
-                const rows = data.bridge_days || [];
-                const host = document.getElementById('sezBridgeTable');
-                if (!rows.length) {
-                    host.innerHTML = '<p style="color:#888;margin:10px 0;">Niciun bridge day in perioada.</p>';
-                    return;
-                }
-                const dayNames = ['Duminica','Luni','Marti','Miercuri','Joi','Vineri','Sambata'];
-                let html = '<table><thead><tr><th>Data</th><th>Zi</th><th class="text-right">Parteneri</th><th class="text-right">Tranzactii</th></tr></thead><tbody>';
-                rows.forEach(r => {
-                    const d = new Date(r.bridge_date);
-                    const dow = dayNames[d.getDay()];
-                    html += `<tr><td>${r.bridge_date}</td><td>${dow}</td><td class="text-right">${r.partners}</td><td class="text-right">${r.transactions}</td></tr>`;
-                });
-                html += '</tbody></table>';
-                host.innerHTML = html;
-            } catch (e) {
-                console.error('loadSezBridges failed', e);
-            }
-        }
-
         async function loadSezClosureCandidates() {
             try {
                 const res = await fetch('/api/calendar?type=closure_candidates');
@@ -2433,60 +2396,39 @@
                 const runs = data.runs || [];
                 const host = document.getElementById('sezClosureCandidates');
                 if (!runs.length) {
-                    host.innerHTML = '<p style="color:#00ff88;margin:10px 0;">Niciun candidat in asteptare. ✓</p>';
+                    host.innerHTML = '<p style="color:#00ff88;margin:10px 0;">Nicio inchidere detectata. ✓</p>';
                     return;
                 }
-                let html = '<div class="scroll-table"><table><thead><tr><th>De la</th><th>Pana la</th><th class="text-right">Zile lucratoare</th><th>Actiuni</th></tr></thead><tbody>';
-                runs.forEach((r, i) => {
-                    html += `
-                        <tr data-run="${i}">
-                            <td><input type="date" value="${r.date_from}" class="closure-from" style="background:#1a1a2e;color:#fff;border:1px solid #333;padding:4px;border-radius:4px;"></td>
-                            <td><input type="date" value="${r.date_to}" class="closure-to" style="background:#1a1a2e;color:#fff;border:1px solid #333;padding:4px;border-radius:4px;"></td>
-                            <td class="text-right">${r.working_days}</td>
-                            <td>
-                                <input type="text" placeholder="Motiv (optional)" class="closure-reason" style="width:180px;background:#1a1a2e;color:#fff;border:1px solid #333;padding:4px;border-radius:4px;">
-                                <button class="btn-confirm" style="margin-left:6px;padding:4px 10px;background:#00d9ff;color:#000;border:none;border-radius:4px;cursor:pointer;font-weight:600;">Confirma</button>
-                                <button class="btn-ignore" style="margin-left:4px;padding:4px 10px;background:transparent;color:#888;border:1px solid #444;border-radius:4px;cursor:pointer;">Ignora</button>
-                            </td>
-                        </tr>`;
+                const byYear = {};
+                runs.forEach(r => {
+                    const yr = String(r.date_from).substring(0, 4);
+                    (byYear[yr] = byYear[yr] || []).push(r);
                 });
-                html += '</tbody></table></div>';
+                const total = runs.reduce((s, r) => s + r.working_days, 0);
+                const monthNames = ['Ian','Feb','Mar','Apr','Mai','Iun','Iul','Aug','Sep','Oct','Nov','Dec'];
+                const fmtDate = d => {
+                    const [y, m, day] = String(d).split('-');
+                    return `${parseInt(day)} ${monthNames[parseInt(m)-1]}`;
+                };
+                let html = `<p style="color:#aaa;margin-bottom:15px;"><strong style="color:#00d9ff">${runs.length} perioade</strong> detectate · total <strong style="color:#00d9ff">${total} zile</strong> inchise.</p>`;
+                html += '<div class="grid grid-2" style="gap:15px;">';
+                Object.keys(byYear).sort().forEach(year => {
+                    const yrTotal = byYear[year].reduce((s, r) => s + r.working_days, 0);
+                    html += `<div style="background:rgba(0,217,255,0.05);padding:10px 14px;border-radius:6px;border:1px solid rgba(0,217,255,0.15);">`;
+                    html += `<div style="color:#00d9ff;font-weight:600;margin-bottom:6px;">${year} <span style="color:#888;font-weight:400;font-size:0.9em;">· ${yrTotal} zile</span></div>`;
+                    html += '<div style="font-size:0.9em;line-height:1.8;">';
+                    byYear[year].forEach(r => {
+                        const range = r.date_from === r.date_to
+                            ? fmtDate(r.date_from)
+                            : `${fmtDate(r.date_from)} – ${fmtDate(r.date_to)}`;
+                        html += `<div><span style="color:#aaa">${range}</span> <span style="color:#666">(${r.working_days}z)</span></div>`;
+                    });
+                    html += '</div></div>';
+                });
+                html += '</div>';
                 host.innerHTML = html;
-                host.querySelectorAll('.btn-confirm').forEach(b => b.onclick = async (e) => {
-                    const row = e.target.closest('tr');
-                    const r = await postClosure('confirm_closure', {
-                        date_from: row.querySelector('.closure-from').value,
-                        date_to: row.querySelector('.closure-to').value,
-                        reason: row.querySelector('.closure-reason').value || 'Inchidere companie'
-                    });
-                    if (r && r.ok) loadSezClosureCandidates();
-                });
-                host.querySelectorAll('.btn-ignore').forEach(b => b.onclick = async (e) => {
-                    const row = e.target.closest('tr');
-                    const r = await postClosure('ignore_closure', {
-                        date_from: row.querySelector('.closure-from').value,
-                        date_to: row.querySelector('.closure-to').value
-                    });
-                    if (r && r.ok) loadSezClosureCandidates();
-                });
             } catch (e) {
                 console.error('loadSezClosureCandidates failed', e);
-            }
-        }
-
-        async function postClosure(action, body) {
-            try {
-                const res = await fetch(`/api/calendar?action=${action}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-                const data = await res.json();
-                if (data.error) alert('Eroare: ' + data.error);
-                return data;
-            } catch (e) {
-                alert('Eroare retea: ' + e.message);
-                return null;
             }
         }
 

@@ -211,34 +211,52 @@ class handler(BaseHTTPRequestHandler):
         return dict(cur.fetchone())
 
     def holiday_effect(self, cur, window):
+        """For each official holiday, average traffic on the N nearest OPEN days
+        before and after (skipping any closures/weekends/other holidays — just
+        dates that actually had transactions)."""
         window = int(window) if window else 3
         cur.execute(
             f"""
-            WITH daily AS (
+            WITH tx_bounds AS (
+              SELECT MIN(date) AS dmin, MAX(date) AS dmax FROM transactions
+            ),
+            tx_days AS (
               SELECT t.date, COUNT(DISTINCT t.cnp) AS partners
               FROM transactions t
               GROUP BY t.date
             ),
             official AS (
-              SELECT DISTINCT date, name FROM holidays WHERE is_official
+              SELECT DISTINCT h.date, h.name
+              FROM holidays h, tx_bounds b
+              WHERE h.is_official
+                AND h.date BETWEEN b.dmin AND b.dmax
             ),
-            offsets AS (
-              SELECT generate_series(-{window}, {window})::int AS offset_days
+            before_ranked AS (
+              SELECT o.name, o.date AS holiday_date, t.partners,
+                     ROW_NUMBER() OVER (PARTITION BY o.date, o.name ORDER BY t.date DESC) AS rn
+              FROM official o
+              JOIN tx_days t ON t.date < o.date
             ),
-            pairs AS (
-              SELECT o.date AS holiday_date, o.name AS holiday_name,
-                     off.offset_days,
-                     (o.date + off.offset_days * INTERVAL '1 day')::date AS target_date
-              FROM official o CROSS JOIN offsets off
+            after_ranked AS (
+              SELECT o.name, o.date AS holiday_date, t.partners,
+                     ROW_NUMBER() OVER (PARTITION BY o.date, o.name ORDER BY t.date ASC) AS rn
+              FROM official o
+              JOIN tx_days t ON t.date > o.date
+            ),
+            slots AS (
+              SELECT name, -rn::int AS offset_days, partners
+              FROM before_ranked WHERE rn <= {window}
+              UNION ALL
+              SELECT name, rn::int AS offset_days, partners
+              FROM after_ranked WHERE rn <= {window}
             )
-            SELECT p.holiday_name,
-                   p.offset_days,
-                   ROUND(AVG(d.partners)::numeric, 1) AS avg_partners,
-                   COUNT(d.partners) AS sample_size
-            FROM pairs p
-            LEFT JOIN daily d ON d.date = p.target_date
-            GROUP BY p.holiday_name, p.offset_days
-            ORDER BY p.holiday_name, p.offset_days
+            SELECT name AS holiday_name,
+                   offset_days,
+                   ROUND(AVG(partners)::numeric, 1) AS avg_partners,
+                   COUNT(partners) AS sample_size
+            FROM slots
+            GROUP BY name, offset_days
+            ORDER BY name, offset_days
             """
         )
         return [dict(r) for r in cur.fetchall()]
