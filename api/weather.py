@@ -62,6 +62,32 @@ BUCKET_SPECS = {
                           (70, None, "Inchis (>70%)")],
 }
 
+def find_threshold(pairs, min_pts_per_side=15):
+    """Given list of (x, residual) pairs, find the split point that maximizes
+    |t-statistic| of residual means. Returns dict or None."""
+    if len(pairs) < 30:
+        return None
+    xs = sorted(set(p[0] for p in pairs))
+    best = None
+    for x in xs:
+        below = [p[1] for p in pairs if p[0] < x]
+        above = [p[1] for p in pairs if p[0] >= x]
+        if len(below) < min_pts_per_side or len(above) < min_pts_per_side:
+            continue
+        mb = sum(below) / len(below); ma = sum(above) / len(above)
+        vb = sum((b - mb) ** 2 for b in below) / (len(below) - 1) if len(below) > 1 else 1
+        va = sum((a - ma) ** 2 for a in above) / (len(above) - 1) if len(above) > 1 else 1
+        se = ((vb / len(below)) + (va / len(above))) ** 0.5
+        if se == 0:
+            continue
+        t = abs(ma - mb) / se
+        if best is None or t > best["t_stat"]:
+            best = {"threshold": x, "above_mean": ma, "below_mean": mb,
+                    "effect": ma - mb, "t_stat": t,
+                    "n_above": len(above), "n_below": len(below)}
+    return best
+
+
 class handler(BaseHTTPRequestHandler):
     def _send(self, status, payload):
         self.send_response(status)
@@ -189,6 +215,109 @@ class handler(BaseHTTPRequestHandler):
         rows.sort(key=lambda r: abs(r["residual"]), reverse=True)
         return {"metric": data["metric"], "extreme_days": rows[:limit]}
 
+    def overview(self, cur, metric_name, date_from, date_to):
+        data = self.residuals(cur, metric_name, date_from, date_to)
+        rows = [r for r in data["residuals"] if r["residual"] is not None]
+        if len(rows) < 30:
+            return {"metric": data["metric"], "insights": [], "note": "Not enough data"}
+        insights = []
+
+        # Family A: bucket comparisons — top bucket by |mean_residual_pct| per variable
+        for var in ["rain_sum", "temp_max", "wind_gusts_max", "snowfall_sum",
+                    "humidity_mean", "cloudcover_mean"]:
+            bres = self.buckets(cur, metric_name, var, date_from, date_to)
+            candidates = [b for b in bres.get("buckets", [])
+                          if b.get("mean_residual_pct") is not None and b.get("n", 0) >= 10]
+            if not candidates:
+                continue
+            top = max(candidates, key=lambda b: abs(b["mean_residual_pct"]))
+            if abs(top["mean_residual_pct"]) >= 5:
+                insights.append({
+                    "kind": "bucket",
+                    "variable": var,
+                    "bucket": top["bucket"],
+                    "effect_pct": top["mean_residual_pct"],
+                    "n": top["n"],
+                    "text": f"{var}={top['bucket']}: residual mediu {top['mean_residual']:+.1f} "
+                            f"({top['mean_residual_pct']:+.1f}% fata de baseline, n={top['n']})",
+                })
+
+        # Family B: threshold detection (continuous variables)
+        for var in ["temp_max", "temp_min", "wind_speed_max", "wind_gusts_max",
+                    "precipitation_sum", "humidity_mean"]:
+            pairs = [(float(r[var]), r["residual"]) for r in rows if r.get(var) is not None]
+            t = find_threshold(pairs)
+            if t and t["t_stat"] >= 2.0:
+                insights.append({
+                    "kind": "threshold",
+                    "variable": var,
+                    "threshold": round(t["threshold"], 2),
+                    "above_effect": round(t["above_mean"], 1),
+                    "below_effect": round(t["below_mean"], 1),
+                    "t_stat": round(t["t_stat"], 2),
+                    "n_above": t["n_above"],
+                    "n_below": t["n_below"],
+                    "text": f"{var} >= {round(t['threshold'], 2)}: residual {t['above_mean']:+.1f} "
+                            f"(n={t['n_above']}) vs sub prag: {t['below_mean']:+.1f} "
+                            f"(n={t['n_below']}), t={t['t_stat']:.2f}",
+                })
+
+        # Family C: lag analysis
+        for var in ["rain_sum", "snowfall_sum", "temp_max", "wind_gusts_max"]:
+            lc = self.lag_curve(cur, metric_name, var, date_from, date_to)
+            lags = [l for l in lc.get("lags", []) if l.get("correlation") is not None]
+            if not lags:
+                continue
+            peak = max(lags, key=lambda l: abs(l["correlation"]))
+            zero = next((l for l in lags if l["lag"] == 0), None)
+            if peak["lag"] != 0 and abs(peak["correlation"]) >= 0.15 and zero and \
+               abs(peak["correlation"]) > abs(zero["correlation"]):
+                insights.append({
+                    "kind": "lag",
+                    "variable": var,
+                    "lag": peak["lag"],
+                    "correlation_at_peak": peak["correlation"],
+                    "correlation_at_zero": zero["correlation"],
+                    "text": f"{var} efect maxim la lag={peak['lag']} (r={peak['correlation']:+.2f}), "
+                            f"nu in aceeasi zi (r0={zero['correlation']:+.2f})",
+                })
+
+        # Family D: curated interaction patterns
+        def avg_res(filter_fn):
+            vals = [r["residual"] for r in rows if filter_fn(r)]
+            n = len(vals)
+            return (sum(vals) / n if n else None), n
+
+        patterns = []
+        cold_wet = avg_res(lambda r: r.get("temp_max") is not None and float(r["temp_max"]) < 5
+                           and r.get("precipitation_sum") is not None and float(r["precipitation_sum"]) > 2)
+        hot_dry = avg_res(lambda r: r.get("temp_max") is not None and float(r["temp_max"]) > 30
+                          and r.get("precipitation_sum") is not None and float(r["precipitation_sum"]) < 0.5)
+        if cold_wet[1] >= 5:
+            patterns.append(("Frig + umed (temp<5°C AND precip>2mm)", cold_wet[0], cold_wet[1]))
+        if hot_dry[1] >= 5:
+            patterns.append(("Canicula uscata (temp>30°C AND precip<0.5mm)", hot_dry[0], hot_dry[1]))
+
+        for name, val, n in patterns:
+            if val is None or abs(val) < 3:
+                continue
+            insights.append({
+                "kind": "interaction",
+                "pattern": name,
+                "effect": round(val, 1),
+                "n": n,
+                "text": f"{name}: residual mediu {val:+.1f} (n={n})",
+            })
+
+        # Sort by importance
+        def score(i):
+            return abs(i.get("effect_pct") or i.get("above_effect") or
+                       (i.get("correlation_at_peak") or 0) * 100 or
+                       i.get("effect") or 0)
+        insights.sort(key=lambda i: -score(i))
+
+        return {"metric": data["metric"], "insights": insights}
+
     def do_GET(self):
         try:
             parsed = urlparse(self.path)
@@ -223,6 +352,11 @@ class handler(BaseHTTPRequestHandler):
                 dt = params.get("date_to", [None])[0]
                 lim = int(params.get("limit", ["20"])[0])
                 result = self.extreme_days(cur, metric, df, dt, lim)
+            elif qtype == "overview":
+                metric = params.get("metric", ["partners"])[0]
+                df = params.get("date_from", [None])[0]
+                dt = params.get("date_to", [None])[0]
+                result = self.overview(cur, metric, df, dt)
             else:
                 result = {"error": "Unknown query type", "got": qtype}
 
