@@ -205,6 +205,39 @@ class handler(BaseHTTPRequestHandler):
         )
         return dict(cur.fetchone())
 
+    def holiday_effect(self, cur, window):
+        window = int(window) if window else 3
+        cur.execute(
+            f"""
+            WITH daily AS (
+              SELECT t.date, COUNT(DISTINCT t.cnp) AS partners
+              FROM transactions t
+              GROUP BY t.date
+            ),
+            official AS (
+              SELECT DISTINCT date, name FROM holidays WHERE is_official
+            ),
+            offsets AS (
+              SELECT generate_series(-{window}, {window})::int AS offset_days
+            ),
+            pairs AS (
+              SELECT o.date AS holiday_date, o.name AS holiday_name,
+                     off.offset_days,
+                     (o.date + off.offset_days * INTERVAL '1 day')::date AS target_date
+              FROM official o CROSS JOIN offsets off
+            )
+            SELECT p.holiday_name,
+                   p.offset_days,
+                   ROUND(AVG(d.partners)::numeric, 1) AS avg_partners,
+                   COUNT(d.partners) AS sample_size
+            FROM pairs p
+            LEFT JOIN daily d ON d.date = p.target_date
+            GROUP BY p.holiday_name, p.offset_days
+            ORDER BY p.holiday_name, p.offset_days
+            """
+        )
+        return [dict(r) for r in cur.fetchall()]
+
     def do_GET(self):
         try:
             parsed = urlparse(self.path)
@@ -237,6 +270,9 @@ class handler(BaseHTTPRequestHandler):
                     result = {'error': 'date_from and date_to required'}
                 else:
                     result = self.working_days(cur, df, dt)
+            elif query_type == 'holiday_effect':
+                win = params.get('window', ['3'])[0]
+                result = {'holiday_effect': self.holiday_effect(cur, win)}
             else:
                 result = {'error': 'Unknown query type', 'got': query_type}
 
