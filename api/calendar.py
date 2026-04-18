@@ -104,6 +104,45 @@ class handler(BaseHTTPRequestHandler):
                 runs.append({'date_from': row['date'], 'date_to': row['date'], 'working_days': 1})
         return {'runs': runs, 'total_days': len(singles)}
 
+    def weekly_pattern(self, cur, date_from, date_to):
+        where = []
+        args = []
+        if date_from: where.append("t.date >= %s"); args.append(date_from)
+        if date_to:   where.append("t.date <= %s"); args.append(date_to)
+        where_sql = (' AND '.join(where)) if where else 'TRUE'
+        cur.execute(
+            f"""
+            WITH daily AS (
+              SELECT t.date,
+                     EXTRACT(ISODOW FROM t.date)::int AS dow,
+                     COUNT(DISTINCT t.cnp) AS partners,
+                     COUNT(*) AS tx_count,
+                     COALESCE(SUM(i.weight_kg), 0) AS kg,
+                     COALESCE(SUM(t.gross_value), 0) AS ron
+              FROM transactions t
+              LEFT JOIN transaction_items i ON i.document_id = t.document_id
+              WHERE {where_sql}
+                AND EXTRACT(ISODOW FROM t.date) <> 7
+                AND t.date NOT IN (SELECT date FROM holidays WHERE is_official)
+                AND t.date NOT IN (SELECT date FROM company_closures WHERE reason IS DISTINCT FROM '__ignored__')
+              GROUP BY t.date
+            )
+            SELECT dow,
+                   CASE dow WHEN 1 THEN 'Luni' WHEN 2 THEN 'Marti' WHEN 3 THEN 'Miercuri'
+                            WHEN 4 THEN 'Joi' WHEN 5 THEN 'Vineri' WHEN 6 THEN 'Sambata' END AS dow_label,
+                   COUNT(*) AS working_days,
+                   ROUND(AVG(partners)::numeric, 1) AS avg_partners,
+                   ROUND(AVG(tx_count)::numeric, 1) AS avg_transactions,
+                   ROUND(AVG(kg)::numeric, 1) AS avg_kg,
+                   ROUND(AVG(ron)::numeric, 2) AS avg_ron
+            FROM daily
+            GROUP BY dow
+            ORDER BY dow
+            """,
+            args,
+        )
+        return [dict(r) for r in cur.fetchall()]
+
     def do_GET(self):
         try:
             parsed = urlparse(self.path)
@@ -122,6 +161,10 @@ class handler(BaseHTTPRequestHandler):
                 result = {'closures': self.list_closures(cur)}
             elif query_type == 'closure_candidates':
                 result = self.closure_candidates(cur)
+            elif query_type == 'weekly_pattern':
+                df = params.get('date_from', [None])[0]
+                dt = params.get('date_to', [None])[0]
+                result = {'weekly_pattern': self.weekly_pattern(cur, df, dt)}
             else:
                 result = {'error': 'Unknown query type', 'got': query_type}
 
