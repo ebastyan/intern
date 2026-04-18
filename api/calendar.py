@@ -218,52 +218,81 @@ class handler(BaseHTTPRequestHandler):
         return dict(cur.fetchone())
 
     def holiday_effect(self, cur, window):
-        """For each official holiday, average traffic on the N nearest OPEN days
-        before and after (skipping any closures/weekends/other holidays — just
-        dates that actually had transactions)."""
+        """Group consecutive official holidays (spanning Sundays and other
+        closed days) into a single holiday BLOCK, then compare traffic on the
+        N nearest open days before the block vs after the block. Avoids showing
+        the same before/after data three times for holidays like Easter that
+        naturally fall in a multi-day closure."""
         window = int(window) if window else 3
         cur.execute(
             f"""
-            WITH tx_bounds AS (
-              SELECT MIN(date) AS dmin, MAX(date) AS dmax FROM transactions
-            ),
-            tx_days AS (
-              SELECT t.date, COUNT(DISTINCT t.cnp) AS partners
-              FROM transactions t
-              GROUP BY t.date
-            ),
+            WITH tx_bounds AS (SELECT MIN(date) AS dmin, MAX(date) AS dmax FROM transactions),
+            tx_days AS (SELECT t.date, COUNT(DISTINCT t.cnp) AS partners FROM transactions t GROUP BY t.date),
             official AS (
               SELECT DISTINCT h.date, h.name
               FROM holidays h, tx_bounds b
-              WHERE h.is_official
-                AND h.date BETWEEN b.dmin AND b.dmax
+              WHERE h.is_official AND h.date BETWEEN b.dmin AND b.dmax
+            ),
+            days AS (
+              SELECT generate_series(b.dmin, b.dmax, '1 day'::interval)::date AS d FROM tx_bounds b
+            ),
+            marked AS (
+              SELECT d,
+                (d IN (SELECT date FROM tx_days)
+                 AND EXTRACT(ISODOW FROM d) <> 7
+                 AND d NOT IN (SELECT date FROM official)) AS is_open
+              FROM days
+            ),
+            numbered AS (
+              SELECT d, is_open,
+                SUM(CASE WHEN is_open THEN 1 ELSE 0 END) OVER (ORDER BY d ROWS UNBOUNDED PRECEDING) AS grp
+              FROM marked
+            ),
+            closure_blocks AS (
+              SELECT grp, MIN(d) AS block_start, MAX(d) AS block_end
+              FROM numbered WHERE NOT is_open
+              GROUP BY grp
+            ),
+            holiday_blocks AS (
+              SELECT cb.grp, cb.block_start, cb.block_end,
+                     STRING_AGG(o.name, ' + ' ORDER BY o.date) AS block_name,
+                     CASE
+                       WHEN EXTRACT(year FROM cb.block_start) = EXTRACT(year FROM cb.block_end)
+                         THEN EXTRACT(year FROM cb.block_start)::text
+                       ELSE EXTRACT(year FROM cb.block_start)::text || '/' ||
+                            RIGHT(EXTRACT(year FROM cb.block_end)::text, 2)
+                     END AS year_label
+              FROM official o
+              JOIN closure_blocks cb ON o.date BETWEEN cb.block_start AND cb.block_end
+              GROUP BY cb.grp, cb.block_start, cb.block_end
             ),
             before_ranked AS (
-              SELECT o.name, o.date AS holiday_date, t.partners,
-                     ROW_NUMBER() OVER (PARTITION BY o.date, o.name ORDER BY t.date DESC) AS rn
-              FROM official o
-              JOIN tx_days t ON t.date < o.date
+              SELECT hb.block_name, hb.year_label, t.partners,
+                     ROW_NUMBER() OVER (PARTITION BY hb.grp ORDER BY t.date DESC) AS rn
+              FROM holiday_blocks hb
+              JOIN tx_days t ON t.date < hb.block_start
             ),
             after_ranked AS (
-              SELECT o.name, o.date AS holiday_date, t.partners,
-                     ROW_NUMBER() OVER (PARTITION BY o.date, o.name ORDER BY t.date ASC) AS rn
-              FROM official o
-              JOIN tx_days t ON t.date > o.date
+              SELECT hb.block_name, hb.year_label, t.partners,
+                     ROW_NUMBER() OVER (PARTITION BY hb.grp ORDER BY t.date ASC) AS rn
+              FROM holiday_blocks hb
+              JOIN tx_days t ON t.date > hb.block_end
             ),
             slots AS (
-              SELECT name, -rn::int AS offset_days, partners
+              SELECT block_name, year_label, -rn::int AS offset_days, partners
               FROM before_ranked WHERE rn <= {window}
               UNION ALL
-              SELECT name, rn::int AS offset_days, partners
+              SELECT block_name, year_label, rn::int AS offset_days, partners
               FROM after_ranked WHERE rn <= {window}
             )
-            SELECT name AS holiday_name,
+            SELECT block_name AS holiday_name,
                    offset_days,
                    ROUND(AVG(partners)::numeric, 1) AS avg_partners,
-                   COUNT(partners) AS sample_size
+                   COUNT(partners) AS sample_size,
+                   STRING_AGG(DISTINCT year_label, ', ' ORDER BY year_label) AS years
             FROM slots
-            GROUP BY name, offset_days
-            ORDER BY name, offset_days
+            GROUP BY block_name, offset_days
+            ORDER BY block_name, offset_days
             """
         )
         return [dict(r) for r in cur.fetchall()]

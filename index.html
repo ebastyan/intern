@@ -2363,9 +2363,11 @@
                 const data = await res.json();
                 const rows = data.holiday_effect || [];
                 const grouped = {};
+                const yearsByHoliday = {};
                 rows.forEach(r => {
                     if (!grouped[r.holiday_name]) grouped[r.holiday_name] = {};
                     grouped[r.holiday_name][r.offset_days] = { avg: parseFloat(r.avg_partners), n: r.sample_size };
+                    if (r.years) yearsByHoliday[r.holiday_name] = r.years;
                 });
 
                 // Compute insights per holiday
@@ -2384,7 +2386,7 @@
                     let troughOffset = -1, troughVal = g[-1]?.avg || Infinity;
                     [-3, -2, -1].forEach(o => { if ((g[o]?.avg || Infinity) < troughVal) { troughVal = g[o].avg; troughOffset = o; } });
                     const n = g[1]?.n || g[-1]?.n || 0;
-                    insights.push({ name, bAvg, aAvg, delta, pct, peakOffset, peakVal, troughOffset, troughVal, n });
+                    insights.push({ name, bAvg, aAvg, delta, pct, peakOffset, peakVal, troughOffset, troughVal, n, years: yearsByHoliday[name] || '' });
                 });
 
                 // Sort by absolute impact
@@ -2398,7 +2400,8 @@
                     const arrow = ins.pct > 2 ? '🔺' : (ins.pct < -2 ? '🔻' : '➡️');
                     const color = ins.pct > 2 ? '#00ff88' : (ins.pct < -2 ? '#ff6b6b' : '#aaa');
                     const sign = ins.pct >= 0 ? '+' : '';
-                    html += `<div>${arrow} <strong style="color:#fff">${ins.name}</strong> — trafic dupa vs inainte: <strong style="color:${color}">${sign}${ins.pct.toFixed(1)}%</strong> (${ins.bAvg.toFixed(0)} → ${ins.aAvg.toFixed(0)} parteneri/zi). `;
+                    const yrs = ins.years ? ` <span style="color:#666">[${ins.years}]</span>` : '';
+                    html += `<div>${arrow} <strong style="color:#fff">${ins.name}</strong>${yrs} — trafic dupa vs inainte: <strong style="color:${color}">${sign}${ins.pct.toFixed(1)}%</strong> (${ins.bAvg.toFixed(0)} → ${ins.aAvg.toFixed(0)} parteneri/zi). `;
                     if (Math.abs(ins.pct) > 5) {
                         html += `Varful: <strong style="color:#00ff88">+${ins.peakOffset} zi deschis</strong> (${ins.peakVal.toFixed(0)} parteneri).`;
                     } else {
@@ -2415,7 +2418,7 @@
                     '0': 'SARB.', '1': '+1', '2': '+2', '3': '+3'
                 };
                 html += '<details><summary style="cursor:pointer;color:#aaa;font-size:0.9em;margin-bottom:10px;">📋 Tabel complet (click pentru a deschide)</summary>';
-                html += '<table><thead><tr><th>Sarbatoare</th>' +
+                html += '<table><thead><tr><th>Sarbatoare</th><th>Ani</th>' +
                         offsets.map(o => `<th class="text-right" style="${o === 0 ? 'color:#ff9f40' : ''}">${offsetLabels[String(o)]}</th>`).join('') +
                         '<th class="text-right">Δ%</th></tr></thead><tbody>';
                 // Sort table by absolute pct as well, biggest effect first
@@ -2427,7 +2430,8 @@
                     const pct = ins.pct || 0;
                     const pctColor = pct > 2 ? '#00ff88' : (pct < -2 ? '#ff6b6b' : '#666');
                     const pctSign = pct >= 0 ? '+' : '';
-                    html += `<tr><td>${name}</td>` +
+                    const yrs = yearsByHoliday[name] || '';
+                    html += `<tr><td>${name}</td><td style="color:#888;font-size:0.85em;white-space:nowrap;">${yrs}</td>` +
                             offsets.map(o => {
                                 const cell = grouped[name][o];
                                 if (!cell || cell.avg == null) return '<td class="text-right" style="color:#555">–</td>';
