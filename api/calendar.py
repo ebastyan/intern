@@ -43,6 +43,16 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(payload, default=json_default).encode('utf-8'))
 
+    def list_holidays(self, cur, year):
+        if year:
+            cur.execute(
+                "SELECT date, name, type, is_official FROM holidays WHERE EXTRACT(year FROM date) = %s ORDER BY date",
+                (int(year),),
+            )
+        else:
+            cur.execute("SELECT date, name, type, is_official FROM holidays ORDER BY date")
+        return [dict(r) for r in cur.fetchall()]
+
     def do_GET(self):
         try:
             parsed = urlparse(self.path)
@@ -54,6 +64,9 @@ class handler(BaseHTTPRequestHandler):
 
             if query_type == 'ping':
                 result = {'ok': True, 'endpoint': 'calendar'}
+            elif query_type == 'holidays':
+                year = params.get('year', [None])[0]
+                result = {'holidays': self.list_holidays(cur, year)}
             else:
                 result = {'error': 'Unknown query type', 'got': query_type}
 
