@@ -682,11 +682,16 @@
 
             <div class="card" id="sez-weekly">
                 <h2><span class="icon">📊</span> Tipar saptamanal (Luni-Sambata)</h2>
+                <p style="color:#888;font-size:0.8em;margin-bottom:8px;">Program: <strong style="color:#aaa">Luni-Vineri 8:00-17:00 (9h)</strong> · <strong style="color:#aaa">Sambata 8:00-13:00 (5h)</strong>. Comuta "/ora" pentru intensitate reala.</p>
                 <div class="metric-toggle" data-target="sez-weekly" style="margin-bottom:10px;">
-                    <button class="tab-btn active" data-metric="partners">Parteneri</button>
-                    <button class="tab-btn" data-metric="transactions">Tranzactii</button>
-                    <button class="tab-btn" data-metric="kg">Kg</button>
-                    <button class="tab-btn" data-metric="ron">RON</button>
+                    <button class="tab-btn active" data-metric="partners">Parteneri/zi</button>
+                    <button class="tab-btn" data-metric="transactions">Tranzactii/zi</button>
+                    <button class="tab-btn" data-metric="kg">Kg/zi</button>
+                    <button class="tab-btn" data-metric="ron">RON/zi</button>
+                    <button class="tab-btn" data-metric="partners_per_hour" style="margin-left:10px;border-left:2px solid #00ff88;padding-left:12px;">Parteneri/ora</button>
+                    <button class="tab-btn" data-metric="transactions_per_hour">Tranzactii/ora</button>
+                    <button class="tab-btn" data-metric="kg_per_hour">Kg/ora</button>
+                    <button class="tab-btn" data-metric="ron_per_hour">RON/ora</button>
                 </div>
                 <div class="chart-container"><canvas id="sezWeeklyChart"></canvas></div>
             </div>
@@ -2244,8 +2249,13 @@
             const rows = _sezWeeklyData;
             if (!rows || !rows.length) return;
             const labels = rows.map(r => r.dow_label);
-            const fieldMap = { partners: 'avg_partners', transactions: 'avg_transactions', kg: 'avg_kg', ron: 'avg_ron' };
+            const fieldMap = {
+                partners: 'avg_partners', transactions: 'avg_transactions', kg: 'avg_kg', ron: 'avg_ron',
+                partners_per_hour: 'avg_partners_per_hour', transactions_per_hour: 'avg_transactions_per_hour',
+                kg_per_hour: 'avg_kg_per_hour', ron_per_hour: 'avg_ron_per_hour'
+            };
             const field = fieldMap[_sezWeeklyMetric];
+            const isPerHour = _sezWeeklyMetric.endsWith('_per_hour');
             const values = rows.map(r => parseFloat(r[field] || 0));
             const ctx = document.getElementById('sezWeeklyChart').getContext('2d');
             if (_sezWeeklyChart) _sezWeeklyChart.destroy();
@@ -2256,8 +2266,8 @@
                     datasets: [{
                         label: _sezWeeklyMetric,
                         data: values,
-                        backgroundColor: 'rgba(0,217,255,0.4)',
-                        borderColor: '#00d9ff',
+                        backgroundColor: isPerHour ? 'rgba(0,255,136,0.4)' : 'rgba(0,217,255,0.4)',
+                        borderColor: isPerHour ? '#00ff88' : '#00d9ff',
                         borderWidth: 1
                     }]
                 },

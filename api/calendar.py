@@ -130,11 +130,16 @@ class handler(BaseHTTPRequestHandler):
             SELECT dow,
                    CASE dow WHEN 1 THEN 'Luni' WHEN 2 THEN 'Marti' WHEN 3 THEN 'Miercuri'
                             WHEN 4 THEN 'Joi' WHEN 5 THEN 'Vineri' WHEN 6 THEN 'Sambata' END AS dow_label,
+                   CASE WHEN dow = 6 THEN 5.0 ELSE 9.0 END AS hours_open,
                    COUNT(*) AS working_days,
                    ROUND(AVG(partners)::numeric, 1) AS avg_partners,
                    ROUND(AVG(tx_count)::numeric, 1) AS avg_transactions,
                    ROUND(AVG(kg)::numeric, 1) AS avg_kg,
-                   ROUND(AVG(ron)::numeric, 2) AS avg_ron
+                   ROUND(AVG(ron)::numeric, 2) AS avg_ron,
+                   ROUND((AVG(partners) / (CASE WHEN dow = 6 THEN 5.0 ELSE 9.0 END))::numeric, 2) AS avg_partners_per_hour,
+                   ROUND((AVG(tx_count) / (CASE WHEN dow = 6 THEN 5.0 ELSE 9.0 END))::numeric, 2) AS avg_transactions_per_hour,
+                   ROUND((AVG(kg) / (CASE WHEN dow = 6 THEN 5.0 ELSE 9.0 END))::numeric, 2) AS avg_kg_per_hour,
+                   ROUND((AVG(ron) / (CASE WHEN dow = 6 THEN 5.0 ELSE 9.0 END))::numeric, 2) AS avg_ron_per_hour
             FROM daily
             GROUP BY dow
             ORDER BY dow
