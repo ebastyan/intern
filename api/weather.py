@@ -144,6 +144,45 @@ class handler(BaseHTTPRequestHandler):
                         "mean_residual_pct": round(pct, 2) if pct is not None else None})
         return {"metric": data["metric"], "variable": variable, "buckets": out}
 
+    def lag_curve(self, cur, metric_name, variable, date_from, date_to):
+        supported = set(BUCKET_SPECS.keys()) | {"temp_max", "temp_min", "temp_mean",
+                                                 "rain_sum", "snowfall_sum",
+                                                 "wind_speed_max", "wind_gusts_max",
+                                                 "humidity_mean"}
+        if variable not in supported:
+            return {"error": f"Variable not supported: {variable}"}
+        data = self.residuals(cur, metric_name, date_from, date_to)
+        rows = data["residuals"]
+        by_date = {}
+        for r in rows:
+            d = r["date"].isoformat() if hasattr(r["date"], "isoformat") else r["date"]
+            by_date[d] = r
+        sorted_dates = sorted(by_date.keys())
+        lags = list(range(-2, 4))
+        out = []
+        for lag in lags:
+            pairs = []
+            for idx, d in enumerate(sorted_dates):
+                tgt_idx = idx + lag
+                if tgt_idx < 0 or tgt_idx >= len(sorted_dates):
+                    continue
+                src = by_date[d]
+                tgt = by_date[sorted_dates[tgt_idx]]
+                if src.get(variable) is None or tgt.get("residual") is None:
+                    continue
+                pairs.append((float(src[variable]), float(tgt["residual"])))
+            if len(pairs) < 10:
+                out.append({"lag": lag, "n": len(pairs), "correlation": None})
+                continue
+            n = len(pairs)
+            sx = sum(p[0] for p in pairs); sy = sum(p[1] for p in pairs)
+            sxx = sum(p[0] * p[0] for p in pairs); syy = sum(p[1] * p[1] for p in pairs)
+            sxy = sum(p[0] * p[1] for p in pairs)
+            denom = ((n * sxx - sx * sx) * (n * syy - sy * sy)) ** 0.5
+            r = (n * sxy - sx * sy) / denom if denom else 0
+            out.append({"lag": lag, "n": n, "correlation": round(r, 3)})
+        return {"metric": data["metric"], "variable": variable, "lags": out}
+
     def do_GET(self):
         try:
             parsed = urlparse(self.path)
@@ -166,6 +205,12 @@ class handler(BaseHTTPRequestHandler):
                 df = params.get("date_from", [None])[0]
                 dt = params.get("date_to", [None])[0]
                 result = self.buckets(cur, metric, variable, df, dt)
+            elif qtype == "lag_curve":
+                metric = params.get("metric", ["partners"])[0]
+                variable = params.get("variable", ["rain_sum"])[0]
+                df = params.get("date_from", [None])[0]
+                dt = params.get("date_to", [None])[0]
+                result = self.lag_curve(cur, metric, variable, df, dt)
             else:
                 result = {"error": "Unknown query type", "got": qtype}
 
