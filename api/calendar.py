@@ -65,44 +65,51 @@ class handler(BaseHTTPRequestHandler):
         return [dict(r) for r in cur.fetchall()]
 
     def closure_candidates(self, cur):
+        """Detect contiguous closure periods. A closure day = Sunday OR official
+        holiday OR a Mon-Sat non-holiday with zero transactions. Merge consecutive
+        closure days into islands (so a summer vacation that spans Sundays stays
+        one block). For each island that contains at least one actual company
+        closure (zero-tx working day), report the span of those working days and
+        the count."""
         cur.execute(
             """
-            WITH bounds AS (
-              SELECT MIN(date) AS dmin, MAX(date) AS dmax FROM transactions
-            ),
+            WITH bounds AS (SELECT MIN(date) AS dmin, MAX(date) AS dmax FROM transactions),
             days AS (
               SELECT generate_series(b.dmin, b.dmax, '1 day'::interval)::date AS d FROM bounds b
             ),
-            official_holiday_dates AS (
-              SELECT DISTINCT date FROM holidays WHERE is_official
+            tx_set AS (SELECT DISTINCT date FROM transactions),
+            official AS (SELECT DISTINCT date FROM holidays WHERE is_official),
+            marked AS (
+              SELECT d,
+                     (EXTRACT(ISODOW FROM d) = 7
+                       OR d IN (SELECT date FROM official)
+                       OR d NOT IN (SELECT date FROM tx_set)) AS is_closed,
+                     (EXTRACT(ISODOW FROM d) <> 7
+                       AND d NOT IN (SELECT date FROM official)
+                       AND d NOT IN (SELECT date FROM tx_set)) AS is_company_closure
+              FROM days
             ),
-            known_closures AS (
-              SELECT date FROM company_closures
-            ),
-            tx_days AS (
-              SELECT DISTINCT date FROM transactions
+            grouped AS (
+              SELECT d, is_closed, is_company_closure,
+                     SUM(CASE WHEN NOT is_closed THEN 1 ELSE 0 END)
+                       OVER (ORDER BY d ROWS UNBOUNDED PRECEDING) AS grp
+              FROM marked
             )
-            SELECT d AS date,
-                   TO_CHAR(d, 'Dy') AS dow_label,
-                   EXTRACT(ISODOW FROM d)::int AS dow
-            FROM days
-            WHERE EXTRACT(ISODOW FROM d) <> 7
-              AND d NOT IN (SELECT date FROM official_holiday_dates)
-              AND d NOT IN (SELECT date FROM known_closures)
-              AND d NOT IN (SELECT date FROM tx_days)
-            ORDER BY d
+            SELECT
+              MIN(d) FILTER (WHERE is_company_closure) AS date_from,
+              MAX(d) FILTER (WHERE is_company_closure) AS date_to,
+              SUM(CASE WHEN is_company_closure THEN 1 ELSE 0 END) AS working_days,
+              COUNT(*) AS calendar_days
+            FROM grouped
+            WHERE is_closed
+            GROUP BY grp
+            HAVING SUM(CASE WHEN is_company_closure THEN 1 ELSE 0 END) > 0
+            ORDER BY date_from
             """
         )
-        singles = [dict(r) for r in cur.fetchall()]
-
-        runs = []
-        for row in singles:
-            if runs and (row['date'] - runs[-1]['date_to']).days == 1:
-                runs[-1]['date_to'] = row['date']
-                runs[-1]['working_days'] += 1
-            else:
-                runs.append({'date_from': row['date'], 'date_to': row['date'], 'working_days': 1})
-        return {'runs': runs, 'total_days': len(singles)}
+        runs = [dict(r) for r in cur.fetchall()]
+        total = sum(r['working_days'] for r in runs)
+        return {'runs': runs, 'total_days': total}
 
     def weekly_pattern(self, cur, date_from, date_to):
         where = []

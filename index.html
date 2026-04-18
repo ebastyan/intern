@@ -705,11 +705,12 @@
             <div class="card">
                 <h2><span class="icon">🎉</span> Impactul sarbatorilor</h2>
                 <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
-                    Numarul mediu de <strong style="color:#aaa">parteneri/zi</strong> pe cele <strong style="color:#aaa">3 cele mai apropiate zile DESCHISE</strong> inainte si dupa fiecare sarbatoare oficiala.
-                    <br>Exemplu: daca am fost inchisi 24 Dec – 2 Ian, atunci pentru <em>Anul Nou</em> coloana "-1" arata ziua de dinainte de Craciun (cand am fost ultima data deschisi), nu 31 Dec.
-                    <br>Asa vezi daca sarbatoarea aduce un <strong style="color:#00ff88">varf de trafic</strong> dupa, sau un <strong style="color:#ff6b6b">mort</strong> inainte. <code>n</code> = de cate ori a avut loc sarbatoarea in perioada.
+                    Compara traficul pe cele <strong style="color:#aaa">3 zile deschise dinainte</strong> cu cele <strong style="color:#aaa">3 zile deschise de dupa</strong> fiecare sarbatoare oficiala.
+                    Sarbatorile sunt sortate dupa impact (cel mai mare efect in sus).
+                    <strong style="color:#00ff88">+%</strong> = oamenii vin mai tare dupa sarbatoare (cu material acumulat).
+                    <strong style="color:#ff6b6b">−%</strong> = sarbatoarea ii opreste din a veni (fara efect de recuperare).
                 </p>
-                <div id="sezHolidayTable" class="scroll-table"></div>
+                <div id="sezHolidayTable"></div>
             </div>
 
             <div class="card">
@@ -2364,25 +2365,78 @@
                 const grouped = {};
                 rows.forEach(r => {
                     if (!grouped[r.holiday_name]) grouped[r.holiday_name] = {};
-                    grouped[r.holiday_name][r.offset_days] = { avg: r.avg_partners, n: r.sample_size };
+                    grouped[r.holiday_name][r.offset_days] = { avg: parseFloat(r.avg_partners), n: r.sample_size };
                 });
+
+                // Compute insights per holiday
+                const insights = [];
+                Object.keys(grouped).forEach(name => {
+                    const g = grouped[name];
+                    const beforeVals = [-3, -2, -1].map(o => g[o]?.avg).filter(v => v != null);
+                    const afterVals = [1, 2, 3].map(o => g[o]?.avg).filter(v => v != null);
+                    if (!beforeVals.length || !afterVals.length) return;
+                    const bAvg = beforeVals.reduce((a, b) => a + b, 0) / beforeVals.length;
+                    const aAvg = afterVals.reduce((a, b) => a + b, 0) / afterVals.length;
+                    const delta = aAvg - bAvg;
+                    const pct = bAvg > 0 ? (delta / bAvg * 100) : 0;
+                    let peakOffset = 1, peakVal = g[1]?.avg || 0;
+                    [1, 2, 3].forEach(o => { if ((g[o]?.avg || 0) > peakVal) { peakVal = g[o].avg; peakOffset = o; } });
+                    let troughOffset = -1, troughVal = g[-1]?.avg || Infinity;
+                    [-3, -2, -1].forEach(o => { if ((g[o]?.avg || Infinity) < troughVal) { troughVal = g[o].avg; troughOffset = o; } });
+                    const n = g[1]?.n || g[-1]?.n || 0;
+                    insights.push({ name, bAvg, aAvg, delta, pct, peakOffset, peakVal, troughOffset, troughVal, n });
+                });
+
+                // Sort by absolute impact
+                insights.sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
+
+                // Build Concluzii (top 5)
+                let html = '<div style="margin-bottom:20px;padding:14px;background:rgba(0,217,255,0.04);border-left:3px solid #00d9ff;border-radius:4px;">';
+                html += '<div style="color:#00d9ff;font-weight:600;margin-bottom:10px;font-size:1em;">💡 Concluzii principale</div>';
+                html += '<div style="font-size:0.9em;line-height:1.9;color:#ccc;">';
+                insights.slice(0, 5).forEach(ins => {
+                    const arrow = ins.pct > 2 ? '🔺' : (ins.pct < -2 ? '🔻' : '➡️');
+                    const color = ins.pct > 2 ? '#00ff88' : (ins.pct < -2 ? '#ff6b6b' : '#aaa');
+                    const sign = ins.pct >= 0 ? '+' : '';
+                    html += `<div>${arrow} <strong style="color:#fff">${ins.name}</strong> — trafic dupa vs inainte: <strong style="color:${color}">${sign}${ins.pct.toFixed(1)}%</strong> (${ins.bAvg.toFixed(0)} → ${ins.aAvg.toFixed(0)} parteneri/zi). `;
+                    if (Math.abs(ins.pct) > 5) {
+                        html += `Varful: <strong style="color:#00ff88">+${ins.peakOffset} zi deschis</strong> (${ins.peakVal.toFixed(0)} parteneri).`;
+                    } else {
+                        html += 'Fara efect semnificativ.';
+                    }
+                    html += '</div>';
+                });
+                html += '</div></div>';
+
+                // Detailed table (all holidays alphabetical)
                 const offsets = [-3, -2, -1, 0, 1, 2, 3];
                 const offsetLabels = {
-                    '-3': '-3 deschis', '-2': '-2 deschis', '-1': '-1 deschis',
-                    '0': 'SARBATOARE', '1': '+1 deschis', '2': '+2 deschis', '3': '+3 deschis'
+                    '-3': '-3', '-2': '-2', '-1': '-1',
+                    '0': 'SARB.', '1': '+1', '2': '+2', '3': '+3'
                 };
-                let html = '<table><thead><tr><th>Sarbatoare</th>' +
-                           offsets.map(o => `<th class="text-right" style="${o === 0 ? 'color:#ff9f40' : ''}">${offsetLabels[String(o)]}</th>`).join('') +
-                           '</tr></thead><tbody>';
-                Object.keys(grouped).sort().forEach(name => {
+                html += '<details><summary style="cursor:pointer;color:#aaa;font-size:0.9em;margin-bottom:10px;">📋 Tabel complet (click pentru a deschide)</summary>';
+                html += '<table><thead><tr><th>Sarbatoare</th>' +
+                        offsets.map(o => `<th class="text-right" style="${o === 0 ? 'color:#ff9f40' : ''}">${offsetLabels[String(o)]}</th>`).join('') +
+                        '<th class="text-right">Δ%</th></tr></thead><tbody>';
+                // Sort table by absolute pct as well, biggest effect first
+                const tableOrder = insights.slice().concat(
+                    Object.keys(grouped).filter(n => !insights.find(i => i.name === n)).map(n => ({ name: n, pct: 0 }))
+                );
+                tableOrder.forEach(ins => {
+                    const name = ins.name;
+                    const pct = ins.pct || 0;
+                    const pctColor = pct > 2 ? '#00ff88' : (pct < -2 ? '#ff6b6b' : '#666');
+                    const pctSign = pct >= 0 ? '+' : '';
                     html += `<tr><td>${name}</td>` +
                             offsets.map(o => {
                                 const cell = grouped[name][o];
                                 if (!cell || cell.avg == null) return '<td class="text-right" style="color:#555">–</td>';
                                 return `<td class="text-right">${cell.avg}<br><span style="color:#666;font-size:.75em">n=${cell.n}</span></td>`;
-                            }).join('') + '</tr>';
+                            }).join('') +
+                            `<td class="text-right" style="color:${pctColor};font-weight:600;">${pct ? pctSign + pct.toFixed(1) + '%' : '–'}</td>` +
+                            '</tr>';
                 });
-                html += '</tbody></table>';
+                html += '</tbody></table></details>';
                 document.getElementById('sezHolidayTable').innerHTML = html;
             } catch (e) {
                 console.error('loadSezHolidayEffect failed', e);
