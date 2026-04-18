@@ -2691,11 +2691,20 @@
 
         function renderWeatherCard(r, color, metricUnit) {
             const sign = r.effect_pct >= 0 ? '+' : '';
+            const nNeg = r.n_strong_neg || 0, nPos = r.n_strong_pos || 0;
+            let strongBadge = '';
+            if (nNeg >= 3 || nPos >= 3) {
+                const who = nNeg >= nPos ? nNeg : nPos;
+                const cc = nNeg >= nPos ? '#ff6b6b' : '#00ff88';
+                const lbl = nNeg >= nPos ? 'zile cu efect puternic NEGATIV (≤−15%)' : 'zile cu efect puternic POZITIV (≥+15%)';
+                strongBadge = `<div style="margin-top:3px;font-size:0.78em;color:${cc};">⚡ ${who} ${lbl}</div>`;
+            }
             let summary = `<summary style="cursor:pointer;list-style:none;padding:14px 16px;background:rgba(0,217,255,0.04);border-left:3px solid ${color};border-radius:4px;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;">`;
             summary += `<div style="font-size:1.6em;">${r.emoji}</div>`;
             summary += `<div>
                 <div style="font-size:1em;color:#eee;font-weight:600;">${r.name} <span style="color:#888;font-size:0.8em;font-weight:400;">(${r.range})</span></div>
-                <div style="color:#888;font-size:0.82em;margin-top:2px;">${r.n} zile lucratoare cu aceasta vreme · click pentru detalii</div>
+                <div style="color:#888;font-size:0.82em;margin-top:2px;">${r.n} zile lucratoare · click pentru detalii</div>
+                ${strongBadge}
             </div>`;
             summary += `<div style="color:${color};font-size:1.4em;font-weight:700;">${sign}${r.effect_pct.toFixed(1)}%</div>`;
             summary += `</summary>`;
@@ -2741,9 +2750,16 @@
                 const metricUnit0 = {partners:'parteneri', transactions:'tranzactii', kg:'kg', ron:'RON'}[metric] || '';
 
                 const ranking = data.ranking || [];
-                const bad = ranking.filter(r => r.effect_pct <= -3);
-                const good = ranking.filter(r => r.effect_pct >= 3).sort((a,b) => b.effect_pct - a.effect_pct);
-                const neutral = ranking.filter(r => r.effect_pct > -3 && r.effect_pct < 3);
+                // "Bad" = avg clearly negative OR 3+ strongly-bad days (even if avg is small)
+                // "Good" = mirror of above
+                const isBad = r => r.effect_pct <= -2 || (r.n_strong_neg || 0) >= 3;
+                const isGood = r => r.effect_pct >= 2 || (r.n_strong_pos || 0) >= 3;
+                const bad = ranking.filter(r => isBad(r) && !isGood(r))
+                    .sort((a,b) => (a.effect_pct - b.effect_pct) || ((b.n_strong_neg||0) - (a.n_strong_neg||0)));
+                const good = ranking.filter(r => isGood(r) && !isBad(r))
+                    .sort((a,b) => (b.effect_pct - a.effect_pct) || ((b.n_strong_pos||0) - (a.n_strong_pos||0)));
+                const mixed = ranking.filter(r => isBad(r) && isGood(r));  // rare: strong on both sides
+                const neutral = ranking.filter(r => !isBad(r) && !isGood(r)).concat(mixed);
 
                 if (badHost) {
                     if (!bad.length) {
