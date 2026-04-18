@@ -2362,83 +2362,107 @@
                 const res = await fetch('/api/calendar?type=holiday_effect&window=3');
                 const data = await res.json();
                 const rows = data.holiday_effect || [];
-                const grouped = {};
-                const yearsByHoliday = {};
+
+                // Nest: {holiday_name: {year_label: {offset_days: partners}}}
+                const byHoliday = {};
                 rows.forEach(r => {
-                    if (!grouped[r.holiday_name]) grouped[r.holiday_name] = {};
-                    grouped[r.holiday_name][r.offset_days] = { avg: parseFloat(r.avg_partners), n: r.sample_size };
-                    if (r.years) yearsByHoliday[r.holiday_name] = r.years;
+                    const p = parseFloat(r.partners);
+                    if (isNaN(p)) return;
+                    if (!byHoliday[r.holiday_name]) byHoliday[r.holiday_name] = {};
+                    if (!byHoliday[r.holiday_name][r.year_label]) byHoliday[r.holiday_name][r.year_label] = {};
+                    byHoliday[r.holiday_name][r.year_label][r.offset_days] = p;
                 });
 
-                // Compute insights per holiday
+                const computePctForYear = (yearData) => {
+                    const bef = [-3, -2, -1].map(o => yearData[o]).filter(v => v != null);
+                    const aft = [1, 2, 3].map(o => yearData[o]).filter(v => v != null);
+                    if (!bef.length || !aft.length) return null;
+                    const bAvg = bef.reduce((a, b) => a + b, 0) / bef.length;
+                    const aAvg = aft.reduce((a, b) => a + b, 0) / aft.length;
+                    const pct = bAvg > 0 ? ((aAvg - bAvg) / bAvg * 100) : 0;
+                    return { bAvg, aAvg, pct };
+                };
+
+                // Per-holiday insights with per-year breakdown
                 const insights = [];
-                Object.keys(grouped).forEach(name => {
-                    const g = grouped[name];
-                    const beforeVals = [-3, -2, -1].map(o => g[o]?.avg).filter(v => v != null);
-                    const afterVals = [1, 2, 3].map(o => g[o]?.avg).filter(v => v != null);
-                    if (!beforeVals.length || !afterVals.length) return;
-                    const bAvg = beforeVals.reduce((a, b) => a + b, 0) / beforeVals.length;
-                    const aAvg = afterVals.reduce((a, b) => a + b, 0) / afterVals.length;
-                    const delta = aAvg - bAvg;
-                    const pct = bAvg > 0 ? (delta / bAvg * 100) : 0;
-                    let peakOffset = 1, peakVal = g[1]?.avg || 0;
-                    [1, 2, 3].forEach(o => { if ((g[o]?.avg || 0) > peakVal) { peakVal = g[o].avg; peakOffset = o; } });
-                    let troughOffset = -1, troughVal = g[-1]?.avg || Infinity;
-                    [-3, -2, -1].forEach(o => { if ((g[o]?.avg || Infinity) < troughVal) { troughVal = g[o].avg; troughOffset = o; } });
-                    const n = g[1]?.n || g[-1]?.n || 0;
-                    insights.push({ name, bAvg, aAvg, delta, pct, peakOffset, peakVal, troughOffset, troughVal, n, years: yearsByHoliday[name] || '' });
+                Object.keys(byHoliday).forEach(name => {
+                    const yrs = Object.keys(byHoliday[name]).sort();
+                    const perYear = yrs.map(y => {
+                        const s = computePctForYear(byHoliday[name][y]);
+                        return s ? { year: y, ...s } : null;
+                    }).filter(Boolean);
+                    if (!perYear.length) return;
+                    const avgPct = perYear.reduce((s, y) => s + y.pct, 0) / perYear.length;
+                    const avgB = perYear.reduce((s, y) => s + y.bAvg, 0) / perYear.length;
+                    const avgA = perYear.reduce((s, y) => s + y.aAvg, 0) / perYear.length;
+                    // Consistency flag: is the sign the same every year?
+                    const allPositive = perYear.every(y => y.pct > 0);
+                    const allNegative = perYear.every(y => y.pct < 0);
+                    const consistent = allPositive || allNegative;
+                    insights.push({ name, perYear, avgPct, avgB, avgA, consistent });
                 });
 
-                // Sort by absolute impact
-                insights.sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
+                insights.sort((a, b) => Math.abs(b.avgPct) - Math.abs(a.avgPct));
 
-                // Build Concluzii (top 5)
+                // Concluzii
                 let html = '<div style="margin-bottom:20px;padding:14px;background:rgba(0,217,255,0.04);border-left:3px solid #00d9ff;border-radius:4px;">';
-                html += '<div style="color:#00d9ff;font-weight:600;margin-bottom:10px;font-size:1em;">💡 Concluzii principale</div>';
-                html += '<div style="font-size:0.9em;line-height:1.9;color:#ccc;">';
-                insights.slice(0, 5).forEach(ins => {
-                    const arrow = ins.pct > 2 ? '🔺' : (ins.pct < -2 ? '🔻' : '➡️');
-                    const color = ins.pct > 2 ? '#00ff88' : (ins.pct < -2 ? '#ff6b6b' : '#aaa');
-                    const sign = ins.pct >= 0 ? '+' : '';
-                    const yrs = ins.years ? ` <span style="color:#666">[${ins.years}]</span>` : '';
-                    html += `<div>${arrow} <strong style="color:#fff">${ins.name}</strong>${yrs} — trafic dupa vs inainte: <strong style="color:${color}">${sign}${ins.pct.toFixed(1)}%</strong> (${ins.bAvg.toFixed(0)} → ${ins.aAvg.toFixed(0)} parteneri/zi). `;
-                    if (Math.abs(ins.pct) > 5) {
-                        html += `Varful: <strong style="color:#00ff88">+${ins.peakOffset} zi deschis</strong> (${ins.peakVal.toFixed(0)} parteneri).`;
-                    } else {
-                        html += 'Fara efect semnificativ.';
-                    }
-                    html += '</div>';
+                html += '<div style="color:#00d9ff;font-weight:600;margin-bottom:10px;font-size:1em;">💡 Concluzii principale (cu variatia anuala)</div>';
+                html += '<div style="font-size:0.9em;line-height:1.8;color:#ccc;">';
+                insights.slice(0, 6).forEach(ins => {
+                    const arrow = ins.avgPct > 2 ? '🔺' : (ins.avgPct < -2 ? '🔻' : '➡️');
+                    const mainColor = ins.avgPct > 2 ? '#00ff88' : (ins.avgPct < -2 ? '#ff6b6b' : '#aaa');
+                    const sign = ins.avgPct >= 0 ? '+' : '';
+                    const consistencyBadge = ins.consistent
+                        ? '<span style="color:#00ff88;font-size:.8em;margin-left:6px">✓ consistent</span>'
+                        : '<span style="color:#ff9f40;font-size:.8em;margin-left:6px">⚠ variabil</span>';
+                    html += `<div style="margin-bottom:10px;">`;
+                    html += `${arrow} <strong style="color:#fff">${ins.name}</strong>${consistencyBadge}<br>`;
+                    html += `<span style="color:#888;margin-left:22px;">Mediu: <strong style="color:${mainColor}">${sign}${ins.avgPct.toFixed(1)}%</strong> · Pe ani: `;
+                    html += ins.perYear.map(y => {
+                        const c = y.pct > 2 ? '#00ff88' : (y.pct < -2 ? '#ff6b6b' : '#888');
+                        const s = y.pct >= 0 ? '+' : '';
+                        return `<span style="color:${c}"><strong>${y.year}</strong>: ${s}${y.pct.toFixed(1)}%</span>`;
+                    }).join(' · ');
+                    html += '</span></div>';
                 });
                 html += '</div></div>';
 
-                // Detailed table (all holidays alphabetical)
+                // Detailed per-year table
                 const offsets = [-3, -2, -1, 0, 1, 2, 3];
-                const offsetLabels = {
-                    '-3': '-3', '-2': '-2', '-1': '-1',
-                    '0': 'SARB.', '1': '+1', '2': '+2', '3': '+3'
-                };
-                html += '<details><summary style="cursor:pointer;color:#aaa;font-size:0.9em;margin-bottom:10px;">📋 Tabel complet (click pentru a deschide)</summary>';
-                html += '<table><thead><tr><th>Sarbatoare</th><th>Ani</th>' +
+                const offsetLabels = {'-3':'-3','-2':'-2','-1':'-1','0':'SARB.','1':'+1','2':'+2','3':'+3'};
+                html += '<details><summary style="cursor:pointer;color:#aaa;font-size:0.9em;margin-bottom:10px;">📋 Tabel complet pe ani (click pentru a deschide)</summary>';
+                html += '<table><thead><tr><th>Sarbatoare</th><th>An</th>' +
                         offsets.map(o => `<th class="text-right" style="${o === 0 ? 'color:#ff9f40' : ''}">${offsetLabels[String(o)]}</th>`).join('') +
                         '<th class="text-right">Δ%</th></tr></thead><tbody>';
-                // Sort table by absolute pct as well, biggest effect first
-                const tableOrder = insights.slice().concat(
-                    Object.keys(grouped).filter(n => !insights.find(i => i.name === n)).map(n => ({ name: n, pct: 0 }))
-                );
-                tableOrder.forEach(ins => {
-                    const name = ins.name;
-                    const pct = ins.pct || 0;
-                    const pctColor = pct > 2 ? '#00ff88' : (pct < -2 ? '#ff6b6b' : '#666');
-                    const pctSign = pct >= 0 ? '+' : '';
-                    const yrs = yearsByHoliday[name] || '';
-                    html += `<tr><td>${name}</td><td style="color:#888;font-size:0.85em;white-space:nowrap;">${yrs}</td>` +
-                            offsets.map(o => {
-                                const cell = grouped[name][o];
-                                if (!cell || cell.avg == null) return '<td class="text-right" style="color:#555">–</td>';
-                                return `<td class="text-right">${cell.avg}<br><span style="color:#666;font-size:.75em">n=${cell.n}</span></td>`;
-                            }).join('') +
-                            `<td class="text-right" style="color:${pctColor};font-weight:600;">${pct ? pctSign + pct.toFixed(1) + '%' : '–'}</td>` +
-                            '</tr>';
+                insights.forEach(ins => {
+                    // header row with average across years
+                    const avgPctColor = ins.avgPct > 2 ? '#00ff88' : (ins.avgPct < -2 ? '#ff6b6b' : '#666');
+                    const sign = ins.avgPct >= 0 ? '+' : '';
+                    html += `<tr style="background:rgba(0,217,255,0.06);">`;
+                    html += `<td colspan="2" style="color:#00d9ff;font-weight:600;">${ins.name} <span style="color:#888;font-weight:400;font-size:.85em">(medie pe ${ins.perYear.length} ani)</span></td>`;
+                    offsets.forEach(o => {
+                        if (o === 0) { html += '<td class="text-right" style="color:#555">–</td>'; return; }
+                        const vals = ins.perYear.map(y => byHoliday[ins.name][y.year][o]).filter(v => v != null);
+                        if (!vals.length) { html += '<td class="text-right" style="color:#555">–</td>'; return; }
+                        const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+                        html += `<td class="text-right" style="color:#aaa;"><strong>${avg.toFixed(1)}</strong></td>`;
+                    });
+                    html += `<td class="text-right" style="color:${avgPctColor};font-weight:700;">${sign}${ins.avgPct.toFixed(1)}%</td>`;
+                    html += '</tr>';
+                    // per-year rows
+                    ins.perYear.forEach(y => {
+                        const yrData = byHoliday[ins.name][y.year];
+                        const pctColor = y.pct > 2 ? '#00ff88' : (y.pct < -2 ? '#ff6b6b' : '#666');
+                        const ysign = y.pct >= 0 ? '+' : '';
+                        html += `<tr><td style="color:#666;padding-left:20px;">↳</td><td style="color:#aaa">${y.year}</td>`;
+                        offsets.forEach(o => {
+                            if (o === 0) { html += '<td class="text-right" style="color:#555">–</td>'; return; }
+                            const v = yrData[o];
+                            if (v == null) { html += '<td class="text-right" style="color:#555">–</td>'; return; }
+                            html += `<td class="text-right">${v.toFixed(0)}</td>`;
+                        });
+                        html += `<td class="text-right" style="color:${pctColor};">${ysign}${y.pct.toFixed(1)}%</td></tr>`;
+                    });
                 });
                 html += '</tbody></table></details>';
                 document.getElementById('sezHolidayTable').innerHTML = html;

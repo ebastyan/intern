@@ -286,13 +286,11 @@ class handler(BaseHTTPRequestHandler):
               FROM after_ranked WHERE rn <= {window}
             )
             SELECT block_name AS holiday_name,
+                   year_label,
                    offset_days,
-                   ROUND(AVG(partners)::numeric, 1) AS avg_partners,
-                   COUNT(partners) AS sample_size,
-                   STRING_AGG(DISTINCT year_label, ', ' ORDER BY year_label) AS years
+                   partners
             FROM slots
-            GROUP BY block_name, offset_days
-            ORDER BY block_name, offset_days
+            ORDER BY block_name, year_label, offset_days
             """
         )
         return [dict(r) for r in cur.fetchall()]
