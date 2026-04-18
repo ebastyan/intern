@@ -2225,7 +2225,7 @@
         let _sezWeeklyMetric = 'partners';
 
         async function loadSezonalitate() {
-            await loadSezWeekly();
+            await Promise.all([loadSezWeekly(), loadSezMonthly()]);
         }
 
         async function loadSezWeekly() {
@@ -2280,6 +2280,68 @@
                     btn.classList.add('active');
                     _sezWeeklyMetric = btn.dataset.metric;
                     renderSezWeekly();
+                };
+            });
+        }
+
+        let _sezMonthlyChart = null;
+        let _sezMonthlyData = null;
+        let _sezMonthlyMetric = 'avg_partners_per_day';
+
+        async function loadSezMonthly() {
+            try {
+                const res = await fetch('/api/calendar?type=monthly_pattern');
+                const data = await res.json();
+                _sezMonthlyData = data.monthly_pattern || [];
+                renderSezMonthly();
+                bindSezMonthlyToggle();
+            } catch (e) {
+                console.error('loadSezMonthly failed', e);
+            }
+        }
+
+        function renderSezMonthly() {
+            const rows = _sezMonthlyData;
+            if (!rows || !rows.length) return;
+            const monthLabels = ['Ian','Feb','Mar','Apr','Mai','Iun','Iul','Aug','Sep','Oct','Nov','Dec'];
+            const labels = rows.map(r => monthLabels[r.month - 1]);
+            const values = rows.map(r => parseFloat(r[_sezMonthlyMetric] || 0));
+            const ctx = document.getElementById('sezMonthlyChart').getContext('2d');
+            if (_sezMonthlyChart) _sezMonthlyChart.destroy();
+            _sezMonthlyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: _sezMonthlyMetric,
+                        data: values,
+                        borderColor: '#00ff88',
+                        backgroundColor: 'rgba(0,255,136,0.15)',
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        x: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                    }
+                }
+            });
+        }
+
+        function bindSezMonthlyToggle() {
+            document.querySelectorAll('[data-target="sez-monthly"] button').forEach(btn => {
+                btn.onclick = () => {
+                    document.querySelectorAll('[data-target="sez-monthly"] button').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    _sezMonthlyMetric = btn.dataset.metric;
+                    renderSezMonthly();
                 };
             });
         }
