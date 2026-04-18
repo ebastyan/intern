@@ -675,11 +675,6 @@
 
         <!-- SEZONALITATE -->
         <div id="section-sezonalitate" class="section">
-            <div class="card">
-                <h2><span class="icon">📅</span> Sezonalitate & Sarbatori</h2>
-                <p style="color:#888;font-size:0.85em;margin-bottom:0;">Tiparul calendaristic al traficului — baza fara influenta meteo.</p>
-            </div>
-
             <div class="card" id="sez-weekly">
                 <h2><span class="icon">📊</span> Tipar saptamanal (Luni-Sambata)</h2>
                 <p style="color:#888;font-size:0.8em;margin-bottom:8px;">Program: <strong style="color:#aaa">Luni-Vineri 8:00-17:00 (9h)</strong> · <strong style="color:#aaa">Sambata 8:00-13:00 (5h)</strong>. Comuta "/ora" pentru intensitate reala.</p>
@@ -709,22 +704,40 @@
 
             <div class="card">
                 <h2><span class="icon">🎉</span> Impactul sarbatorilor (±3 zile)</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Numarul mediu de <strong style="color:#aaa">parteneri/zi</strong> in zilele din jurul fiecarei sarbatori nationale, pe toata perioada (n = cate ocazii).
+                    Coloana <strong style="color:#aaa">"Sarbatoare"</strong> e ziua oficiala (de obicei "–" pentru ca magazinul e inchis).
+                    <strong style="color:#aaa">"-1 zi"</strong> = ziua dinaintea sarbatorii, <strong style="color:#aaa">"+1 zi"</strong> = ziua de dupa, etc.
+                    Compara cu media din <em>Tipar saptamanal</em> pentru a vedea daca sarbatoarea aglomereaza sau incetineste traficul.
+                </p>
                 <div id="sezHolidayTable" class="scroll-table"></div>
             </div>
 
             <div class="card">
-                <h2><span class="icon">🌉</span> Bridge days (zi lucratoare intre doua zile inchise)</h2>
+                <h2><span class="icon">🌉</span> Bridge days</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    O zi lucratoare <strong style="color:#aaa">blocata intre doua zile inchise</strong> — de exemplu, o Sambata prinsa intre o Vineri sarbatoare si Duminica libera.
+                    De obicei traficul scade brutal pe astfel de zile (oamenii prefera sa-si ia zi libera completa). Daca vezi valori mari de parteneri = oamenii vin oricum = e ok sa deschizi. Daca vezi 0 = degeaba deschizi.
+                </p>
                 <div id="sezBridgeTable" class="scroll-table"></div>
             </div>
 
             <div class="card">
                 <h2><span class="icon">🗓️</span> Zile fara tranzactii (de validat)</h2>
-                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">Candidati pentru concedii companie — confirma sau ignora.</p>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Intervale de zile <strong style="color:#aaa">lucratoare (Luni-Sambata)</strong> in care <strong style="color:#aaa">nu au fost tranzactii deloc</strong> si nu erau sarbatori nationale.
+                    Probabil magazinul era inchis (concediu de vara, prelungire Craciun, zi libera interna, etc.).
+                    <strong style="color:#00ff88">Confirma</strong> (cu motiv optional, ex. "Concediu de vara") pentru a inregistra ca inchidere reala — astfel nu mai incurca mediile.
+                    <strong style="color:#888">Ignora</strong> daca NU a fost inchidere (cu adevarat 0 clienti aleator).
+                </p>
                 <div id="sezClosureCandidates"></div>
             </div>
 
             <div class="card">
                 <h2><span class="icon">⚠️</span> Audit: tranzactii pe zile oficial nelucratoare</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Zile declarate <strong style="color:#ff9f40">"piros" oficial in Romania</strong> (sarbatori nationale) cand au avut loc totusi tranzactii. Pentru verificare legala/conformitate.
+                </p>
                 <div id="sezAuditTable" class="scroll-table"></div>
             </div>
         </div>
@@ -2367,8 +2380,12 @@
                     grouped[r.holiday_name][r.offset_days] = { avg: r.avg_partners, n: r.sample_size };
                 });
                 const offsets = [-3, -2, -1, 0, 1, 2, 3];
+                const offsetLabels = {
+                    '-3': '-3 zile', '-2': '-2 zile', '-1': '-1 zi',
+                    '0': 'Sarbatoare', '1': '+1 zi', '2': '+2 zile', '3': '+3 zile'
+                };
                 let html = '<table><thead><tr><th>Sarbatoare</th>' +
-                           offsets.map(o => `<th class="text-right">${o >= 0 ? '+' : ''}${o}</th>`).join('') +
+                           offsets.map(o => `<th class="text-right" style="${o === 0 ? 'color:#ff9f40' : ''}">${offsetLabels[String(o)]}</th>`).join('') +
                            '</tr></thead><tbody>';
                 Object.keys(grouped).sort().forEach(name => {
                     html += `<tr><td>${name}</td>` +
