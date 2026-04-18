@@ -2225,7 +2225,7 @@
         let _sezWeeklyMetric = 'partners';
 
         async function loadSezonalitate() {
-            await Promise.all([loadSezWeekly(), loadSezMonthly()]);
+            await Promise.all([loadSezWeekly(), loadSezMonthly(), loadSezHolidayEffect()]);
         }
 
         async function loadSezWeekly() {
@@ -2344,6 +2344,35 @@
                     renderSezMonthly();
                 };
             });
+        }
+
+        async function loadSezHolidayEffect() {
+            try {
+                const res = await fetch('/api/calendar?type=holiday_effect&window=3');
+                const data = await res.json();
+                const rows = data.holiday_effect || [];
+                const grouped = {};
+                rows.forEach(r => {
+                    if (!grouped[r.holiday_name]) grouped[r.holiday_name] = {};
+                    grouped[r.holiday_name][r.offset_days] = { avg: r.avg_partners, n: r.sample_size };
+                });
+                const offsets = [-3, -2, -1, 0, 1, 2, 3];
+                let html = '<table><thead><tr><th>Sarbatoare</th>' +
+                           offsets.map(o => `<th class="text-right">${o >= 0 ? '+' : ''}${o}</th>`).join('') +
+                           '</tr></thead><tbody>';
+                Object.keys(grouped).sort().forEach(name => {
+                    html += `<tr><td>${name}</td>` +
+                            offsets.map(o => {
+                                const cell = grouped[name][o];
+                                if (!cell || cell.avg == null) return '<td class="text-right" style="color:#555">–</td>';
+                                return `<td class="text-right">${cell.avg}<br><span style="color:#666;font-size:.75em">n=${cell.n}</span></td>`;
+                            }).join('') + '</tr>';
+                });
+                html += '</tbody></table>';
+                document.getElementById('sezHolidayTable').innerHTML = html;
+            } catch (e) {
+                console.error('loadSezHolidayEffect failed', e);
+            }
         }
     </script>
 </body>
