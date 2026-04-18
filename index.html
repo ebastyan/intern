@@ -2220,8 +2220,68 @@
         }
 
         // === Sezonalitate tab (Phase 1) ===
+        let _sezWeeklyChart = null;
+        let _sezWeeklyData = null;
+        let _sezWeeklyMetric = 'partners';
+
         async function loadSezonalitate() {
-            console.log('loadSezonalitate called - populated in subsequent tasks');
+            await loadSezWeekly();
+        }
+
+        async function loadSezWeekly() {
+            try {
+                const res = await fetch('/api/calendar?type=weekly_pattern');
+                const data = await res.json();
+                _sezWeeklyData = data.weekly_pattern || [];
+                renderSezWeekly();
+                bindSezWeeklyToggle();
+            } catch (e) {
+                console.error('loadSezWeekly failed', e);
+            }
+        }
+
+        function renderSezWeekly() {
+            const rows = _sezWeeklyData;
+            if (!rows || !rows.length) return;
+            const labels = rows.map(r => r.dow_label);
+            const fieldMap = { partners: 'avg_partners', transactions: 'avg_transactions', kg: 'avg_kg', ron: 'avg_ron' };
+            const field = fieldMap[_sezWeeklyMetric];
+            const values = rows.map(r => parseFloat(r[field] || 0));
+            const ctx = document.getElementById('sezWeeklyChart').getContext('2d');
+            if (_sezWeeklyChart) _sezWeeklyChart.destroy();
+            _sezWeeklyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: _sezWeeklyMetric,
+                        data: values,
+                        backgroundColor: 'rgba(0,217,255,0.4)',
+                        borderColor: '#00d9ff',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        x: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                    }
+                }
+            });
+        }
+
+        function bindSezWeeklyToggle() {
+            document.querySelectorAll('[data-target="sez-weekly"] button').forEach(btn => {
+                btn.onclick = () => {
+                    document.querySelectorAll('[data-target="sez-weekly"] button').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    _sezWeeklyMetric = btn.dataset.metric;
+                    renderSezWeekly();
+                };
+            });
         }
     </script>
 </body>
