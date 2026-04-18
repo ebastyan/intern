@@ -2225,7 +2225,7 @@
         let _sezWeeklyMetric = 'partners';
 
         async function loadSezonalitate() {
-            await Promise.all([loadSezWeekly(), loadSezMonthly(), loadSezHolidayEffect(), loadSezBridges()]);
+            await Promise.all([loadSezWeekly(), loadSezMonthly(), loadSezHolidayEffect(), loadSezBridges(), loadSezClosureCandidates()]);
         }
 
         async function loadSezWeekly() {
@@ -2396,6 +2396,70 @@
                 host.innerHTML = html;
             } catch (e) {
                 console.error('loadSezBridges failed', e);
+            }
+        }
+
+        async function loadSezClosureCandidates() {
+            try {
+                const res = await fetch('/api/calendar?type=closure_candidates');
+                const data = await res.json();
+                const runs = data.runs || [];
+                const host = document.getElementById('sezClosureCandidates');
+                if (!runs.length) {
+                    host.innerHTML = '<p style="color:#00ff88;margin:10px 0;">Niciun candidat in asteptare. ✓</p>';
+                    return;
+                }
+                let html = '<div class="scroll-table"><table><thead><tr><th>De la</th><th>Pana la</th><th class="text-right">Zile lucratoare</th><th>Actiuni</th></tr></thead><tbody>';
+                runs.forEach((r, i) => {
+                    html += `
+                        <tr data-run="${i}">
+                            <td><input type="date" value="${r.date_from}" class="closure-from" style="background:#1a1a2e;color:#fff;border:1px solid #333;padding:4px;border-radius:4px;"></td>
+                            <td><input type="date" value="${r.date_to}" class="closure-to" style="background:#1a1a2e;color:#fff;border:1px solid #333;padding:4px;border-radius:4px;"></td>
+                            <td class="text-right">${r.working_days}</td>
+                            <td>
+                                <input type="text" placeholder="Motiv (optional)" class="closure-reason" style="width:180px;background:#1a1a2e;color:#fff;border:1px solid #333;padding:4px;border-radius:4px;">
+                                <button class="btn-confirm" style="margin-left:6px;padding:4px 10px;background:#00d9ff;color:#000;border:none;border-radius:4px;cursor:pointer;font-weight:600;">Confirma</button>
+                                <button class="btn-ignore" style="margin-left:4px;padding:4px 10px;background:transparent;color:#888;border:1px solid #444;border-radius:4px;cursor:pointer;">Ignora</button>
+                            </td>
+                        </tr>`;
+                });
+                html += '</tbody></table></div>';
+                host.innerHTML = html;
+                host.querySelectorAll('.btn-confirm').forEach(b => b.onclick = async (e) => {
+                    const row = e.target.closest('tr');
+                    const r = await postClosure('confirm_closure', {
+                        date_from: row.querySelector('.closure-from').value,
+                        date_to: row.querySelector('.closure-to').value,
+                        reason: row.querySelector('.closure-reason').value || 'Inchidere companie'
+                    });
+                    if (r && r.ok) loadSezClosureCandidates();
+                });
+                host.querySelectorAll('.btn-ignore').forEach(b => b.onclick = async (e) => {
+                    const row = e.target.closest('tr');
+                    const r = await postClosure('ignore_closure', {
+                        date_from: row.querySelector('.closure-from').value,
+                        date_to: row.querySelector('.closure-to').value
+                    });
+                    if (r && r.ok) loadSezClosureCandidates();
+                });
+            } catch (e) {
+                console.error('loadSezClosureCandidates failed', e);
+            }
+        }
+
+        async function postClosure(action, body) {
+            try {
+                const res = await fetch(`/api/calendar?action=${action}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                if (data.error) alert('Eroare: ' + data.error);
+                return data;
+            } catch (e) {
+                alert('Eroare retea: ' + e.message);
+                return null;
             }
         }
     </script>
