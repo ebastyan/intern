@@ -781,9 +781,17 @@
             </div>
 
             <div class="card">
-                <h2><span class="icon">💡</span> Ce spune vremea despre trafic</h2>
+                <h2><span class="icon">🏆</span> Clasament: care vreme stirbe cel mai tare traficul?</h2>
                 <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
-                    Cele mai importante observatii gasite in datele meteo vs trafic. Fiecare card e o propozitie — spune clar ce efect are un tip de vreme asupra numarului de parteneri (sau tranzactii/kg/RON, in functie de ce alegi). Sortate dupa importanta, cele mai mari efecte sus.
+                    Toate tipurile de vreme comparate direct. Sortate de la <strong style="color:#ff6b6b">cel mai rau</strong> la <strong style="color:#00ff88">cel mai bun</strong> — vezi instantaneu care e mai daunatoare: ploaia, zapada, gerul, canicula, vantul, etc. Fiecare rand arata procentul mediu, cate zile au fost asa, si cea mai extrema zi.
+                </p>
+                <div id="meteoRanking"></div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">💡</span> Detalii cu zile concrete (evidenta)</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Pentru fiecare efect detectat, aici vezi exemple concrete de zile din perioada selectata. Cu data, vremea, cat au venit vs cat ne-asteptam. Asa poti verifica cu ochii tai daca algoritmul spune adevarul.
                 </p>
                 <div id="meteoInsights"></div>
             </div>
@@ -2666,13 +2674,49 @@
         }
 
         async function loadMeteoOverview(df, dt, metric) {
+            const rankHost = document.getElementById('meteoRanking');
             const host = document.getElementById('meteoInsights');
+            if (rankHost) rankHost.innerHTML = '<p style="color:#888">Se incarca...</p>';
             host.innerHTML = '<p style="color:#888">Se incarca...</p>';
             try {
                 const url = `/api/weather?type=overview&metric=${encodeURIComponent(metric)}&date_from=${df}&date_to=${dt}`;
                 const res = await fetch(url);
                 const data = await res.json();
                 if (data.error) { host.innerHTML = `<p style="color:#ff6b6b">Eroare: ${data.error}</p>`; return; }
+                const metricUnit0 = {partners:'parteneri', transactions:'tranzactii', kg:'kg', ron:'RON'}[metric] || '';
+
+                // Render ranking card
+                const ranking = data.ranking || [];
+                if (rankHost) {
+                    if (!ranking.length) {
+                        rankHost.innerHTML = '<p style="color:#888">Nu sunt suficiente zile pentru clasament in perioada selectata.</p>';
+                    } else {
+                        const maxAbs = Math.max(...ranking.map(r => Math.abs(r.effect_pct))) || 1;
+                        let rh = '';
+                        ranking.forEach((r, idx) => {
+                            const c = r.effect_pct < -2 ? '#ff6b6b' : (r.effect_pct > 2 ? '#00ff88' : '#aaa');
+                            const barW = Math.min(100, (Math.abs(r.effect_pct) / maxAbs) * 100);
+                            const sign = r.effect_pct >= 0 ? '+' : '';
+                            const ex = r.worst_day || r.best_day;
+                            rh += `<div style="display:grid;grid-template-columns:36px 1fr 90px;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">`;
+                            rh += `<div style="color:#666;font-size:0.9em;text-align:center;">#${idx + 1}</div>`;
+                            rh += `<div>`;
+                            rh += `<div style="font-size:0.98em;"><span style="font-size:1.15em;margin-right:4px;">${r.emoji}</span><strong style="color:#eee;">${r.name}</strong> <span style="color:#888;font-size:0.85em;">(${r.range})</span> <span style="color:#666;font-size:0.82em;margin-left:6px;">${r.n} zile</span></div>`;
+                            rh += `<div style="height:8px;margin-top:5px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${barW}%;background:${c};"></div></div>`;
+                            if (ex) {
+                                const exPct = ex.residual_pct != null ? `${ex.residual_pct >= 0 ? '+' : ''}${ex.residual_pct.toFixed(1)}%` : '';
+                                const act = ex.actual != null ? Math.round(ex.actual) : '–';
+                                const bas = ex.baseline != null ? Math.round(ex.baseline) : '–';
+                                rh += `<div style="color:#888;font-size:0.82em;margin-top:5px;">cea mai extrema: <span style="color:#aaa;">${ex.date} ${ex.dow}</span> — ${ex.weather} → ${act} vs ${bas} ${metricUnit0} <strong style="color:${c};margin-left:4px;">${exPct}</strong></div>`;
+                            }
+                            rh += `</div>`;
+                            rh += `<div style="color:${c};font-size:1.15em;font-weight:600;text-align:right;">${sign}${r.effect_pct.toFixed(1)}%</div>`;
+                            rh += `</div>`;
+                        });
+                        rankHost.innerHTML = rh;
+                    }
+                }
+
                 const insights = data.insights || [];
                 if (!insights.length) {
                     host.innerHTML = '<p style="color:#888">Niciun efect meteo semnificativ detectat in perioada selectata.</p>';
