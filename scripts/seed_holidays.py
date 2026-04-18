@@ -50,11 +50,40 @@ KNOWN_CATHOLIC_EASTER = {
     2030: date(2030, 4, 21),
 }
 
+def orthodox_easter(year: int) -> date:
+    """Meeus' Julian Easter algorithm, then Julian -> Gregorian shift (+13 days for 1900-2099)."""
+    a = year % 4
+    b = year % 7
+    c = year % 19
+    d = (19 * c + 15) % 30
+    e = (2 * a + 4 * b - d + 34) % 7
+    month_julian = (d + e + 114) // 31
+    day_julian = ((d + e + 114) % 31) + 1
+    julian_date = date(year, month_julian, day_julian)
+    return julian_date + timedelta(days=13)
+
+# Known Orthodox Easter Sunday dates, hand-verified.
+KNOWN_ORTHODOX_EASTER = {
+    2022: date(2022, 4, 24),
+    2023: date(2023, 4, 16),
+    2024: date(2024, 5, 5),
+    2025: date(2025, 4, 20),
+    2026: date(2026, 4, 12),
+    2027: date(2027, 5, 2),
+    2028: date(2028, 4, 16),
+    2029: date(2029, 4, 8),
+    2030: date(2030, 4, 28),
+}
+
 def self_test():
     for y, expected in KNOWN_CATHOLIC_EASTER.items():
         got = catholic_easter(y)
         assert got == expected, f"catholic_easter({y}) -> {got}, expected {expected}"
     print(f"Catholic Easter OK for {len(KNOWN_CATHOLIC_EASTER)} years")
+    for y, expected in KNOWN_ORTHODOX_EASTER.items():
+        got = orthodox_easter(y)
+        assert got == expected, f"orthodox_easter({y}) -> {got}, expected {expected}"
+    print(f"Orthodox Easter OK for {len(KNOWN_ORTHODOX_EASTER)} years")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
