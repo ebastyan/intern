@@ -781,6 +781,14 @@
             </div>
 
             <div class="card">
+                <h2><span class="icon">🎓</span> Ce învață datele (sinteza + praguri)</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Sumarul de "ce face vremea cu traficul" + gradientele vizuale care arata <strong style="color:#aaa">exact unde se rupe tiparul</strong> la temperatura, ploaie, zapada, vant. Bazele de scala sunt "zilele normale" — orice deviatie te arata unde incepe sa scada sau sa creasca.
+                </p>
+                <div id="meteoTeaching"></div>
+            </div>
+
+            <div class="card">
                 <h2><span class="icon">🚨</span> Vreme care STRICA traficul</h2>
                 <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
                     Conditii meteo care au adus <strong style="color:#ff6b6b">mai putini parteneri</strong> decat normal (efect ≤ −3%, minim 3 zile in perioada). Click pe un card pentru detalii si zile concrete.
@@ -2689,6 +2697,83 @@
             ]);
         }
 
+        function renderTeachingCard(ranking) {
+            const byName = {};
+            ranking.forEach(r => byName[r.name] = r);
+            const FAMILIES = [
+                { title: '🌡️ Temperatura maxima', base: 'intervalul 10..25°C (normal)',
+                  cats: ['Ger extrem','Ger','Frig intens','Frig','Rece','Cald','Foarte cald','Canicula','Canicula extrema'] },
+                { title: '🌧️ Ploaie', base: 'fara ploaie',
+                  cats: ['Ploaie fina','Ploaie usoara','Ploaie moderata','Ploaie puternica','Ploaie torentiala'] },
+                { title: '❄️ Zapada', base: 'fara zapada',
+                  cats: ['Ninsoare usoara','Zapada medie','Zapada abundenta'] },
+                { title: '💨 Vant (rafale)', base: 'vant calm <50km/h',
+                  cats: ['Rafale medii','Rafale mari','Furtuna'] },
+                { title: '💧 Umiditate', base: 'umiditate moderata 45..85%',
+                  cats: ['Umiditate scazuta','Umiditate ridicata','Umiditate extrema'] },
+                { title: '🌤️ Cer', base: 'cer partial norat',
+                  cats: ['Senin','Mohorat'] },
+            ];
+
+            // Top 3 worst / best
+            const bads = ranking.filter(r => r.effect_pct < 0).sort((a,b) => a.effect_pct - b.effect_pct).slice(0,4);
+            const goods = ranking.filter(r => r.effect_pct > 0).sort((a,b) => b.effect_pct - a.effect_pct).slice(0,4);
+            let html = '';
+
+            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">';
+            html += '<div style="padding:12px 14px;background:rgba(255,107,107,0.08);border-left:3px solid #ff6b6b;border-radius:4px;">';
+            html += '<div style="color:#ff6b6b;font-weight:600;margin-bottom:8px;">🚨 Ce ii OPRESTE pe oameni</div>';
+            if (!bads.length) {
+                html += '<div style="color:#888;font-size:0.9em;">Nicio vreme nu a cauzat scaderi in aceasta perioada.</div>';
+            } else {
+                bads.forEach((r, i) => {
+                    html += `<div style="padding:4px 0;color:#ddd;font-size:0.9em;"><strong style="color:#fff;">${i+1}.</strong> ${r.emoji} <strong>${r.name}</strong> <span style="color:#888;font-size:0.85em;">(${r.range})</span> → <strong style="color:#ff6b6b;">${r.effect_pct.toFixed(1)}%</strong> <span style="color:#666;font-size:0.8em;">· ${r.n} zile</span></div>`;
+                });
+            }
+            html += '</div>';
+
+            html += '<div style="padding:12px 14px;background:rgba(0,255,136,0.08);border-left:3px solid #00ff88;border-radius:4px;">';
+            html += '<div style="color:#00ff88;font-weight:600;margin-bottom:8px;">🎯 Ce ii ADUCE fara probleme</div>';
+            if (!goods.length) {
+                html += '<div style="color:#888;font-size:0.9em;">Nicio vreme nu a aglomerat.</div>';
+            } else {
+                goods.forEach((r, i) => {
+                    html += `<div style="padding:4px 0;color:#ddd;font-size:0.9em;"><strong style="color:#fff;">${i+1}.</strong> ${r.emoji} <strong>${r.name}</strong> <span style="color:#888;font-size:0.85em;">(${r.range})</span> → <strong style="color:#00ff88;">+${r.effect_pct.toFixed(1)}%</strong> <span style="color:#666;font-size:0.8em;">· ${r.n} zile</span></div>`;
+                });
+            }
+            html += '</div>';
+            html += '</div>';
+
+            // Threshold gradient per family
+            html += '<div style="color:#00d9ff;font-weight:600;font-size:1em;margin-bottom:6px;">📏 Unde se RUPE tiparul (pragurile)</div>';
+            html += '<div style="color:#888;font-size:0.82em;margin-bottom:12px;">Fiecare rand = o categorie. Bara rosie la stanga = scade, verde la dreapta = creste. Linia verticala = "zi normala" (baseline). Cat mai lunga bara, cu atat mai mare efectul.</div>';
+            FAMILIES.forEach(fam => {
+                const items = fam.cats.map(n => byName[n]).filter(Boolean);
+                if (!items.length) return;
+                const maxAbs = Math.max(...items.map(i => Math.abs(i.effect_pct)), 4);
+                html += `<div style="margin-bottom:18px;">`;
+                html += `<div style="color:#eee;font-weight:600;font-size:0.92em;margin-bottom:3px;">${fam.title} <span style="color:#666;font-size:0.85em;font-weight:400;">· baza: ${fam.base}</span></div>`;
+                items.forEach(it => {
+                    const isStrong = Math.abs(it.effect_pct) >= 3 || (it.n_strong_neg||0) >= 3 || (it.n_strong_pos||0) >= 3;
+                    const c = it.effect_pct <= -2 ? '#ff6b6b' : (it.effect_pct >= 2 ? '#00ff88' : '#777');
+                    const sign = it.effect_pct >= 0 ? '+' : '';
+                    const barW = Math.min(50, Math.abs(it.effect_pct) / maxAbs * 50);
+                    const marker = isStrong && Math.abs(it.effect_pct) >= 5 ? '  ⚠' : '';
+                    html += `<div style="display:grid;grid-template-columns:210px 1fr 80px 30px;gap:10px;align-items:center;padding:2px 0;font-size:0.87em;">`;
+                    html += `<div style="color:${isStrong ? '#ddd' : '#999'};">${it.name} <span style="color:#666;font-size:0.88em;">${it.range}</span></div>`;
+                    html += `<div style="height:10px;background:rgba(255,255,255,0.03);border-radius:3px;overflow:hidden;position:relative;">
+                        <div style="position:absolute;top:0;bottom:0;left:50%;width:1px;background:rgba(255,255,255,0.25);z-index:1;"></div>
+                        <div style="position:absolute;top:0;bottom:0;${it.effect_pct < 0 ? `right:50%;left:${50-barW}%` : `left:50%;right:${50-barW}%`};background:${c};border-radius:2px;"></div>
+                    </div>`;
+                    html += `<div style="color:${c};text-align:right;font-weight:${isStrong ? 700 : 400};font-size:0.95em;">${sign}${it.effect_pct.toFixed(1)}%</div>`;
+                    html += `<div style="color:#ff9f40;font-size:0.8em;">${marker}</div>`;
+                    html += `</div>`;
+                });
+                html += `</div>`;
+            });
+            return html;
+        }
+
         function renderWeatherCard(r, color, metricUnit) {
             const sign = r.effect_pct >= 0 ? '+' : '';
             const nNeg = r.n_strong_neg || 0, nPos = r.n_strong_pos || 0;
@@ -2736,11 +2821,12 @@
         }
 
         async function loadMeteoOverview(df, dt, metric) {
+            const teachHost = document.getElementById('meteoTeaching');
             const badHost = document.getElementById('meteoBadWeather');
             const goodHost = document.getElementById('meteoGoodWeather');
             const neutralHost = document.getElementById('meteoNeutralWeather');
             const host = document.getElementById('meteoInsights');
-            [badHost, goodHost, neutralHost].forEach(h => { if (h) h.innerHTML = '<p style="color:#888">Se incarca...</p>'; });
+            [teachHost, badHost, goodHost, neutralHost].forEach(h => { if (h) h.innerHTML = '<p style="color:#888">Se incarca...</p>'; });
             host.innerHTML = '<p style="color:#888">Se incarca...</p>';
             try {
                 const url = `/api/weather?type=overview&metric=${encodeURIComponent(metric)}&date_from=${df}&date_to=${dt}`;
@@ -2750,6 +2836,14 @@
                 const metricUnit0 = {partners:'parteneri', transactions:'tranzactii', kg:'kg', ron:'RON'}[metric] || '';
 
                 const ranking = data.ranking || [];
+                // Teaching card (synthesis + gradients)
+                if (teachHost) {
+                    if (!ranking.length) {
+                        teachHost.innerHTML = '<p style="color:#888">Nu sunt suficiente date pentru sinteza.</p>';
+                    } else {
+                        teachHost.innerHTML = renderTeachingCard(ranking);
+                    }
+                }
                 // "Bad" = avg clearly negative OR 3+ strongly-bad days (even if avg is small)
                 // "Good" = mirror of above
                 const isBad = r => r.effect_pct <= -2 || (r.n_strong_neg || 0) >= 3;
