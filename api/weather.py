@@ -497,24 +497,27 @@ class handler(BaseHTTPRequestHandler):
         ranking = []
         for emoji, name, range_str, fn in CATEGORIES:
             matching = [r for r in rows if fn(r) and r.get("residual_pct") is not None]
-            if len(matching) < 5:
+            if len(matching) < 3:
                 continue
             avg_pct = sum(float(r["residual_pct"]) for r in matching) / len(matching)
-            sorted_matching = sorted(matching, key=lambda r: float(r["residual"]))
-            top_days = [_day_example(sorted_matching[0])]
-            if len(sorted_matching) > 1:
-                top_days.append(_day_example(sorted_matching[-1]))
+            # Sort examples in the direction of the effect (most illustrative first)
+            if avg_pct < 0:
+                sorted_matching = sorted(matching, key=lambda r: float(r["residual"]))
+            else:
+                sorted_matching = sorted(matching, key=lambda r: float(r["residual"]), reverse=True)
+            examples = [_day_example(r) for r in sorted_matching[:8]]
             ranking.append({
                 "emoji": emoji,
                 "name": name,
                 "range": range_str,
                 "effect_pct": round(avg_pct, 1),
                 "n": len(matching),
+                "examples": examples,
                 "worst_day": _day_example(sorted_matching[0]) if avg_pct < 0 else None,
-                "best_day":  _day_example(sorted_matching[-1]) if avg_pct > 0 else None,
+                "best_day":  _day_example(sorted_matching[0]) if avg_pct > 0 else None,
             })
 
-        # Sort: most negative (worst for business) first; positive bonuses at the end
+        # Sort: most negative (worst for business) first
         ranking.sort(key=lambda r: r["effect_pct"])
 
         return {"metric": data["metric"], "ranking": ranking, "insights": insights}

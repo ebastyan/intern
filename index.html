@@ -781,11 +781,27 @@
             </div>
 
             <div class="card">
-                <h2><span class="icon">🏆</span> Clasament: care vreme stirbe cel mai tare traficul?</h2>
+                <h2><span class="icon">🚨</span> Vreme care STRICA traficul</h2>
                 <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
-                    Toate tipurile de vreme comparate direct. Sortate de la <strong style="color:#ff6b6b">cel mai rau</strong> la <strong style="color:#00ff88">cel mai bun</strong> — vezi instantaneu care e mai daunatoare: ploaia, zapada, gerul, canicula, vantul, etc. Fiecare rand arata procentul mediu, cate zile au fost asa, si cea mai extrema zi.
+                    Conditii meteo care au adus <strong style="color:#ff6b6b">mai putini parteneri</strong> decat normal (efect ≤ −3%, minim 3 zile in perioada). Click pe un card pentru detalii si zile concrete.
                 </p>
-                <div id="meteoRanking"></div>
+                <div id="meteoBadWeather"></div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">🎯</span> Vreme OPTIMA pentru trafic</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Conditii meteo care au adus <strong style="color:#00ff88">mai multi parteneri</strong> decat normal (efect ≥ +3%, minim 3 zile). Acestea sunt momente cand oamenii vin fara ezitare.
+                </p>
+                <div id="meteoGoodWeather"></div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">⚪</span> Alte conditii (fara efect clar)</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Categorii cu efect mic (sub ±3%) sau prea putine zile observate pentru o concluzie valida.
+                </p>
+                <div id="meteoNeutralWeather"></div>
             </div>
 
             <div class="card">
@@ -2673,10 +2689,49 @@
             ]);
         }
 
+        function renderWeatherCard(r, color, metricUnit) {
+            const sign = r.effect_pct >= 0 ? '+' : '';
+            let summary = `<summary style="cursor:pointer;list-style:none;padding:14px 16px;background:rgba(0,217,255,0.04);border-left:3px solid ${color};border-radius:4px;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;">`;
+            summary += `<div style="font-size:1.6em;">${r.emoji}</div>`;
+            summary += `<div>
+                <div style="font-size:1em;color:#eee;font-weight:600;">${r.name} <span style="color:#888;font-size:0.8em;font-weight:400;">(${r.range})</span></div>
+                <div style="color:#888;font-size:0.82em;margin-top:2px;">${r.n} zile lucratoare cu aceasta vreme · click pentru detalii</div>
+            </div>`;
+            summary += `<div style="color:${color};font-size:1.4em;font-weight:700;">${sign}${r.effect_pct.toFixed(1)}%</div>`;
+            summary += `</summary>`;
+
+            const examples = r.examples || [];
+            let body = `<div style="padding:12px 16px;background:rgba(0,0,0,0.2);border-left:3px solid ${color};border-radius:0 0 4px 4px;margin-top:-2px;">`;
+            if (!examples.length) {
+                body += '<p style="color:#888">Nu sunt exemple disponibile.</p>';
+            } else {
+                body += `<div style="color:#888;font-size:0.85em;margin-bottom:8px;">${examples.length} zile concrete (sortate dupa cele mai ilustrative pentru acest tip de vreme):</div>`;
+                examples.forEach(ex => {
+                    const pct = ex.residual_pct;
+                    const c2 = (pct ?? 0) > 0 ? '#00ff88' : '#ff6b6b';
+                    const s = (pct ?? 0) >= 0 ? '+' : '';
+                    const act = ex.actual != null ? Math.round(ex.actual) : '–';
+                    const bas = ex.baseline != null ? Math.round(ex.baseline) : '–';
+                    const pctStr = pct != null ? `${s}${pct.toFixed(1)}%` : '';
+                    body += `<div style="padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.9em;">`;
+                    body += `<div><span style="color:#00d9ff;font-weight:500;">${ex.date}</span> <span style="color:#888;">${ex.dow}</span> — <span style="color:#bbb;">${ex.weather}</span></div>`;
+                    body += `<div style="color:#aaa;margin-left:14px;margin-top:2px;">au venit <strong style="color:#fff;">${act}</strong> ${metricUnit} <span style="color:#666;">(ne-asteptam la <strong>${bas}</strong>)</span> <strong style="color:${c2};margin-left:6px;">${pctStr}</strong></div>`;
+                    body += '</div>';
+                });
+                if (examples.length < 3) {
+                    body += `<div style="color:#ff9f40;font-size:0.82em;margin-top:8px;font-style:italic;">⚠ Doar ${examples.length} exemple disponibile — efectul poate fi intamplator, nu o tendinta sigura.</div>`;
+                }
+            }
+            body += `</div>`;
+            return `<details style="margin-bottom:12px;">${summary}${body}</details>`;
+        }
+
         async function loadMeteoOverview(df, dt, metric) {
-            const rankHost = document.getElementById('meteoRanking');
+            const badHost = document.getElementById('meteoBadWeather');
+            const goodHost = document.getElementById('meteoGoodWeather');
+            const neutralHost = document.getElementById('meteoNeutralWeather');
             const host = document.getElementById('meteoInsights');
-            if (rankHost) rankHost.innerHTML = '<p style="color:#888">Se incarca...</p>';
+            [badHost, goodHost, neutralHost].forEach(h => { if (h) h.innerHTML = '<p style="color:#888">Se incarca...</p>'; });
             host.innerHTML = '<p style="color:#888">Se incarca...</p>';
             try {
                 const url = `/api/weather?type=overview&metric=${encodeURIComponent(metric)}&date_from=${df}&date_to=${dt}`;
@@ -2685,48 +2740,36 @@
                 if (data.error) { host.innerHTML = `<p style="color:#ff6b6b">Eroare: ${data.error}</p>`; return; }
                 const metricUnit0 = {partners:'parteneri', transactions:'tranzactii', kg:'kg', ron:'RON'}[metric] || '';
 
-                // Render ranking card
                 const ranking = data.ranking || [];
-                if (rankHost) {
-                    if (!ranking.length) {
-                        rankHost.innerHTML = '<p style="color:#888">Nu sunt suficiente zile pentru clasament in perioada selectata.</p>';
+                const bad = ranking.filter(r => r.effect_pct <= -3);
+                const good = ranking.filter(r => r.effect_pct >= 3).sort((a,b) => b.effect_pct - a.effect_pct);
+                const neutral = ranking.filter(r => r.effect_pct > -3 && r.effect_pct < 3);
+
+                if (badHost) {
+                    if (!bad.length) {
+                        badHost.innerHTML = '<p style="color:#888">In aceasta perioada, nicio vreme nu a cauzat un efect negativ clar (≤−3%) cu date suficiente.</p>';
                     } else {
-                        const maxAbs = Math.max(...ranking.map(r => Math.abs(r.effect_pct))) || 1;
-                        let rh = '';
-                        ranking.forEach((r, idx) => {
-                            const isNeutral = Math.abs(r.effect_pct) < 2;
-                            const c = r.effect_pct <= -2 ? '#ff6b6b' : (r.effect_pct >= 2 ? '#00ff88' : '#888');
-                            const barW = Math.min(100, (Math.abs(r.effect_pct) / maxAbs) * 100);
-                            const sign = r.effect_pct >= 0 ? '+' : '';
-                            // Only show example day when the category has a real consistent effect
-                            const ex = !isNeutral ? (r.worst_day || r.best_day) : null;
-                            rh += `<div style="display:grid;grid-template-columns:36px 1fr 90px;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">`;
-                            rh += `<div style="color:#666;font-size:0.9em;text-align:center;">#${idx + 1}</div>`;
-                            rh += `<div>`;
-                            rh += `<div style="font-size:0.98em;"><span style="font-size:1.15em;margin-right:4px;">${r.emoji}</span><strong style="color:${isNeutral ? '#aaa' : '#eee'};">${r.name}</strong> <span style="color:#888;font-size:0.85em;">(${r.range})</span> <span style="color:#666;font-size:0.82em;margin-left:6px;" title="Cate zile lucratoare au avut aceasta vreme in perioada selectata">${r.n} zile lucratoare cu aceasta vreme</span></div>`;
-                            rh += `<div style="height:8px;margin-top:5px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${barW}%;background:${c};"></div></div>`;
-                            if (ex) {
-                                const exPct = ex.residual_pct != null ? `${ex.residual_pct >= 0 ? '+' : ''}${ex.residual_pct.toFixed(1)}%` : '';
-                                const act = ex.actual != null ? Math.round(ex.actual) : '–';
-                                const bas = ex.baseline != null ? Math.round(ex.baseline) : '–';
-                                rh += `<div style="color:#888;font-size:0.82em;margin-top:5px;">cel mai ilustrativ: <span style="color:#aaa;">${ex.date} ${ex.dow}</span> — ${ex.weather} · au venit <strong style="color:#ddd;">${act}</strong> ${metricUnit0} <span style="color:#666;">(ne-asteptam la <strong>${bas}</strong>)</span> <strong style="color:${c};margin-left:4px;">${exPct}</strong></div>`;
-                            } else if (isNeutral) {
-                                rh += `<div style="color:#666;font-size:0.82em;margin-top:5px;font-style:italic;">efecte mixte — nu e o tendinta clara</div>`;
-                            }
-                            rh += `</div>`;
-                            rh += `<div style="color:${c};font-size:1.15em;font-weight:600;text-align:right;">${sign}${r.effect_pct.toFixed(1)}%</div>`;
-                            rh += `</div>`;
-                        });
-                        rh += `<div style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.05);font-size:0.8em;color:#666;line-height:1.6;">
-                            <strong style="color:#888;">Cum se citeste:</strong> Numarul de la dreapta = procentul mediu pe <strong>toate zilele</strong> din perioada cu aceasta vreme. <strong>N zile lucratoare</strong> = cate zile au avut acea vreme. Procentele peste <strong>±2%</strong> au colori (rosu = mai putini, verde = mai multi). Sub ±2% = efect nesigur / sub zgomot.
-                        </div>`;
-                        rankHost.innerHTML = rh;
+                        badHost.innerHTML = bad.map(r => renderWeatherCard(r, '#ff6b6b', metricUnit0)).join('');
+                    }
+                }
+                if (goodHost) {
+                    if (!good.length) {
+                        goodHost.innerHTML = '<p style="color:#888">In aceasta perioada, nicio vreme nu a aglomerat traficul cu ≥+3%.</p>';
+                    } else {
+                        goodHost.innerHTML = good.map(r => renderWeatherCard(r, '#00ff88', metricUnit0)).join('');
+                    }
+                }
+                if (neutralHost) {
+                    if (!neutral.length) {
+                        neutralHost.innerHTML = '<p style="color:#888">Toate categoriile au efecte clare.</p>';
+                    } else {
+                        neutralHost.innerHTML = neutral.map(r => renderWeatherCard(r, '#888', metricUnit0)).join('');
                     }
                 }
 
                 const insights = data.insights || [];
                 if (!insights.length) {
-                    host.innerHTML = '<p style="color:#888">Niciun efect meteo semnificativ detectat in perioada selectata.</p>';
+                    host.innerHTML = '<p style="color:#888">Niciun efect meteo semnificativ suplimentar detectat in perioada selectata.</p>';
                     return;
                 }
                 const emojiFor = ins => {
