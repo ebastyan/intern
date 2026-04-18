@@ -102,24 +102,49 @@ def parse_cnp(cnp_raw):
 FILENAME_RE = re.compile(r"^(\d{2})\.?(\d{2})\.?(\d{4})\.xls$", re.IGNORECASE)
 
 
-def parse_date_from_filename(filename):
-    """E.g. '07.01.2020.xls' -> date(2020, 1, 7). Handles '29.0102020.xls' by
-    treating as '29.01.2020.xls'."""
+def parse_date_from_filename(filename, folder_year=None, folder_month=None):
+    """E.g. '07.01.2020.xls' -> date(2020, 1, 7). Handles weird variants like
+    '29.0102020.xls' (missing dot) by falling back to folder context."""
     m = FILENAME_RE.match(filename)
     if m:
         dd, mm, yy = m.group(1), m.group(2), m.group(3)
         try:
-            return date(int(yy), int(mm), int(dd))
+            d = date(int(yy), int(mm), int(dd))
+            # Sanity: if the parsed year disagrees with folder_year by more
+            # than 1, something is wrong — prefer folder hint.
+            if folder_year and abs(d.year - folder_year) > 1:
+                raise ValueError("year mismatch with folder")
+            return d
         except ValueError:
             pass
-    # Fallback: strip dots and try DDMMYYYY
+    # Fallback using folder hint: extract DD from the start of filename
     stem = Path(filename).stem.replace(".", "")
-    if len(stem) >= 8 and stem[:8].isdigit():
+    if folder_year and folder_month and len(stem) >= 2 and stem[:2].isdigit():
+        try:
+            return date(int(folder_year), int(folder_month), int(stem[:2]))
+        except ValueError:
+            pass
+    # Old-fallback: DDMMYYYY interpretation
+    if len(stem) == 8 and stem.isdigit():
         try:
             return date(int(stem[4:8]), int(stem[2:4]), int(stem[0:2]))
         except ValueError:
             pass
     return None
+
+
+def _folder_hints(filepath):
+    """Extract (year, month) from folder names like .../2020/01_ianuarie/."""
+    year = month = None
+    for part in filepath.parts:
+        if re.fullmatch(r"\d{4}", part):
+            try: year = int(part)
+            except ValueError: pass
+        m = re.match(r"^(\d{2})_", part)
+        if m:
+            try: month = int(m.group(1))
+            except ValueError: pass
+    return year, month
 
 
 WASTE_COL_RE = re.compile(r"^(.+?)\s*\(([\d,.]+)\)\s*$")
@@ -241,7 +266,8 @@ def parse_file(filepath, waste_types, categories, existing_docs, use_com=False):
     """Parse one .xls file. If use_com=True, falls back to Excel COM for
     corrupted files (can hang — use only for opt-in second pass)."""
     filename = filepath.name
-    tx_date = parse_date_from_filename(filename)
+    fy, fm = _folder_hints(filepath)
+    tx_date = parse_date_from_filename(filename, folder_year=fy, folder_month=fm)
     if tx_date is None:
         raise ValueError(f"Cannot parse date from filename: {filename}")
 
@@ -359,13 +385,12 @@ def parse_file(filepath, waste_types, categories, existing_docs, use_com=False):
 def upsert_partners(cur, partners_up):
     if not partners_up:
         return 0
-    rows = []
-    for cnp, (name, by, sx, cc, cn) in partners_up.items():
-        rows.append((cnp, name, by, sx, cc, cn))
-    cur.executemany(
+    rows = [(cnp, v[0], v[1], v[2], v[3], v[4]) for cnp, v in partners_up.items()]
+    execute_values(
+        cur,
         """
-        INSERT INTO partners (cnp, name, birth_year, sex, county_code_cnp, county_from_cnp, is_active)
-        VALUES (%s, %s, %s, %s, %s, %s, true)
+        INSERT INTO partners (cnp, name, birth_year, sex, county_code_cnp, county_from_cnp)
+        VALUES %s
         ON CONFLICT (cnp) DO UPDATE
           SET name = COALESCE(EXCLUDED.name, partners.name),
               birth_year = COALESCE(EXCLUDED.birth_year, partners.birth_year),
@@ -375,6 +400,7 @@ def upsert_partners(cur, partners_up):
               modified_at = now()
         """,
         rows,
+        page_size=500,
     )
     return len(rows)
 
@@ -382,33 +408,37 @@ def upsert_partners(cur, partners_up):
 def insert_transactions(cur, txs):
     if not txs:
         return 0
-    cur.executemany(
+    rows = [(t["document_id"], t["date"], t["cnp"], t["payment_type"], t["iban"],
+             t["gross_value"], t["env_tax"], t["income_tax"], t["net_paid"]) for t in txs]
+    execute_values(
+        cur,
         """
         INSERT INTO transactions
             (document_id, date, cnp, payment_type, iban, gross_value, env_tax, income_tax, net_paid)
-        VALUES
-            (%(document_id)s, %(date)s, %(cnp)s, %(payment_type)s, %(iban)s, %(gross_value)s, %(env_tax)s, %(income_tax)s, %(net_paid)s)
+        VALUES %s
         ON CONFLICT (document_id) DO NOTHING
         """,
-        txs,
+        rows,
+        page_size=500,
     )
-    return len(txs)
+    return len(rows)
 
 
 def insert_items(cur, items, waste_types, categories):
     if not items:
         return 0
-    # Resolve names to ids; create new waste types on the fly
     rows = []
     for it in items:
         wid = ensure_waste_type(cur, it["waste_name"], waste_types, categories)
         rows.append((it["document_id"], wid, it["price_per_kg"], it["weight_kg"], it["value"]))
-    cur.executemany(
+    execute_values(
+        cur,
         """
         INSERT INTO transaction_items (document_id, waste_type_id, price_per_kg, weight_kg, value)
-        VALUES (%s, %s, %s, %s, %s)
+        VALUES %s
         """,
         rows,
+        page_size=1000,
     )
     return len(rows)
 

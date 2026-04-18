@@ -41,7 +41,7 @@ Sistemul contine doua module principale:
   - **Demografie detaliata**: Sex (M/F stacked bar), Grupe varsta (18-24 pana la 65+), Top judete
   - Detalii categorie: kg, valoare RON, pret mediu/kg, numar parteneri
   - Exemplu: selectezi doar "Ianuarie" + "Cupru" = vezi cati au adus cupru in ianuarie, comparativ pe toti anii
-- Grafice comparative lunare dinamice (2022-2026+)
+- Grafice comparative lunare dinamice (2020-2026+)
 - Analiza rulaj si parteneri unici pentru fiecare an
 - Tabel detaliat cu diferente procentuale YoY
 - Identificare cea mai buna luna/perioada
@@ -83,7 +83,7 @@ Sistemul contine doua module principale:
 - Filtrare deseuri pe regiune/varsta
 
 ### Predictii
-- Grafic predictie bazat pe tendinte (toate datele istorice 2022+)
+- Grafic predictie bazat pe tendinte (toate datele istorice 2020+)
 - Metodologie dinamica cu media YoY multi-anuala
 
 ### Statistici Detaliate
@@ -101,7 +101,7 @@ Dashboard dedicat pentru vanzari catre firme (`firme.html`):
 - **Firme** - Lista completa de firme cu cautare
 - **Lunar** - Analiza lunara detaliata
 - **Deseuri** - Statistici pe tipuri de deseuri
-- **Comparatie** - Comparatie anuala (2022-2024)
+- **Comparatie** - Comparatie anuala (toti anii: 2020-2026+)
 - **Transport** - Costuri si profiluri transport
 - **Statistici** - Analize avansate:
   - Top 10 Firme dupa Profit (sortabil)
@@ -172,12 +172,12 @@ waste_types                    waste_categories
 | Indicator | Valoare |
 |-----------|---------|
 | Rulaj Total | **~250.3M RON** |
-| Numar Tranzactii | **112,765+** |
-| Articole Tranzactii | **225,089+** |
-| Parteneri Inregistrati | **30,853+** |
+| Numar Tranzactii | **157,424+** |
+| Articole Tranzactii | **316,409+** |
+| Parteneri Inregistrati | **31,220+** |
 | Categorii Deseuri | **16** |
 | Tipuri Deseuri | **47** |
-| Perioada | 2022.01 - 2026.02 |
+| Perioada | 2020.01 - 2026.04 |
 
 ---
 
@@ -288,6 +288,6 @@ Proiectul se deployeaza automat pe Vercel la fiecare push pe branch-ul `main`.
 
 ---
 
-**2022-2026** | PAJU
+**2020-2026** | PAJU
 
 </div>

@@ -294,23 +294,24 @@ Use `= %s` for exact match (CNP, sex)
 - `LEFT JOIN` when showing partners even without transactions
 - `JOIN` when filtering requires transaction data
 
-## Statistics (as of Feb 2026)
-- Total turnover: ~250.3M RON (2022-2026)
-- Transactions: 112,765+
-- Transaction items: 225,089+
-- Registered partners: 30,853+
+## Statistics (as of Apr 2026)
+- Transactions: 157,424+
+- Transaction items: 316,409+
+- Registered partners: 31,220+
 - Waste categories: 16
 - Waste types: 47
-- Period: 2022.01 - 2026.02
+- Period: 2020.01 - 2026.04
 
 ### Yearly breakdown
-| Year | Transactions | Partners | Working days | Total RON |
-|------|-------------|----------|-------------|-----------|
-| 2022 | 28,389 | ~8,500 | 271 | ~60.9M |
-| 2023 | 28,355 | ~8,750 | 272 | ~61.0M |
-| 2024 | 28,029 | 8,790 | 280 | ~70.8M |
-| 2025 | 25,284 | ~8,800 | 272 | ~52.1M |
-| 2026 | 2,708 | ~2,500 | 30 | ~5.4M |
+| Year | Transactions | Partners (distinct) | Date range |
+|------|-------------|--------------------|-------------|
+| 2020 | 16,102 | 5,334 | Jan 7 – Nov 28 (no Dec) |
+| 2021 | 25,838 | 7,745 | Jan 4 – Dec 18 |
+| 2022 | 28,389 | 8,558 | full year |
+| 2023 | 28,355 | 8,769 | full year |
+| 2024 | 28,029 | 8,790 | full year |
+| 2025 | 25,284 | 8,663 | full year |
+| 2026 | 5,427 | 2,851 | Jan 8 – Apr 17 |
 
 ## Development
 

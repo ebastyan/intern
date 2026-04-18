@@ -475,6 +475,92 @@ POSTGRES_URL = postgresql://neondb_owner:npg_L2AyrcXul8km@ep-ancient-firefly-a47
 
 ## 13. FEJLESZTESI NAPLO (Legutobbi)
 
+### 2026-04-18 - Phase 1 (Sezonalitate) + Phase 2 (Meteo & Trafic) + 2020/2021/2026 Adat Import
+
+#### Phase 1: Sezonalitate tab (Kalendar & Szezonalitas alap)
+- **Uj DB tablak:**
+  - `holidays` (date, name, type, is_official) — 220 sor, 2020-2030 lefedve
+    - Roman nemzeti unnepek (10/ev), katolikus husvet+punkosd (5/ev), ortodox husvet+punkosd (5/ev)
+    - Algoritmusok: Butcher Gergely-naptar (katolikus), Meeus julianus + 13 nap (ortodox)
+  - `company_closures` (date, reason) — automatikus detekcio workflow
+- **Uj scriptek:**
+  - `scripts/run_migration.py` — SQL migracios runner
+  - `scripts/seed_holidays.py` — unnep generator + DB upsert, `--self-test` flag
+- **Uj API endpoint: `/api/calendar`**
+  - `?type=holidays&year=` | `closures` | `closure_candidates` (auto-detektalt zarva periodusok)
+  - `?type=working_days&date_from=&date_to=` | `weekly_pattern` | `monthly_pattern&year=`
+  - `?type=holiday_effect&window=3` — unnep-blokk hatasok elemzese (konkret pelda napokkal)
+  - `?type=illegal_workdays` — audit: piros napokon tortent tranzakciok
+- **Uj frontend tab: Sezonalitate**
+  - Tipar saptamanal (H-Szo) — nap/ora alapu bar chart, ev-szelektor (2020-2026)
+  - Tipar lunar — havi vonaldiagram, ev-szelektor
+  - Impactul sarbatorilor & vacantelor — unnep-blokk alapu elemzes per-ev breakdown-nal + dating, piros/zold legenda
+  - Perioade inchise (auto-detectate) — grouped by year, collapsed Sundays/holidays
+  - Audit tranzactii pe zile oficial nelucratoare
+- **Key insights:**
+  - Nyitva: H-P 9h, Szo 5h; Vasarnap mindig zarva
+  - Szombat a legintenzivebb (~17 partner/ora vs. 10-11 hetkoznap)
+
+#### Phase 2: Meteo & Trafic (Idojaras-elemzo)
+- **Uj DB tabla: `weather_oradea`** — 22 oszlop (hom, precipitacio, szel, sugarzas, paratartlom, WMO kod)
+- **Uj script: `scripts/fetch_weather.py`** — Open-Meteo Historical API kliens (ingyen, API kulcs nelkul)
+  - Oradea koordinatak: 47.0722°N, 21.9217°E
+  - Parallel daily + hourly lekerdezes, hourly -> daily mean aggregalas (pressure/humidity/cloud)
+  - Idempotens (ON CONFLICT DO UPDATE + fetched_at)
+  - `--self-test` flag ellenorzi az Open-Meteo API mukodeset
+- **Uj API endpoint: `/api/weather`**
+  - `?type=residuals&metric=&date_from=&date_to=` — napi actual + baseline + residual + weather
+  - `?type=buckets&variable=` — bucket alapu osszehasonlitas (7 valtozora)
+  - `?type=lag_curve&variable=` — Pearson korrelacio lag -2..+3 napokon
+  - `?type=extreme_days&limit=` — top-N atipikus nap teljes meteo szignaturaval
+  - `?type=overview&metric=` — kovetkezteto engine: 4 hipotezis-csalad (bucket, kuszob, lag, interakcio) + ranking 25 meteo-kategoriaval + period_context (ev-osszehasonlitas)
+- **Baseline model:** 28-napos heti-nap matched median (tipar adjusting, nem szezonalitas-fix)
+- **Hypothesis engine (narativan):**
+  - Family A: bucket osszehasonlitas (rain/snow/temp/wind bin-ekre)
+  - Family B: Kuszob-detektalas (t-statisztika max)
+  - Family C: Lag-elemzes (peak lag kiemelese)
+  - Family D: Interakciok (cold+wet, hot+dry, etc.)
+- **Uj frontend tab: Meteo**
+  - Kontextus banner — szelektalt periodus vs. mas evek ugyan azok a napjai
+  - "Ce invata datele" — sinteza + kuszob-gradient 6 csaladra (hom, eso, ho, szel, paratartlom, eg)
+  - Vreme STRICA traficul — bad weather cards (effect <= -2% VAGY 3+ strong-negativ nap)
+  - Vreme OPTIMA pentru trafic — good weather cards
+  - Alte conditii (fara efect clar)
+  - Detalii cu zile concrete — insight cards konkret napok peldakkal + lag trigger
+  - Cele mai atipice 20 zile — tabla teljes meteo szignaturaval
+- **"Strong classification":** ha egy kategoria avg kicsi, de 3+ nap van erős hatassal (residual_pct >= 15%), akkor is "bad"/"good" kategoria — elkulonit narrativan
+- **Key UX principles levont:**
+  - Statisztika helyett NARRATIVA (`+33% vs normal` helyett `vin cu 33% mai multi parteneri`)
+  - KONKRET NAPOK bizonyitekkent (verifikalhato)
+  - Szezonalis dekonvolucio baseline-al
+  - "Ez a periodus szezonal gyenge volt" kontextus a verdiktben
+
+#### 2020/2021/2026 Adat Import
+- **Uj script: `scripts/import_xls.py`**
+  - .xls feldolgozas pandas + xlrd-vel (openpyxl fallback sérült fajlokra)
+  - Romanian CNP parser: birth_year/sex/county_from_cnp automatikus
+  - Filename-date parser folder context-tel (`2020/01_ianuarie/` -> year=2020, month=1)
+  - Idempotens: `existing_docs` + `ON CONFLICT DO NOTHING`
+  - execute_values batch inserts (gyors)
+  - `--use-com` opcio Excel COM fallback sérült fajlokra
+- **Import adatok:**
+  - 2020: 243 fajl, 16,102 tranzakcio (Jan 7 – Nov 28, nincs december adat)
+  - 2021: 278 fajl, 25,838 tranzakcio (Jan 4 – Dec 18)
+  - 2026: 82 fajl, +2,719 uj tranzakcio (febr-apr hozzaadva)
+- **Hibakezeles:**
+  - 6 COM-szuksegu fajl (utf-16-le encoding): 2020/21.01, 2020/23.01, 2021/04.05, 2021/25.09, 2021/11.10, 2021/15.11 — mind sikeresen behuzva COM fallback-el
+  - 1 bugos filename: `29.0102020.xls` (hianyzik pont) -> parser javitva folder hints-szel, DB-ben date 202-01-29 -> 2020-01-29 javítva
+  - 9 deadlock (2021+2026 parallel futott): mind sikeresen re-imported serial modban
+- **Kiterjesztesek:**
+  - `weather_oradea`: +731 nap (2020-01-01 -> 2021-12-31), total 2,299 sor
+  - `holidays`: +40 sor (2020-2021), total 220
+  - Frontend datum filterek: default 2022-01-01 -> 2020-01-01 (5 helyen)
+  - Sezonalitate ev-dropdown: 2020, 2021 hozzaadva
+  - Big suppliers dropdown: 2020, 2021 hozzaadva
+  - Meteo tab default datum: 2022-01-03 -> 2020-01-01
+  - `api/partners.py`, `api/transactions.py`: default date_from 2022-01-01 -> 2020-01-01
+- **DB FINAL: 157,424 tranzakcio, 316,409 tetel, 31,220 partner, 2020.01.07 - 2026.04.17**
+
 ### 2026-02-24 - Analiza Detaliata Deseuri (uj funkcio)
 - **Uj feature a Deseuri szekcioban**: reszletes hulladek elemzo panel
 - **Backend (`api/waste.py`):**
