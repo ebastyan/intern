@@ -183,6 +183,12 @@ class handler(BaseHTTPRequestHandler):
             out.append({"lag": lag, "n": n, "correlation": round(r, 3)})
         return {"metric": data["metric"], "variable": variable, "lags": out}
 
+    def extreme_days(self, cur, metric_name, date_from, date_to, limit=20):
+        data = self.residuals(cur, metric_name, date_from, date_to)
+        rows = [r for r in data["residuals"] if r["residual"] is not None]
+        rows.sort(key=lambda r: abs(r["residual"]), reverse=True)
+        return {"metric": data["metric"], "extreme_days": rows[:limit]}
+
     def do_GET(self):
         try:
             parsed = urlparse(self.path)
@@ -211,6 +217,12 @@ class handler(BaseHTTPRequestHandler):
                 df = params.get("date_from", [None])[0]
                 dt = params.get("date_to", [None])[0]
                 result = self.lag_curve(cur, metric, variable, df, dt)
+            elif qtype == "extreme_days":
+                metric = params.get("metric", ["partners"])[0]
+                df = params.get("date_from", [None])[0]
+                dt = params.get("date_to", [None])[0]
+                lim = int(params.get("limit", ["20"])[0])
+                result = self.extreme_days(cur, metric, df, dt, lim)
             else:
                 result = {"error": "Unknown query type", "got": qtype}
 
