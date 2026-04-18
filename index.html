@@ -2225,7 +2225,7 @@
         let _sezWeeklyMetric = 'partners';
 
         async function loadSezonalitate() {
-            await Promise.all([loadSezWeekly(), loadSezMonthly(), loadSezHolidayEffect()]);
+            await Promise.all([loadSezWeekly(), loadSezMonthly(), loadSezHolidayEffect(), loadSezBridges()]);
         }
 
         async function loadSezWeekly() {
@@ -2372,6 +2372,30 @@
                 document.getElementById('sezHolidayTable').innerHTML = html;
             } catch (e) {
                 console.error('loadSezHolidayEffect failed', e);
+            }
+        }
+
+        async function loadSezBridges() {
+            try {
+                const res = await fetch('/api/calendar?type=bridge_days');
+                const data = await res.json();
+                const rows = data.bridge_days || [];
+                const host = document.getElementById('sezBridgeTable');
+                if (!rows.length) {
+                    host.innerHTML = '<p style="color:#888;margin:10px 0;">Niciun bridge day in perioada.</p>';
+                    return;
+                }
+                const dayNames = ['Duminica','Luni','Marti','Miercuri','Joi','Vineri','Sambata'];
+                let html = '<table><thead><tr><th>Data</th><th>Zi</th><th class="text-right">Parteneri</th><th class="text-right">Tranzactii</th></tr></thead><tbody>';
+                rows.forEach(r => {
+                    const d = new Date(r.bridge_date);
+                    const dow = dayNames[d.getDay()];
+                    html += `<tr><td>${r.bridge_date}</td><td>${dow}</td><td class="text-right">${r.partners}</td><td class="text-right">${r.transactions}</td></tr>`;
+                });
+                html += '</tbody></table>';
+                host.innerHTML = html;
+            } catch (e) {
+                console.error('loadSezBridges failed', e);
             }
         }
     </script>
