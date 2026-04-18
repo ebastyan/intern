@@ -267,26 +267,29 @@ class handler(BaseHTTPRequestHandler):
               GROUP BY cb.grp, cb.block_start, cb.block_end
             ),
             before_ranked AS (
-              SELECT hb.block_name, hb.year_label, t.partners,
+              SELECT hb.block_name, hb.year_label, hb.block_start, hb.block_end, t.partners,
                      ROW_NUMBER() OVER (PARTITION BY hb.grp ORDER BY t.date DESC) AS rn
               FROM holiday_blocks hb
               JOIN tx_days t ON t.date < hb.block_start
             ),
             after_ranked AS (
-              SELECT hb.block_name, hb.year_label, t.partners,
+              SELECT hb.block_name, hb.year_label, hb.block_start, hb.block_end, t.partners,
                      ROW_NUMBER() OVER (PARTITION BY hb.grp ORDER BY t.date ASC) AS rn
               FROM holiday_blocks hb
               JOIN tx_days t ON t.date > hb.block_end
             ),
             slots AS (
-              SELECT block_name, year_label, -rn::int AS offset_days, partners
+              SELECT block_name, year_label, block_start, block_end, -rn::int AS offset_days, partners
               FROM before_ranked WHERE rn <= {window}
               UNION ALL
-              SELECT block_name, year_label, rn::int AS offset_days, partners
+              SELECT block_name, year_label, block_start, block_end, rn::int AS offset_days, partners
               FROM after_ranked WHERE rn <= {window}
             )
             SELECT block_name AS holiday_name,
                    year_label,
+                   block_start,
+                   block_end,
+                   (block_end - block_start + 1) AS days_total,
                    offset_days,
                    partners
             FROM slots
