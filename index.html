@@ -678,6 +678,17 @@
             <div class="card" id="sez-weekly">
                 <h2><span class="icon">📊</span> Tipar saptamanal (Luni-Sambata)</h2>
                 <p style="color:#888;font-size:0.8em;margin-bottom:8px;">Program: <strong style="color:#aaa">Luni-Vineri 8:00-17:00 (9h)</strong> · <strong style="color:#aaa">Sambata 8:00-13:00 (5h)</strong>. Comuta "/ora" pentru intensitate reala.</p>
+                <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <label style="color:#888;font-size:0.85em;">An:</label>
+                    <select id="sezWeeklyYear" style="background:#1a1a2e;color:#fff;border:1px solid #333;padding:5px 8px;border-radius:4px;">
+                        <option value="">Toate (media)</option>
+                        <option value="2022">2022</option>
+                        <option value="2023">2023</option>
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                        <option value="2026">2026</option>
+                    </select>
+                </div>
                 <div class="metric-toggle" data-target="sez-weekly" style="margin-bottom:10px;">
                     <button class="tab-btn active" data-metric="partners">Parteneri/zi</button>
                     <button class="tab-btn" data-metric="transactions">Tranzactii/zi</button>
@@ -693,6 +704,17 @@
 
             <div class="card" id="sez-monthly">
                 <h2><span class="icon">📈</span> Tipar lunar</h2>
+                <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <label style="color:#888;font-size:0.85em;">An:</label>
+                    <select id="sezMonthlyYear" style="background:#1a1a2e;color:#fff;border:1px solid #333;padding:5px 8px;border-radius:4px;">
+                        <option value="">Toate (media)</option>
+                        <option value="2022">2022</option>
+                        <option value="2023">2023</option>
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                        <option value="2026">2026</option>
+                    </select>
+                </div>
                 <div class="metric-toggle" data-target="sez-monthly" style="margin-bottom:10px;">
                     <button class="tab-btn active" data-metric="avg_partners_per_day">Parteneri/zi</button>
                     <button class="tab-btn" data-metric="avg_transactions_per_day">Tranzactii/zi</button>
@@ -2240,11 +2262,17 @@
 
         async function loadSezWeekly() {
             try {
-                const res = await fetch('/api/calendar?type=weekly_pattern');
+                const year = document.getElementById('sezWeeklyYear')?.value || '';
+                const qs = year
+                    ? `?type=weekly_pattern&date_from=${year}-01-01&date_to=${year}-12-31`
+                    : '?type=weekly_pattern';
+                const res = await fetch('/api/calendar' + qs);
                 const data = await res.json();
                 _sezWeeklyData = data.weekly_pattern || [];
                 renderSezWeekly();
                 bindSezWeeklyToggle();
+                const sel = document.getElementById('sezWeeklyYear');
+                if (sel && !sel.dataset.bound) { sel.dataset.bound = '1'; sel.onchange = () => loadSezWeekly(); }
             } catch (e) {
                 console.error('loadSezWeekly failed', e);
             }
@@ -2305,11 +2333,15 @@
 
         async function loadSezMonthly() {
             try {
-                const res = await fetch('/api/calendar?type=monthly_pattern');
+                const year = document.getElementById('sezMonthlyYear')?.value || '';
+                const qs = year ? `?type=monthly_pattern&year=${year}` : '?type=monthly_pattern';
+                const res = await fetch('/api/calendar' + qs);
                 const data = await res.json();
                 _sezMonthlyData = data.monthly_pattern || [];
                 renderSezMonthly();
                 bindSezMonthlyToggle();
+                const sel = document.getElementById('sezMonthlyYear');
+                if (sel && !sel.dataset.bound) { sel.dataset.bound = '1'; sel.onchange = () => loadSezMonthly(); }
             } catch (e) {
                 console.error('loadSezMonthly failed', e);
             }
