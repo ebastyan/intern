@@ -184,6 +184,27 @@ class handler(BaseHTTPRequestHandler):
         )
         return [dict(r) for r in cur.fetchall()]
 
+    def working_days(self, cur, date_from, date_to):
+        cur.execute(
+            """
+            WITH days AS (
+              SELECT generate_series(%s::date, %s::date, '1 day'::interval)::date AS d
+            )
+            SELECT
+              COUNT(*) FILTER (
+                WHERE EXTRACT(ISODOW FROM d) <> 7
+                  AND d NOT IN (SELECT date FROM holidays WHERE is_official)
+                  AND d NOT IN (SELECT date FROM company_closures WHERE reason IS DISTINCT FROM '__ignored__')
+              ) AS working_days,
+              COUNT(*) FILTER (WHERE EXTRACT(ISODOW FROM d) = 7) AS sundays,
+              COUNT(*) FILTER (WHERE d IN (SELECT date FROM holidays WHERE is_official)) AS official_holidays,
+              COUNT(*) FILTER (WHERE d IN (SELECT date FROM company_closures WHERE reason IS DISTINCT FROM '__ignored__')) AS company_closed
+            FROM days
+            """,
+            (date_from, date_to),
+        )
+        return dict(cur.fetchone())
+
     def do_GET(self):
         try:
             parsed = urlparse(self.path)
@@ -209,6 +230,13 @@ class handler(BaseHTTPRequestHandler):
             elif query_type == 'monthly_pattern':
                 year = params.get('year', [None])[0]
                 result = {'monthly_pattern': self.monthly_pattern(cur, year)}
+            elif query_type == 'working_days':
+                df = params.get('date_from', [None])[0]
+                dt = params.get('date_to', [None])[0]
+                if not df or not dt:
+                    result = {'error': 'date_from and date_to required'}
+                else:
+                    result = self.working_days(cur, df, dt)
             else:
                 result = {'error': 'Unknown query type', 'got': query_type}
 
