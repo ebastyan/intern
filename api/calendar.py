@@ -132,6 +132,38 @@ class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         try:
-            self._send(200, {'error': 'No POST actions yet'})
+            parsed = urlparse(self.path)
+            params = parse_qs(parsed.query)
+            action = params.get('action', [''])[0]
+
+            length = int(self.headers.get('Content-Length') or 0)
+            body = self.rfile.read(length).decode('utf-8') if length else '{}'
+            data = json.loads(body) if body else {}
+
+            conn = get_db()
+            cur = conn.cursor()
+
+            if action in ('confirm_closure', 'ignore_closure'):
+                df = data.get('date_from'); dt = data.get('date_to')
+                if not df or not dt:
+                    conn.close(); self._send(400, {'error': 'date_from and date_to required'}); return
+                reason = data.get('reason') or ('' if action == 'confirm_closure' else '__ignored__')
+                if action == 'ignore_closure':
+                    reason = '__ignored__'
+                cur.execute(
+                    """
+                    INSERT INTO company_closures (date, reason, detected_automatically)
+                    SELECT generate_series(%s::date, %s::date, '1 day'::interval)::date, %s, true
+                    ON CONFLICT (date) DO UPDATE SET reason = EXCLUDED.reason, validated_at = now()
+                    """,
+                    (df, dt, reason),
+                )
+                conn.commit()
+                result = {'ok': True, 'action': action, 'date_from': df, 'date_to': dt}
+            else:
+                result = {'error': 'Unknown action', 'got': action}
+
+            conn.close()
+            self._send(200, result)
         except Exception as e:
             self._send(500, {'error': str(e)})
