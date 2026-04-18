@@ -2225,7 +2225,7 @@
         let _sezWeeklyMetric = 'partners';
 
         async function loadSezonalitate() {
-            await Promise.all([loadSezWeekly(), loadSezMonthly(), loadSezHolidayEffect(), loadSezBridges(), loadSezClosureCandidates()]);
+            await Promise.all([loadSezWeekly(), loadSezMonthly(), loadSezHolidayEffect(), loadSezBridges(), loadSezClosureCandidates(), loadSezAudit()]);
         }
 
         async function loadSezWeekly() {
@@ -2460,6 +2460,33 @@
             } catch (e) {
                 alert('Eroare retea: ' + e.message);
                 return null;
+            }
+        }
+
+        async function loadSezAudit() {
+            try {
+                const res = await fetch('/api/calendar?type=illegal_workdays');
+                const data = await res.json();
+                const rows = data.illegal_workdays || [];
+                const host = document.getElementById('sezAuditTable');
+                if (!rows.length) {
+                    host.innerHTML = '<p style="color:#00ff88;margin:10px 0;">Nicio tranzactie pe zile oficial nelucratoare. ✓</p>';
+                    return;
+                }
+                let html = '<table><thead><tr><th>Data</th><th>Sarbatoare</th><th class="text-right">Parteneri</th><th class="text-right">Tranzactii</th><th class="text-right">RON</th></tr></thead><tbody>';
+                rows.forEach(r => {
+                    html += `<tr>
+                        <td>${r.date}</td>
+                        <td style="color:#ff9f40">${r.holiday_names}</td>
+                        <td class="text-right">${r.partners}</td>
+                        <td class="text-right">${r.tx_count}</td>
+                        <td class="text-right">${r.ron}</td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                host.innerHTML = html;
+            } catch (e) {
+                console.error('loadSezAudit failed', e);
             }
         }
     </script>
