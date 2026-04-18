@@ -238,6 +238,39 @@ class handler(BaseHTTPRequestHandler):
         )
         return [dict(r) for r in cur.fetchall()]
 
+    def bridge_days(self, cur):
+        cur.execute(
+            """
+            WITH bounds AS (SELECT MIN(date) AS dmin, MAX(date) AS dmax FROM transactions),
+            days AS (
+              SELECT generate_series(b.dmin, b.dmax, '1 day'::interval)::date AS d FROM bounds b
+            ),
+            closed AS (
+              SELECT d FROM days
+              WHERE EXTRACT(ISODOW FROM d) = 7
+                 OR d IN (SELECT date FROM holidays WHERE is_official)
+                 OR d IN (SELECT date FROM company_closures WHERE reason IS DISTINCT FROM '__ignored__')
+            ),
+            bridges AS (
+              SELECT d.d AS bridge_date
+              FROM days d
+              WHERE EXTRACT(ISODOW FROM d.d) <> 7
+                AND d.d NOT IN (SELECT date FROM holidays WHERE is_official)
+                AND d.d NOT IN (SELECT date FROM company_closures WHERE reason IS DISTINCT FROM '__ignored__')
+                AND (d.d - INTERVAL '1 day')::date IN (SELECT d FROM closed)
+                AND (d.d + INTERVAL '1 day')::date IN (SELECT d FROM closed)
+            )
+            SELECT b.bridge_date,
+                   COALESCE(COUNT(DISTINCT t.cnp), 0) AS partners,
+                   COALESCE(COUNT(t.document_id), 0) AS transactions
+            FROM bridges b
+            LEFT JOIN transactions t ON t.date = b.bridge_date
+            GROUP BY b.bridge_date
+            ORDER BY b.bridge_date
+            """
+        )
+        return [dict(r) for r in cur.fetchall()]
+
     def do_GET(self):
         try:
             parsed = urlparse(self.path)
@@ -273,6 +306,8 @@ class handler(BaseHTTPRequestHandler):
             elif query_type == 'holiday_effect':
                 win = params.get('window', ['3'])[0]
                 result = {'holiday_effect': self.holiday_effect(cur, win)}
+            elif query_type == 'bridge_days':
+                result = {'bridge_days': self.bridge_days(cur)}
             else:
                 result = {'error': 'Unknown query type', 'got': query_type}
 
