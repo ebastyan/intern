@@ -51,6 +51,51 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(payload, default=json_default).encode("utf-8"))
 
+    def residuals(self, cur, metric_name, date_from, date_to):
+        agg_sql, label = resolve_metric(metric_name)
+        where = ["EXTRACT(ISODOW FROM t.date) <> 7"]
+        args = []
+        if date_from: where.append("t.date >= %s"); args.append(date_from)
+        if date_to:   where.append("t.date <= %s"); args.append(date_to)
+        where_sql = " AND ".join(where)
+
+        cur.execute(f"""
+            WITH daily AS (
+              SELECT t.date,
+                     EXTRACT(ISODOW FROM t.date)::int AS dow,
+                     {agg_sql} AS value
+              FROM transactions t
+              LEFT JOIN transaction_items i ON i.document_id = t.document_id
+              WHERE {where_sql}
+              GROUP BY t.date
+            )
+            SELECT d.date, d.dow, d.value,
+                   (
+                     SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY d2.value)
+                     FROM daily d2
+                     WHERE d2.dow = d.dow
+                       AND d2.date <> d.date
+                       AND d2.date BETWEEN d.date - INTERVAL '28 days' AND d.date - INTERVAL '1 day'
+                   ) AS baseline,
+                   w.temp_max, w.temp_min, w.temp_mean, w.precipitation_sum, w.rain_sum,
+                   w.snowfall_sum, w.snow_depth_max, w.wind_speed_max, w.wind_gusts_max,
+                   w.pressure_mean, w.humidity_mean, w.cloudcover_mean, w.weather_code
+            FROM daily d
+            LEFT JOIN weather_oradea w ON w.date = d.date
+            ORDER BY d.date
+        """, args)
+        out = []
+        for r in cur.fetchall():
+            rec = dict(r)
+            if rec["baseline"] is not None:
+                rec["residual"] = float(rec["value"]) - float(rec["baseline"])
+                rec["residual_pct"] = (rec["residual"] / float(rec["baseline"]) * 100.0) if rec["baseline"] else None
+            else:
+                rec["residual"] = None
+                rec["residual_pct"] = None
+            out.append(rec)
+        return {"metric": label, "residuals": out}
+
     def do_GET(self):
         try:
             parsed = urlparse(self.path)
@@ -62,6 +107,11 @@ class handler(BaseHTTPRequestHandler):
 
             if qtype == "ping":
                 result = {"ok": True, "endpoint": "weather"}
+            elif qtype == "residuals":
+                metric = params.get("metric", ["partners"])[0]
+                df = params.get("date_from", [None])[0]
+                dt = params.get("date_to", [None])[0]
+                result = self.residuals(cur, metric, df, dt)
             else:
                 result = {"error": "Unknown query type", "got": qtype}
 
