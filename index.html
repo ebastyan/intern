@@ -165,6 +165,7 @@
             <button class="nav-tab" onclick="showSection('geo')">Regiuni</button>
             <button class="nav-tab" onclick="showSection('predictions')">Predictii</button>
             <button class="nav-tab" onclick="showSection('stats')">Statisztika</button>
+            <button class="nav-tab" onclick="showSection('sezonalitate')">Sezonalitate</button>
         </div>
         <a href="firme.html" style="padding: 8px 16px; background: linear-gradient(135deg, #ff9f40, #ff6b6b); border: none; border-radius: 6px; color: #fff; font-size: 0.8em; cursor: pointer; font-weight: 600; text-decoration: none;">Firme (B2B)</a>
         <div class="last-update">Actualizat: <span id="lastUpdate">...</span></div>
@@ -671,6 +672,68 @@
                 <div class="scroll-table"><table><thead><tr><th>Sarbatoare</th><th>Perioada</th><th class="text-right">Tranzactii</th><th class="text-right">Valoare</th><th class="text-right">vs Inainte</th><th class="text-right">vs Dupa</th><th>Explicatie</th></tr></thead><tbody id="holidaysTable"></tbody></table></div>
             </div>
         </div>
+
+        <!-- SEZONALITATE -->
+        <div id="section-sezonalitate" class="section">
+            <div class="card" id="sez-weekly">
+                <h2><span class="icon">📊</span> Tipar saptamanal (Luni-Sambata)</h2>
+                <p style="color:#888;font-size:0.8em;margin-bottom:8px;">Program: <strong style="color:#aaa">Luni-Vineri 8:00-17:00 (9h)</strong> · <strong style="color:#aaa">Sambata 8:00-13:00 (5h)</strong>. Comuta "/ora" pentru intensitate reala.</p>
+                <div class="metric-toggle" data-target="sez-weekly" style="margin-bottom:10px;">
+                    <button class="tab-btn active" data-metric="partners">Parteneri/zi</button>
+                    <button class="tab-btn" data-metric="transactions">Tranzactii/zi</button>
+                    <button class="tab-btn" data-metric="kg">Kg/zi</button>
+                    <button class="tab-btn" data-metric="ron">RON/zi</button>
+                    <button class="tab-btn" data-metric="partners_per_hour" style="margin-left:10px;border-left:2px solid #00ff88;padding-left:12px;">Parteneri/ora</button>
+                    <button class="tab-btn" data-metric="transactions_per_hour">Tranzactii/ora</button>
+                    <button class="tab-btn" data-metric="kg_per_hour">Kg/ora</button>
+                    <button class="tab-btn" data-metric="ron_per_hour">RON/ora</button>
+                </div>
+                <div class="chart-container"><canvas id="sezWeeklyChart"></canvas></div>
+            </div>
+
+            <div class="card" id="sez-monthly">
+                <h2><span class="icon">📈</span> Tipar lunar</h2>
+                <div class="metric-toggle" data-target="sez-monthly" style="margin-bottom:10px;">
+                    <button class="tab-btn active" data-metric="avg_partners_per_day">Parteneri/zi</button>
+                    <button class="tab-btn" data-metric="avg_transactions_per_day">Tranzactii/zi</button>
+                    <button class="tab-btn" data-metric="avg_kg_per_day">Kg/zi</button>
+                    <button class="tab-btn" data-metric="avg_ron_per_day">RON/zi</button>
+                </div>
+                <div class="chart-container"><canvas id="sezMonthlyChart"></canvas></div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">🎉</span> Impactul sarbatorilor & vacantelor</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Pentru fiecare bloc inchis (sarbatoare oficiala sau vacanta cu sarbatoare, ex. vacanta de vara):
+                    comparam traficul mediu pe <strong style="color:#aaa">3 zile lucratoare deschise DINAINTE</strong> cu cele <strong style="color:#aaa">3 zile deschise DE DUPA</strong>.
+                </p>
+                <div style="background:rgba(255,255,255,0.03);padding:10px 12px;border-radius:6px;margin-bottom:10px;font-size:0.85em;line-height:1.7;">
+                    <div><strong style="color:#00ff88">🔺 VERDE (+X%)</strong> = dupa sarbatoare/vacanta au venit <strong>MAI MULTI</strong> parteneri decat inainte.
+                    Exemplu tipic: oamenii au acumulat material in timpul inchiderii si vin in val cand deschidem. Un efect de <strong style="color:#00ff88">"rebound"</strong> / recuperare.</div>
+                    <div style="margin-top:6px;"><strong style="color:#ff6b6b">🔻 ROSU (−X%)</strong> = dupa au venit <strong>MAI PUTINI</strong>. Sarbatoarea a <strong style="color:#ff6b6b">taiat momentumul</strong> — oamenii au plecat in vacanta, nu revin imediat, sau pur si simplu nu au material. NU e rebound.</div>
+                    <div style="margin-top:6px;"><strong style="color:#aaa">➡️ GRI</strong> = diferenta &lt; 2%, practic nu exista efect clar.</div>
+                </div>
+                <div id="sezHolidayTable"></div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">🗓️</span> Perioade inchise (auto-detectate)</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Zile Luni-Sambata (non-sarbatoare) cu <strong style="color:#aaa">zero tranzactii</strong> — probabil concedii companie (vara, prelungiri Craciun, etc.). Deja <strong style="color:#00ff88">excluse din toate mediile</strong> — informational.
+                </p>
+                <div id="sezClosureCandidates"></div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">⚠️</span> Audit: tranzactii pe zile oficial nelucratoare</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Zile declarate <strong style="color:#ff9f40">"piros" oficial in Romania</strong> (sarbatori nationale) cand au avut loc totusi tranzactii. Pentru verificare legala/conformitate.
+                </p>
+                <div id="sezAuditTable" class="scroll-table"></div>
+            </div>
+        </div>
+
     </div>
 
     <div class="modal-overlay" id="partnerModal">
@@ -728,6 +791,10 @@
             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
             document.getElementById('section-' + id).classList.add('active');
             event.target.classList.add('active');
+            if (id === 'sezonalitate' && !window._sezLoaded) {
+                window._sezLoaded = true;
+                loadSezonalitate();
+            }
         }
 
         function showPartnerTab(tab) {
@@ -2159,6 +2226,345 @@
             } catch (e) {
                 console.error('City details error:', e);
                 content.innerHTML = '<p style="color:#ff6b6b;">Eroare la incarcarea datelor</p>';
+            }
+        }
+
+        // === Sezonalitate tab (Phase 1) ===
+        let _sezWeeklyChart = null;
+        let _sezWeeklyData = null;
+        let _sezWeeklyMetric = 'partners';
+
+        async function loadSezonalitate() {
+            await Promise.all([loadSezWeekly(), loadSezMonthly(), loadSezHolidayEffect(), loadSezClosureCandidates(), loadSezAudit()]);
+        }
+
+        async function loadSezWeekly() {
+            try {
+                const res = await fetch('/api/calendar?type=weekly_pattern');
+                const data = await res.json();
+                _sezWeeklyData = data.weekly_pattern || [];
+                renderSezWeekly();
+                bindSezWeeklyToggle();
+            } catch (e) {
+                console.error('loadSezWeekly failed', e);
+            }
+        }
+
+        function renderSezWeekly() {
+            const rows = _sezWeeklyData;
+            if (!rows || !rows.length) return;
+            const labels = rows.map(r => r.dow_label);
+            const fieldMap = {
+                partners: 'avg_partners', transactions: 'avg_transactions', kg: 'avg_kg', ron: 'avg_ron',
+                partners_per_hour: 'avg_partners_per_hour', transactions_per_hour: 'avg_transactions_per_hour',
+                kg_per_hour: 'avg_kg_per_hour', ron_per_hour: 'avg_ron_per_hour'
+            };
+            const field = fieldMap[_sezWeeklyMetric];
+            const isPerHour = _sezWeeklyMetric.endsWith('_per_hour');
+            const values = rows.map(r => parseFloat(r[field] || 0));
+            const ctx = document.getElementById('sezWeeklyChart').getContext('2d');
+            if (_sezWeeklyChart) _sezWeeklyChart.destroy();
+            _sezWeeklyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: _sezWeeklyMetric,
+                        data: values,
+                        backgroundColor: isPerHour ? 'rgba(0,255,136,0.4)' : 'rgba(0,217,255,0.4)',
+                        borderColor: isPerHour ? '#00ff88' : '#00d9ff',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        x: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                    }
+                }
+            });
+        }
+
+        function bindSezWeeklyToggle() {
+            document.querySelectorAll('[data-target="sez-weekly"] button').forEach(btn => {
+                btn.onclick = () => {
+                    document.querySelectorAll('[data-target="sez-weekly"] button').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    _sezWeeklyMetric = btn.dataset.metric;
+                    renderSezWeekly();
+                };
+            });
+        }
+
+        let _sezMonthlyChart = null;
+        let _sezMonthlyData = null;
+        let _sezMonthlyMetric = 'avg_partners_per_day';
+
+        async function loadSezMonthly() {
+            try {
+                const res = await fetch('/api/calendar?type=monthly_pattern');
+                const data = await res.json();
+                _sezMonthlyData = data.monthly_pattern || [];
+                renderSezMonthly();
+                bindSezMonthlyToggle();
+            } catch (e) {
+                console.error('loadSezMonthly failed', e);
+            }
+        }
+
+        function renderSezMonthly() {
+            const rows = _sezMonthlyData;
+            if (!rows || !rows.length) return;
+            const monthLabels = ['Ian','Feb','Mar','Apr','Mai','Iun','Iul','Aug','Sep','Oct','Nov','Dec'];
+            const labels = rows.map(r => monthLabels[r.month - 1]);
+            const values = rows.map(r => parseFloat(r[_sezMonthlyMetric] || 0));
+            const ctx = document.getElementById('sezMonthlyChart').getContext('2d');
+            if (_sezMonthlyChart) _sezMonthlyChart.destroy();
+            _sezMonthlyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: _sezMonthlyMetric,
+                        data: values,
+                        borderColor: '#00ff88',
+                        backgroundColor: 'rgba(0,255,136,0.15)',
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        x: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                    }
+                }
+            });
+        }
+
+        function bindSezMonthlyToggle() {
+            document.querySelectorAll('[data-target="sez-monthly"] button').forEach(btn => {
+                btn.onclick = () => {
+                    document.querySelectorAll('[data-target="sez-monthly"] button').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    _sezMonthlyMetric = btn.dataset.metric;
+                    renderSezMonthly();
+                };
+            });
+        }
+
+        async function loadSezHolidayEffect() {
+            try {
+                const res = await fetch('/api/calendar?type=holiday_effect&window=3');
+                const data = await res.json();
+                const rows = data.holiday_effect || [];
+
+                // Nest: {holiday_name: {year_label: {offsets:{...}, block_start, block_end, days_total}}}
+                const byHoliday = {};
+                rows.forEach(r => {
+                    const p = parseFloat(r.partners);
+                    if (isNaN(p)) return;
+                    if (!byHoliday[r.holiday_name]) byHoliday[r.holiday_name] = {};
+                    if (!byHoliday[r.holiday_name][r.year_label]) {
+                        byHoliday[r.holiday_name][r.year_label] = {
+                            offsets: {},
+                            block_start: r.block_start,
+                            block_end: r.block_end,
+                            days_total: r.days_total
+                        };
+                    }
+                    byHoliday[r.holiday_name][r.year_label].offsets[r.offset_days] = p;
+                });
+
+                const computePctForYear = (yearData) => {
+                    const bef = [-3, -2, -1].map(o => yearData.offsets[o]).filter(v => v != null);
+                    const aft = [1, 2, 3].map(o => yearData.offsets[o]).filter(v => v != null);
+                    if (!bef.length || !aft.length) return null;
+                    const bAvg = bef.reduce((a, b) => a + b, 0) / bef.length;
+                    const aAvg = aft.reduce((a, b) => a + b, 0) / aft.length;
+                    const pct = bAvg > 0 ? ((aAvg - bAvg) / bAvg * 100) : 0;
+                    return { bAvg, aAvg, pct, days_total: yearData.days_total, block_start: yearData.block_start, block_end: yearData.block_end };
+                };
+
+                const monthShort = ['Ian','Feb','Mar','Apr','Mai','Iun','Iul','Aug','Sep','Oct','Nov','Dec'];
+                const fmtRange = (start, end) => {
+                    if (!start || !end) return '';
+                    const [ys,ms,ds] = String(start).split('-');
+                    const [ye,me,de] = String(end).split('-');
+                    if (start === end) return `${parseInt(ds)} ${monthShort[parseInt(ms)-1]}`;
+                    if (ys === ye && ms === me) return `${parseInt(ds)}–${parseInt(de)} ${monthShort[parseInt(ms)-1]}`;
+                    return `${parseInt(ds)} ${monthShort[parseInt(ms)-1]} – ${parseInt(de)} ${monthShort[parseInt(me)-1]}`;
+                };
+
+                // Per-holiday insights with per-year breakdown
+                const insights = [];
+                Object.keys(byHoliday).forEach(name => {
+                    const yrs = Object.keys(byHoliday[name]).sort();
+                    const perYear = yrs.map(y => {
+                        const s = computePctForYear(byHoliday[name][y]);
+                        return s ? { year: y, ...s } : null;
+                    }).filter(Boolean);
+                    if (!perYear.length) return;
+                    const avgPct = perYear.reduce((s, y) => s + y.pct, 0) / perYear.length;
+                    const avgB = perYear.reduce((s, y) => s + y.bAvg, 0) / perYear.length;
+                    const avgA = perYear.reduce((s, y) => s + y.aAvg, 0) / perYear.length;
+                    // Consistency flag: is the sign the same every year?
+                    const allPositive = perYear.every(y => y.pct > 0);
+                    const allNegative = perYear.every(y => y.pct < 0);
+                    const consistent = allPositive || allNegative;
+                    insights.push({ name, perYear, avgPct, avgB, avgA, consistent });
+                });
+
+                insights.sort((a, b) => Math.abs(b.avgPct) - Math.abs(a.avgPct));
+
+                // Concluzii
+                let html = '<div style="margin-bottom:20px;padding:14px;background:rgba(0,217,255,0.04);border-left:3px solid #00d9ff;border-radius:4px;">';
+                html += '<div style="color:#00d9ff;font-weight:600;margin-bottom:10px;font-size:1em;">💡 Concluzii principale (cu variatia anuala)</div>';
+                html += '<div style="font-size:0.9em;line-height:1.8;color:#ccc;">';
+                // Also compute avg duration
+                insights.forEach(ins => {
+                    ins.avgDays = ins.perYear.reduce((s, y) => s + (y.days_total || 0), 0) / ins.perYear.length;
+                });
+
+                insights.slice(0, 8).forEach(ins => {
+                    const arrow = ins.avgPct > 2 ? '🔺' : (ins.avgPct < -2 ? '🔻' : '➡️');
+                    const mainColor = ins.avgPct > 2 ? '#00ff88' : (ins.avgPct < -2 ? '#ff6b6b' : '#aaa');
+                    const sign = ins.avgPct >= 0 ? '+' : '';
+                    const consistencyBadge = ins.consistent
+                        ? '<span style="color:#00ff88;font-size:.8em;margin-left:6px">✓ consistent</span>'
+                        : '<span style="color:#ff9f40;font-size:.8em;margin-left:6px">⚠ variabil</span>';
+                    const durBadge = `<span style="color:#666;font-size:.8em;margin-left:6px">~${Math.round(ins.avgDays)}z inchis</span>`;
+                    html += `<div style="margin-bottom:12px;">`;
+                    html += `${arrow} <strong style="color:#fff">${ins.name}</strong>${durBadge}${consistencyBadge}<br>`;
+                    html += `<span style="color:#888;margin-left:22px;">Mediu: <strong style="color:${mainColor}">${sign}${ins.avgPct.toFixed(1)}%</strong> · `;
+                    html += ins.perYear.map(y => {
+                        const c = y.pct > 2 ? '#00ff88' : (y.pct < -2 ? '#ff6b6b' : '#888');
+                        const s = y.pct >= 0 ? '+' : '';
+                        const range = fmtRange(y.block_start, y.block_end);
+                        return `<span style="color:${c}"><strong>${y.year}</strong> <span style="color:#555">(${range}, ${y.days_total}z)</span>: ${s}${y.pct.toFixed(1)}%</span>`;
+                    }).join(' · ');
+                    html += '</span></div>';
+                });
+                html += '</div></div>';
+
+                // Detailed per-year table
+                const offsets = [-3, -2, -1, 0, 1, 2, 3];
+                const offsetLabels = {'-3':'-3','-2':'-2','-1':'-1','0':'SARB.','1':'+1','2':'+2','3':'+3'};
+                html += '<details><summary style="cursor:pointer;color:#aaa;font-size:0.9em;margin-bottom:10px;">📋 Tabel complet pe ani (click pentru a deschide)</summary>';
+                html += '<table><thead><tr><th>Sarbatoare</th><th>An</th>' +
+                        offsets.map(o => `<th class="text-right" style="${o === 0 ? 'color:#ff9f40' : ''}">${offsetLabels[String(o)]}</th>`).join('') +
+                        '<th class="text-right">Δ%</th></tr></thead><tbody>';
+                insights.forEach(ins => {
+                    const avgPctColor = ins.avgPct > 2 ? '#00ff88' : (ins.avgPct < -2 ? '#ff6b6b' : '#666');
+                    const sign = ins.avgPct >= 0 ? '+' : '';
+                    html += `<tr style="background:rgba(0,217,255,0.06);">`;
+                    html += `<td colspan="2" style="color:#00d9ff;font-weight:600;">${ins.name} <span style="color:#888;font-weight:400;font-size:.85em">(~${Math.round(ins.avgDays)}z · ${ins.perYear.length} ani)</span></td>`;
+                    offsets.forEach(o => {
+                        if (o === 0) { html += '<td class="text-right" style="color:#555">–</td>'; return; }
+                        const vals = ins.perYear.map(y => byHoliday[ins.name][y.year].offsets[o]).filter(v => v != null);
+                        if (!vals.length) { html += '<td class="text-right" style="color:#555">–</td>'; return; }
+                        const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+                        html += `<td class="text-right" style="color:#aaa;"><strong>${avg.toFixed(1)}</strong></td>`;
+                    });
+                    html += `<td class="text-right" style="color:${avgPctColor};font-weight:700;">${sign}${ins.avgPct.toFixed(1)}%</td>`;
+                    html += '</tr>';
+                    ins.perYear.forEach(y => {
+                        const yrData = byHoliday[ins.name][y.year];
+                        const pctColor = y.pct > 2 ? '#00ff88' : (y.pct < -2 ? '#ff6b6b' : '#666');
+                        const ysign = y.pct >= 0 ? '+' : '';
+                        const range = fmtRange(y.block_start, y.block_end);
+                        html += `<tr><td style="color:#666;padding-left:20px;">↳ <span style="color:#888;font-size:.85em">${range}</span></td><td style="color:#aaa">${y.year} <span style="color:#666;font-size:.85em">(${y.days_total}z)</span></td>`;
+                        offsets.forEach(o => {
+                            if (o === 0) { html += '<td class="text-right" style="color:#555">–</td>'; return; }
+                            const v = yrData.offsets[o];
+                            if (v == null) { html += '<td class="text-right" style="color:#555">–</td>'; return; }
+                            html += `<td class="text-right">${v.toFixed(0)}</td>`;
+                        });
+                        html += `<td class="text-right" style="color:${pctColor};">${ysign}${y.pct.toFixed(1)}%</td></tr>`;
+                    });
+                });
+                html += '</tbody></table></details>';
+                document.getElementById('sezHolidayTable').innerHTML = html;
+            } catch (e) {
+                console.error('loadSezHolidayEffect failed', e);
+            }
+        }
+
+        async function loadSezClosureCandidates() {
+            try {
+                const res = await fetch('/api/calendar?type=closure_candidates');
+                const data = await res.json();
+                const runs = data.runs || [];
+                const host = document.getElementById('sezClosureCandidates');
+                if (!runs.length) {
+                    host.innerHTML = '<p style="color:#00ff88;margin:10px 0;">Nicio inchidere detectata. ✓</p>';
+                    return;
+                }
+                const byYear = {};
+                runs.forEach(r => {
+                    const yr = String(r.date_from).substring(0, 4);
+                    (byYear[yr] = byYear[yr] || []).push(r);
+                });
+                const total = runs.reduce((s, r) => s + r.working_days, 0);
+                const monthNames = ['Ian','Feb','Mar','Apr','Mai','Iun','Iul','Aug','Sep','Oct','Nov','Dec'];
+                const fmtDate = d => {
+                    const [y, m, day] = String(d).split('-');
+                    return `${parseInt(day)} ${monthNames[parseInt(m)-1]}`;
+                };
+                let html = `<p style="color:#aaa;margin-bottom:15px;"><strong style="color:#00d9ff">${runs.length} perioade</strong> detectate · total <strong style="color:#00d9ff">${total} zile</strong> inchise.</p>`;
+                html += '<div class="grid grid-2" style="gap:15px;">';
+                Object.keys(byYear).sort().forEach(year => {
+                    const yrTotal = byYear[year].reduce((s, r) => s + r.working_days, 0);
+                    html += `<div style="background:rgba(0,217,255,0.05);padding:10px 14px;border-radius:6px;border:1px solid rgba(0,217,255,0.15);">`;
+                    html += `<div style="color:#00d9ff;font-weight:600;margin-bottom:6px;">${year} <span style="color:#888;font-weight:400;font-size:0.9em;">· ${yrTotal} zile</span></div>`;
+                    html += '<div style="font-size:0.9em;line-height:1.8;">';
+                    byYear[year].forEach(r => {
+                        const range = r.date_from === r.date_to
+                            ? fmtDate(r.date_from)
+                            : `${fmtDate(r.date_from)} – ${fmtDate(r.date_to)}`;
+                        html += `<div><span style="color:#aaa">${range}</span> <span style="color:#666">(${r.working_days}z)</span></div>`;
+                    });
+                    html += '</div></div>';
+                });
+                html += '</div>';
+                host.innerHTML = html;
+            } catch (e) {
+                console.error('loadSezClosureCandidates failed', e);
+            }
+        }
+
+        async function loadSezAudit() {
+            try {
+                const res = await fetch('/api/calendar?type=illegal_workdays');
+                const data = await res.json();
+                const rows = data.illegal_workdays || [];
+                const host = document.getElementById('sezAuditTable');
+                if (!rows.length) {
+                    host.innerHTML = '<p style="color:#00ff88;margin:10px 0;">Nicio tranzactie pe zile oficial nelucratoare. ✓</p>';
+                    return;
+                }
+                let html = '<table><thead><tr><th>Data</th><th>Sarbatoare</th><th class="text-right">Parteneri</th><th class="text-right">Tranzactii</th><th class="text-right">RON</th></tr></thead><tbody>';
+                rows.forEach(r => {
+                    html += `<tr>
+                        <td>${r.date}</td>
+                        <td style="color:#ff9f40">${r.holiday_names}</td>
+                        <td class="text-right">${r.partners}</td>
+                        <td class="text-right">${r.tx_count}</td>
+                        <td class="text-right">${r.ron}</td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                host.innerHTML = html;
+            } catch (e) {
+                console.error('loadSezAudit failed', e);
             }
         }
     </script>

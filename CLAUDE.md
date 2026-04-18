@@ -123,6 +123,21 @@ waste_categories  - Hulladék kategóriák
 | `type=monthly&category=X` | Havi bontás |
 | `type=analysis&waste_type_ids=1,2&categories=Fier&date_from=X&date_to=X&aggregation=monthly` | Részletes hulladék elemzés (típusonként/kategóriánként, daily/monthly/yearly) |
 
+### `/api/calendar`
+| Parameter | Description |
+|-----------|-------------|
+| `type=holidays&year=YYYY` | Sarbatori pentru un an (national + catolic + ortodox) |
+| `type=closures` | Lista inchiderilor companiei validate |
+| `type=closure_candidates` | Candidati auto-detectati pentru validare |
+| `type=working_days&date_from=X&date_to=Y` | Numar zile lucratoare in interval |
+| `type=weekly_pattern&date_from=X&date_to=Y` | Tipar H-Sb (medii pe zi lucratoare) |
+| `type=monthly_pattern&year=YYYY` | Tipar lunar (normalizat pe zi lucratoare) |
+| `type=holiday_effect&window=N` | Impactul sarbatorilor ±N zile |
+| `type=bridge_days` | Bridge days detectate |
+| `type=illegal_workdays` | Audit: tranzactii pe zile oficial nelucratoare |
+| POST `?action=confirm_closure` body `{date_from,date_to,reason}` | Confirma interval ca inchidere |
+| POST `?action=ignore_closure` body `{date_from,date_to}` | Marcheaza ca non-inchidere |
+
 ### `/api/monthly`
 | Parameter | Description |
 |-----------|-------------|
@@ -238,6 +253,10 @@ paju/
 ```
 
 ## Important Notes
+
+### Working Day Definition
+Working day = Mon-Sat AND NOT in `holidays` (is_official=true) AND NOT in `company_closures` (reason ≠ '__ignored__').
+Sunday is closed by default (no opening hours).
 
 ### SQL Parameter Ordering
 When building dynamic queries with multiple WHERE clauses and subqueries, parameter order must match placeholder order in SQL:
