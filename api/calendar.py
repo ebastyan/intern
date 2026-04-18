@@ -271,6 +271,22 @@ class handler(BaseHTTPRequestHandler):
         )
         return [dict(r) for r in cur.fetchall()]
 
+    def illegal_workdays(self, cur):
+        cur.execute(
+            """
+            SELECT t.date,
+                   STRING_AGG(DISTINCT h.name, ', ') AS holiday_names,
+                   COUNT(*) AS tx_count,
+                   COUNT(DISTINCT t.cnp) AS partners,
+                   ROUND(SUM(t.gross_value)::numeric, 2) AS ron
+            FROM transactions t
+            JOIN holidays h ON h.date = t.date AND h.is_official = true
+            GROUP BY t.date
+            ORDER BY t.date
+            """
+        )
+        return [dict(r) for r in cur.fetchall()]
+
     def do_GET(self):
         try:
             parsed = urlparse(self.path)
@@ -308,6 +324,8 @@ class handler(BaseHTTPRequestHandler):
                 result = {'holiday_effect': self.holiday_effect(cur, win)}
             elif query_type == 'bridge_days':
                 result = {'bridge_days': self.bridge_days(cur)}
+            elif query_type == 'illegal_workdays':
+                result = {'illegal_workdays': self.illegal_workdays(cur)}
             else:
                 result = {'error': 'Unknown query type', 'got': query_type}
 
