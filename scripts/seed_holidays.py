@@ -75,15 +75,59 @@ KNOWN_ORTHODOX_EASTER = {
     2030: date(2030, 4, 28),
 }
 
+def generate_holidays(year_from: int, year_to: int):
+    """Yield (date, name, type, is_official) tuples for all holidays in the year range."""
+    for year in range(year_from, year_to + 1):
+        # Fixed national holidays (is_official=True)
+        yield (date(year, 1, 1), 'Anul Nou', 'national', True)
+        yield (date(year, 1, 2), 'Anul Nou (a doua zi)', 'national', True)
+        yield (date(year, 1, 24), 'Ziua Unirii Principatelor Romane', 'national', True)
+        yield (date(year, 5, 1), 'Ziua Muncii', 'national', True)
+        yield (date(year, 6, 1), 'Ziua Copilului', 'national', True)
+        yield (date(year, 8, 15), 'Adormirea Maicii Domnului', 'national', True)
+        yield (date(year, 11, 30), 'Sfantul Andrei', 'national', True)
+        yield (date(year, 12, 1), 'Ziua Nationala', 'national', True)
+        yield (date(year, 12, 25), 'Craciunul', 'national', True)
+        yield (date(year, 12, 26), 'Craciunul (a doua zi)', 'national', True)
+
+        # Catholic (is_official=False — cultural, not a Romanian public holiday)
+        ce = catholic_easter(year)
+        yield (ce - timedelta(days=2), 'Vinerea Mare (catolica)', 'catholic', False)
+        yield (ce, 'Pastele catolic', 'catholic', False)
+        yield (ce + timedelta(days=1), 'A doua zi de Pasti (catolic)', 'catholic', False)
+        yield (ce + timedelta(days=49), 'Rusalii catolice', 'catholic', False)
+        yield (ce + timedelta(days=50), 'A doua zi de Rusalii (catolic)', 'catholic', False)
+
+        # Orthodox (is_official=True for Good Friday since 2018, Easter and Pentecost always)
+        oe = orthodox_easter(year)
+        yield (oe - timedelta(days=2), 'Vinerea Mare (ortodoxa)', 'orthodox', year >= 2018)
+        yield (oe, 'Pastele ortodox', 'orthodox', True)
+        yield (oe + timedelta(days=1), 'A doua zi de Pasti (ortodox)', 'orthodox', True)
+        yield (oe + timedelta(days=49), 'Rusalii ortodoxe', 'orthodox', True)
+        yield (oe + timedelta(days=50), 'A doua zi de Rusalii (ortodoxe)', 'orthodox', True)
+
 def self_test():
     for y, expected in KNOWN_CATHOLIC_EASTER.items():
-        got = catholic_easter(y)
-        assert got == expected, f"catholic_easter({y}) -> {got}, expected {expected}"
-    print(f"Catholic Easter OK for {len(KNOWN_CATHOLIC_EASTER)} years")
+        assert catholic_easter(y) == expected
     for y, expected in KNOWN_ORTHODOX_EASTER.items():
-        got = orthodox_easter(y)
-        assert got == expected, f"orthodox_easter({y}) -> {got}, expected {expected}"
-    print(f"Orthodox Easter OK for {len(KNOWN_ORTHODOX_EASTER)} years")
+        assert orthodox_easter(y) == expected
+    print(f"Easter algorithms OK ({len(KNOWN_CATHOLIC_EASTER)} + {len(KNOWN_ORTHODOX_EASTER)} years)")
+
+    rows = list(generate_holidays(2024, 2024))
+    # 10 fixed national + 5 catholic + 5 orthodox = 20 per year
+    assert len(rows) == 20, f"Expected 20 entries for 2024, got {len(rows)}"
+    by_type = {}
+    for _, _, t, _ in rows:
+        by_type[t] = by_type.get(t, 0) + 1
+    assert by_type == {'national': 10, 'catholic': 5, 'orthodox': 5}, by_type
+
+    # Spot-check: Romanian National Day 2024 is Dec 1
+    dates_2024 = {name: d for d, name, *_ in rows}
+    assert dates_2024['Ziua Nationala'] == date(2024, 12, 1)
+    # Spot-check: Orthodox Easter Monday 2024 = May 6 (Easter was May 5)
+    assert dates_2024['A doua zi de Pasti (ortodox)'] == date(2024, 5, 6)
+
+    print(f"generate_holidays() OK: 20 entries/year, correct type split, known dates match")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
