@@ -63,7 +63,7 @@ class handler(BaseHTTPRequestHandler):
 
             # Advanced filter: date range + visit count range
             elif 'filter' in params:
-                date_from = params.get('date_from', ['2022-01-01'])[0]
+                date_from = params.get('date_from', ['2020-01-01'])[0]
                 date_to = params.get('date_to', ['2099-12-31'])[0]
                 min_visits = int(params.get('min_visits', [1])[0])
                 max_visits = int(params.get('max_visits', [999999])[0])

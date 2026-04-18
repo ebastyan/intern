@@ -275,7 +275,7 @@
             <div class="card" style="margin-bottom:15px;">
                 <h2><span class="icon">🔍</span> Filtru Avansat</h2>
                 <div class="filter-row">
-                    <label>De la:</label><input type="date" id="filterDateFrom" value="2022-01-01">
+                    <label>De la:</label><input type="date" id="filterDateFrom" value="2020-01-01">
                     <label>Pana la:</label><input type="date" id="filterDateTo" value="2026-12-31">
                     <label>Min vizite:</label><input type="number" id="filterMinVisits" value="1" min="1">
                     <label>Max vizite:</label><input type="number" id="filterMaxVisits" value="9999" min="1">
@@ -312,7 +312,7 @@
                 <div class="card" style="margin-bottom:15px;">
                     <h2><span class="icon">🔍</span> Filtru Vizitatori dupa Numar de Vizite</h2>
                     <div class="filter-row">
-                        <label>De la:</label><input type="date" id="onetimeDateFrom" value="2022-01-01">
+                        <label>De la:</label><input type="date" id="onetimeDateFrom" value="2020-01-01">
                         <label>Pana la:</label><input type="date" id="onetimeDateTo" value="2026-12-31">
                         <label>Numar vizite:</label>
                         <input type="number" id="onetimeVisitCount" value="1" min="1" max="500" style="width:70px;">
@@ -347,7 +347,7 @@
             <div id="partnerTab-family" class="partner-tab" style="display:none;">
                 <div class="filter-row" style="margin-bottom:15px;">
                     <label>De la:</label>
-                    <input type="date" id="familyDateFrom" value="2022-01-01">
+                    <input type="date" id="familyDateFrom" value="2020-01-01">
                     <label>Pana la:</label>
                     <input type="date" id="familyDateTo" value="2026-12-31">
                     <label>Judet:</label>
@@ -386,7 +386,7 @@
                     <label>Min kg:</label><input type="number" id="bigMinKg" value="100" min="1" style="width:80px;">
                     <label>Min vizite:</label><input type="number" id="bigMinVisits" value="2" min="1" style="width:60px;">
                     <label>An:</label>
-                    <select id="bigYear"><option value="">Toti anii</option><option value="2022">2022</option><option value="2023">2023</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select>
+                    <select id="bigYear"><option value="">Toti anii</option><option value="2020">2020</option><option value="2021">2021</option><option value="2022">2022</option><option value="2023">2023</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select>
                     <button onclick="loadBigSuppliers()">Cauta</button>
                 </div>
                 <div class="card"><h2><span class="icon">💎</span> Mari Furnizori</h2><div class="scroll-table"><table><thead><tr><th>Nume</th><th>Oras</th><th>Judet</th><th class="text-right">Total kg</th><th class="text-right">Vizite</th><th class="text-right">Pret Mediu</th><th class="text-right">Valoare</th></tr></thead><tbody id="bigSuppliersTable"></tbody></table></div></div>
@@ -420,7 +420,7 @@
                     <div class="filter-row" style="flex-wrap:wrap;gap:10px;margin-top:10px;">
                         <div style="display:flex;align-items:center;gap:5px;">
                             <label>De la:</label>
-                            <input type="date" id="listaDateFrom" value="2022-01-01">
+                            <input type="date" id="listaDateFrom" value="2020-01-01">
                         </div>
                         <div style="display:flex;align-items:center;gap:5px;">
                             <label>Pana la:</label>
@@ -683,6 +683,8 @@
                     <label style="color:#888;font-size:0.85em;">An:</label>
                     <select id="sezWeeklyYear" style="background:#1a1a2e;color:#fff;border:1px solid #333;padding:5px 8px;border-radius:4px;">
                         <option value="">Toate (media)</option>
+                        <option value="2020">2020</option>
+                        <option value="2021">2021</option>
                         <option value="2022">2022</option>
                         <option value="2023">2023</option>
                         <option value="2024">2024</option>
@@ -709,6 +711,8 @@
                     <label style="color:#888;font-size:0.85em;">An:</label>
                     <select id="sezMonthlyYear" style="background:#1a1a2e;color:#fff;border:1px solid #333;padding:5px 8px;border-radius:4px;">
                         <option value="">Toate (media)</option>
+                        <option value="2020">2020</option>
+                        <option value="2021">2021</option>
                         <option value="2022">2022</option>
                         <option value="2023">2023</option>
                         <option value="2024">2024</option>
@@ -1879,7 +1883,7 @@
             document.getElementById('listaCounty').value = '';
             document.getElementById('listaCity').value = '';
             document.getElementById('listaStreet').value = '';
-            document.getElementById('listaDateFrom').value = '2022-01-01';
+            document.getElementById('listaDateFrom').value = '2020-01-01';
             document.getElementById('listaDateTo').value = '2026-12-31';
             document.getElementById('listaCategory').value = '';
             document.getElementById('listaMinVisits').value = '0';
@@ -2681,7 +2685,7 @@
         async function loadMeteo() {
             const df = document.getElementById('meteoDateFrom');
             const dt = document.getElementById('meteoDateTo');
-            if (!df.value) df.value = '2022-01-03';
+            if (!df.value) df.value = '2020-01-01';
             if (!dt.value) dt.value = new Date().toISOString().substring(0,10);
             document.getElementById('meteoApply').onclick = refreshMeteo;
             refreshMeteo();
