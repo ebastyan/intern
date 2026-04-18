@@ -166,6 +166,7 @@
             <button class="nav-tab" onclick="showSection('predictions')">Predictii</button>
             <button class="nav-tab" onclick="showSection('stats')">Statisztika</button>
             <button class="nav-tab" onclick="showSection('sezonalitate')">Sezonalitate</button>
+            <button class="nav-tab" onclick="showSection('meteo')">Meteo</button>
         </div>
         <a href="firme.html" style="padding: 8px 16px; background: linear-gradient(135deg, #ff9f40, #ff6b6b); border: none; border-radius: 6px; color: #fff; font-size: 0.8em; cursor: pointer; font-weight: 600; text-decoration: none;">Firme (B2B)</a>
         <div class="last-update">Actualizat: <span id="lastUpdate">...</span></div>
@@ -274,7 +275,7 @@
             <div class="card" style="margin-bottom:15px;">
                 <h2><span class="icon">🔍</span> Filtru Avansat</h2>
                 <div class="filter-row">
-                    <label>De la:</label><input type="date" id="filterDateFrom" value="2022-01-01">
+                    <label>De la:</label><input type="date" id="filterDateFrom" value="2020-01-01">
                     <label>Pana la:</label><input type="date" id="filterDateTo" value="2026-12-31">
                     <label>Min vizite:</label><input type="number" id="filterMinVisits" value="1" min="1">
                     <label>Max vizite:</label><input type="number" id="filterMaxVisits" value="9999" min="1">
@@ -311,7 +312,7 @@
                 <div class="card" style="margin-bottom:15px;">
                     <h2><span class="icon">🔍</span> Filtru Vizitatori dupa Numar de Vizite</h2>
                     <div class="filter-row">
-                        <label>De la:</label><input type="date" id="onetimeDateFrom" value="2022-01-01">
+                        <label>De la:</label><input type="date" id="onetimeDateFrom" value="2020-01-01">
                         <label>Pana la:</label><input type="date" id="onetimeDateTo" value="2026-12-31">
                         <label>Numar vizite:</label>
                         <input type="number" id="onetimeVisitCount" value="1" min="1" max="500" style="width:70px;">
@@ -346,7 +347,7 @@
             <div id="partnerTab-family" class="partner-tab" style="display:none;">
                 <div class="filter-row" style="margin-bottom:15px;">
                     <label>De la:</label>
-                    <input type="date" id="familyDateFrom" value="2022-01-01">
+                    <input type="date" id="familyDateFrom" value="2020-01-01">
                     <label>Pana la:</label>
                     <input type="date" id="familyDateTo" value="2026-12-31">
                     <label>Judet:</label>
@@ -385,7 +386,7 @@
                     <label>Min kg:</label><input type="number" id="bigMinKg" value="100" min="1" style="width:80px;">
                     <label>Min vizite:</label><input type="number" id="bigMinVisits" value="2" min="1" style="width:60px;">
                     <label>An:</label>
-                    <select id="bigYear"><option value="">Toti anii</option><option value="2022">2022</option><option value="2023">2023</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select>
+                    <select id="bigYear"><option value="">Toti anii</option><option value="2020">2020</option><option value="2021">2021</option><option value="2022">2022</option><option value="2023">2023</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select>
                     <button onclick="loadBigSuppliers()">Cauta</button>
                 </div>
                 <div class="card"><h2><span class="icon">💎</span> Mari Furnizori</h2><div class="scroll-table"><table><thead><tr><th>Nume</th><th>Oras</th><th>Judet</th><th class="text-right">Total kg</th><th class="text-right">Vizite</th><th class="text-right">Pret Mediu</th><th class="text-right">Valoare</th></tr></thead><tbody id="bigSuppliersTable"></tbody></table></div></div>
@@ -419,7 +420,7 @@
                     <div class="filter-row" style="flex-wrap:wrap;gap:10px;margin-top:10px;">
                         <div style="display:flex;align-items:center;gap:5px;">
                             <label>De la:</label>
-                            <input type="date" id="listaDateFrom" value="2022-01-01">
+                            <input type="date" id="listaDateFrom" value="2020-01-01">
                         </div>
                         <div style="display:flex;align-items:center;gap:5px;">
                             <label>Pana la:</label>
@@ -682,6 +683,8 @@
                     <label style="color:#888;font-size:0.85em;">An:</label>
                     <select id="sezWeeklyYear" style="background:#1a1a2e;color:#fff;border:1px solid #333;padding:5px 8px;border-radius:4px;">
                         <option value="">Toate (media)</option>
+                        <option value="2020">2020</option>
+                        <option value="2021">2021</option>
                         <option value="2022">2022</option>
                         <option value="2023">2023</option>
                         <option value="2024">2024</option>
@@ -708,6 +711,8 @@
                     <label style="color:#888;font-size:0.85em;">An:</label>
                     <select id="sezMonthlyYear" style="background:#1a1a2e;color:#fff;border:1px solid #333;padding:5px 8px;border-radius:4px;">
                         <option value="">Toate (media)</option>
+                        <option value="2020">2020</option>
+                        <option value="2021">2021</option>
                         <option value="2022">2022</option>
                         <option value="2023">2023</option>
                         <option value="2024">2024</option>
@@ -753,6 +758,78 @@
                     Zile declarate <strong style="color:#ff9f40">"piros" oficial in Romania</strong> (sarbatori nationale) cand au avut loc totusi tranzactii. Pentru verificare legala/conformitate.
                 </p>
                 <div id="sezAuditTable" class="scroll-table"></div>
+            </div>
+        </div>
+
+        <!-- METEO & TRAFIC -->
+        <div id="section-meteo" class="section">
+            <div class="card">
+                <h2><span class="icon">🌦️</span> Meteo & Trafic</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Compara traficul cu vremea reala la Oradea. Fiecare zi are un <strong style="color:#aaa">baseline</strong> = medianul ultimelor 28 zile lucratoare cu aceeasi zi a saptamanii. Vremea se masoara fata de acest baseline — asa excludem sezonul si ramane efectul meteo real.
+                </p>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin-bottom:4px;">
+                    <div><label style="color:#888;font-size:0.85em;display:block;">De la:</label>
+                        <input type="date" id="meteoDateFrom" style="background:#1a1a2e;color:#fff;border:1px solid #333;padding:6px;border-radius:4px;"></div>
+                    <div><label style="color:#888;font-size:0.85em;display:block;">Pana la:</label>
+                        <input type="date" id="meteoDateTo" style="background:#1a1a2e;color:#fff;border:1px solid #333;padding:6px;border-radius:4px;"></div>
+                    <div><label style="color:#888;font-size:0.85em;display:block;">Metrica:</label>
+                        <select id="meteoMetric" style="background:#1a1a2e;color:#fff;border:1px solid #333;padding:6px;border-radius:4px;">
+                            <option value="partners">Parteneri</option>
+                            <option value="transactions">Tranzactii</option>
+                            <option value="kg">Kg</option>
+                            <option value="ron">RON</option>
+                        </select></div>
+                    <button id="meteoApply" style="padding:8px 18px;background:#00d9ff;color:#000;border:none;border-radius:4px;cursor:pointer;font-weight:600;">Analizeaza</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">🎓</span> Ce învață datele (sinteza + praguri)</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Sumarul de "ce face vremea cu traficul" + gradientele vizuale care arata <strong style="color:#aaa">exact unde se rupe tiparul</strong> la temperatura, ploaie, zapada, vant. Bazele de scala sunt "zilele normale" — orice deviatie te arata unde incepe sa scada sau sa creasca.
+                </p>
+                <div id="meteoTeaching"></div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">🚨</span> Vreme care STRICA traficul</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Conditii meteo care au adus <strong style="color:#ff6b6b">mai putini parteneri</strong> decat normal (efect ≤ −3%, minim 3 zile in perioada). Click pe un card pentru detalii si zile concrete.
+                </p>
+                <div id="meteoBadWeather"></div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">🎯</span> Vreme OPTIMA pentru trafic</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Conditii meteo care au adus <strong style="color:#00ff88">mai multi parteneri</strong> decat normal (efect ≥ +3%, minim 3 zile). Acestea sunt momente cand oamenii vin fara ezitare.
+                </p>
+                <div id="meteoGoodWeather"></div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">⚪</span> Alte conditii (fara efect clar)</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Categorii cu efect mic (sub ±3%) sau prea putine zile observate pentru o concluzie valida.
+                </p>
+                <div id="meteoNeutralWeather"></div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">💡</span> Detalii cu zile concrete (evidenta)</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Pentru fiecare efect detectat, aici vezi exemple concrete de zile din perioada selectata. Cu data, vremea, cat au venit vs cat ne-asteptam. Asa poti verifica cu ochii tai daca algoritmul spune adevarul.
+                </p>
+                <div id="meteoInsights"></div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">🔥</span> Cele mai atipice 20 zile</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Zilele cu cel mai mare ecart fata de <strong style="color:#aaa">normalul asteptat</strong> (medianul ultimelor 28 zile lucratoare cu aceeasi zi a saptamanii). Uita-te la coloanele meteo pentru a vedea ce era in ziua respectiva si poate intelege de ce. <strong style="color:#00ff88">Verde</strong> = au venit mult mai multi decat normal. <strong style="color:#ff6b6b">Rosu</strong> = mult mai putini.
+                </p>
+                <div id="meteoExtreme" class="scroll-table"></div>
             </div>
         </div>
 
@@ -816,6 +893,10 @@
             if (id === 'sezonalitate' && !window._sezLoaded) {
                 window._sezLoaded = true;
                 loadSezonalitate();
+            }
+            if (id === 'meteo' && !window._meteoLoaded) {
+                window._meteoLoaded = true;
+                loadMeteo();
             }
         }
 
@@ -1802,7 +1883,7 @@
             document.getElementById('listaCounty').value = '';
             document.getElementById('listaCity').value = '';
             document.getElementById('listaStreet').value = '';
-            document.getElementById('listaDateFrom').value = '2022-01-01';
+            document.getElementById('listaDateFrom').value = '2020-01-01';
             document.getElementById('listaDateTo').value = '2026-12-31';
             document.getElementById('listaCategory').value = '';
             document.getElementById('listaMinVisits').value = '0';
@@ -2597,6 +2678,359 @@
                 host.innerHTML = html;
             } catch (e) {
                 console.error('loadSezAudit failed', e);
+            }
+        }
+
+        // === Meteo & Trafic (Phase 2) ===
+        async function loadMeteo() {
+            const df = document.getElementById('meteoDateFrom');
+            const dt = document.getElementById('meteoDateTo');
+            if (!df.value) df.value = '2020-01-01';
+            if (!dt.value) dt.value = new Date().toISOString().substring(0,10);
+            document.getElementById('meteoApply').onclick = refreshMeteo;
+            refreshMeteo();
+        }
+
+        async function refreshMeteo() {
+            const df = document.getElementById('meteoDateFrom').value;
+            const dt = document.getElementById('meteoDateTo').value;
+            const metric = document.getElementById('meteoMetric').value;
+            await Promise.all([
+                loadMeteoOverview(df, dt, metric),
+                loadMeteoExtreme(df, dt, metric),
+            ]);
+        }
+
+        function renderContextBanner(ctx, metricUnit) {
+            if (!ctx) return '';
+            const pct = ctx.pct_vs_other;
+            const cur = ctx.current_avg;
+            const oth = ctx.other_years_avg;
+            if (cur == null) return '';
+            let color, label, icon;
+            if (pct == null) {
+                color = '#aaa'; label = 'nu sunt alti ani pentru comparatie'; icon = 'ℹ️';
+            } else if (pct <= -5) {
+                color = '#ff6b6b'; label = `SUB NORMAL cu ${Math.abs(pct).toFixed(1)}%`; icon = '⚠️';
+            } else if (pct >= 5) {
+                color = '#00ff88'; label = `PESTE NORMAL cu ${pct.toFixed(1)}%`; icon = '✨';
+            } else {
+                color = '#aaa'; label = `aproape normal (${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%)`; icon = '✓';
+            }
+            let years = '';
+            if (ctx.years && ctx.years.length) {
+                years = ctx.years.map(y => `<span style="color:#888;">${y.year}: ${y.avg}</span>`).join(' · ');
+            }
+            let html = `<div style="margin-bottom:16px;padding:10px 14px;border-left:3px solid ${color};background:rgba(0,217,255,0.03);border-radius:4px;font-size:0.88em;">`;
+            html += `<div style="color:${color};font-weight:600;margin-bottom:3px;">${icon} Contextul perioadei — ${label}</div>`;
+            html += `<div style="color:#aaa;line-height:1.5;">`;
+            html += `In perioada selectata: <strong style="color:#ddd;">${cur}</strong> ${metricUnit}/zi in medie.`;
+            if (oth != null) {
+                html += ` Aceleasi zile in anii anteriori: <strong style="color:#ddd;">${oth}</strong> in medie (${years}).`;
+            }
+            if (pct != null && Math.abs(pct) >= 5) {
+                html += ` <em style="color:#ff9f40;">Atentie: verdictele meteo de mai jos trebuie cititie avand in minte ca perioada asta a fost un ${pct < 0 ? 'sezon slab' : 'sezon puternic'} in general.</em>`;
+            }
+            html += `</div></div>`;
+            return html;
+        }
+
+        function renderTeachingCard(ranking) {
+            const byName = {};
+            ranking.forEach(r => byName[r.name] = r);
+            const FAMILIES = [
+                { title: '🌡️ Temperatura maxima', base: 'intervalul 10..25°C (normal)',
+                  cats: ['Ger extrem','Ger','Frig intens','Frig','Rece','Cald','Foarte cald','Canicula','Canicula extrema'] },
+                { title: '🌧️ Ploaie', base: 'fara ploaie',
+                  cats: ['Ploaie fina','Ploaie usoara','Ploaie moderata','Ploaie puternica','Ploaie torentiala'] },
+                { title: '❄️ Zapada', base: 'fara zapada',
+                  cats: ['Ninsoare usoara','Zapada medie','Zapada abundenta'] },
+                { title: '💨 Vant (rafale)', base: 'vant calm <50km/h',
+                  cats: ['Rafale medii','Rafale mari','Furtuna'] },
+                { title: '💧 Umiditate', base: 'umiditate moderata 45..85%',
+                  cats: ['Umiditate scazuta','Umiditate ridicata','Umiditate extrema'] },
+                { title: '🌤️ Cer', base: 'cer partial norat',
+                  cats: ['Senin','Mohorat'] },
+            ];
+
+            // Top 3 worst / best
+            const bads = ranking.filter(r => r.effect_pct < 0).sort((a,b) => a.effect_pct - b.effect_pct).slice(0,4);
+            const goods = ranking.filter(r => r.effect_pct > 0).sort((a,b) => b.effect_pct - a.effect_pct).slice(0,4);
+            let html = '';
+
+            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">';
+            html += '<div style="padding:12px 14px;background:rgba(255,107,107,0.08);border-left:3px solid #ff6b6b;border-radius:4px;">';
+            html += '<div style="color:#ff6b6b;font-weight:600;margin-bottom:8px;">🚨 Ce ii OPRESTE pe oameni</div>';
+            if (!bads.length) {
+                html += '<div style="color:#888;font-size:0.9em;">Nicio vreme nu a cauzat scaderi in aceasta perioada.</div>';
+            } else {
+                bads.forEach((r, i) => {
+                    html += `<div style="padding:4px 0;color:#ddd;font-size:0.9em;"><strong style="color:#fff;">${i+1}.</strong> ${r.emoji} <strong>${r.name}</strong> <span style="color:#888;font-size:0.85em;">(${r.range})</span> → <strong style="color:#ff6b6b;">${r.effect_pct.toFixed(1)}%</strong> <span style="color:#666;font-size:0.8em;">· ${r.n} zile</span></div>`;
+                });
+            }
+            html += '</div>';
+
+            html += '<div style="padding:12px 14px;background:rgba(0,255,136,0.08);border-left:3px solid #00ff88;border-radius:4px;">';
+            html += '<div style="color:#00ff88;font-weight:600;margin-bottom:8px;">🎯 Ce ii ADUCE fara probleme</div>';
+            if (!goods.length) {
+                html += '<div style="color:#888;font-size:0.9em;">Nicio vreme nu a aglomerat.</div>';
+            } else {
+                goods.forEach((r, i) => {
+                    html += `<div style="padding:4px 0;color:#ddd;font-size:0.9em;"><strong style="color:#fff;">${i+1}.</strong> ${r.emoji} <strong>${r.name}</strong> <span style="color:#888;font-size:0.85em;">(${r.range})</span> → <strong style="color:#00ff88;">+${r.effect_pct.toFixed(1)}%</strong> <span style="color:#666;font-size:0.8em;">· ${r.n} zile</span></div>`;
+                });
+            }
+            html += '</div>';
+            html += '</div>';
+
+            // Threshold gradient per family
+            html += '<div style="color:#00d9ff;font-weight:600;font-size:1em;margin-bottom:6px;">📏 Unde se RUPE tiparul (pragurile)</div>';
+            html += '<div style="color:#888;font-size:0.82em;margin-bottom:12px;">Fiecare rand = o categorie. Bara rosie la stanga = scade, verde la dreapta = creste. Linia verticala = "zi normala" (baseline). Cat mai lunga bara, cu atat mai mare efectul.</div>';
+            FAMILIES.forEach(fam => {
+                const items = fam.cats.map(n => byName[n]).filter(Boolean);
+                if (!items.length) return;
+                const maxAbs = Math.max(...items.map(i => Math.abs(i.effect_pct)), 4);
+                html += `<div style="margin-bottom:18px;">`;
+                html += `<div style="color:#eee;font-weight:600;font-size:0.92em;margin-bottom:3px;">${fam.title} <span style="color:#666;font-size:0.85em;font-weight:400;">· baza: ${fam.base}</span></div>`;
+                items.forEach(it => {
+                    const isStrong = Math.abs(it.effect_pct) >= 3 || (it.n_strong_neg||0) >= 3 || (it.n_strong_pos||0) >= 3;
+                    const c = it.effect_pct <= -2 ? '#ff6b6b' : (it.effect_pct >= 2 ? '#00ff88' : '#777');
+                    const sign = it.effect_pct >= 0 ? '+' : '';
+                    const barW = Math.min(50, Math.abs(it.effect_pct) / maxAbs * 50);
+                    const marker = isStrong && Math.abs(it.effect_pct) >= 5 ? '⚠' : '';
+                    html += `<div style="display:grid;grid-template-columns:minmax(180px,230px) 75px 1fr 20px;gap:10px;align-items:center;padding:3px 0;font-size:0.87em;">`;
+                    html += `<div style="color:${isStrong ? '#ddd' : '#999'};">${it.name} <span style="color:#666;font-size:0.88em;">${it.range}</span></div>`;
+                    html += `<div style="color:${c};text-align:right;font-weight:${isStrong ? 700 : 500};font-size:0.95em;">${sign}${it.effect_pct.toFixed(1)}%</div>`;
+                    html += `<div style="height:10px;background:rgba(255,255,255,0.03);border-radius:3px;overflow:hidden;position:relative;">
+                        <div style="position:absolute;top:0;bottom:0;left:50%;width:1px;background:rgba(255,255,255,0.25);z-index:1;"></div>
+                        <div style="position:absolute;top:0;bottom:0;${it.effect_pct < 0 ? `right:50%;left:${50-barW}%` : `left:50%;right:${50-barW}%`};background:${c};border-radius:2px;"></div>
+                    </div>`;
+                    html += `<div style="color:#ff9f40;font-size:0.85em;">${marker}</div>`;
+                    html += `</div>`;
+                });
+                html += `</div>`;
+            });
+            return html;
+        }
+
+        function renderWeatherCard(r, color, metricUnit) {
+            const sign = r.effect_pct >= 0 ? '+' : '';
+            const nNeg = r.n_strong_neg || 0, nPos = r.n_strong_pos || 0;
+            let strongBadge = '';
+            if (nNeg >= 3 || nPos >= 3) {
+                const who = nNeg >= nPos ? nNeg : nPos;
+                const cc = nNeg >= nPos ? '#ff6b6b' : '#00ff88';
+                const lbl = nNeg >= nPos ? 'zile cu efect puternic NEGATIV (≤−15%)' : 'zile cu efect puternic POZITIV (≥+15%)';
+                strongBadge = `<div style="margin-top:3px;font-size:0.78em;color:${cc};">⚡ ${who} ${lbl}</div>`;
+            }
+            let summary = `<summary style="cursor:pointer;list-style:none;padding:14px 16px;background:rgba(0,217,255,0.04);border-left:3px solid ${color};border-radius:4px;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;">`;
+            summary += `<div style="font-size:1.6em;">${r.emoji}</div>`;
+            summary += `<div>
+                <div style="font-size:1em;color:#eee;font-weight:600;">${r.name} <span style="color:#888;font-size:0.8em;font-weight:400;">(${r.range})</span></div>
+                <div style="color:#888;font-size:0.82em;margin-top:2px;">${r.n} zile lucratoare · click pentru detalii</div>
+                ${strongBadge}
+            </div>`;
+            summary += `<div style="color:${color};font-size:1.4em;font-weight:700;">${sign}${r.effect_pct.toFixed(1)}%</div>`;
+            summary += `</summary>`;
+
+            const examples = r.examples || [];
+            let body = `<div style="padding:12px 16px;background:rgba(0,0,0,0.2);border-left:3px solid ${color};border-radius:0 0 4px 4px;margin-top:-2px;">`;
+            if (!examples.length) {
+                body += '<p style="color:#888">Nu sunt exemple disponibile.</p>';
+            } else {
+                body += `<div style="color:#888;font-size:0.85em;margin-bottom:8px;">${examples.length} zile concrete (sortate dupa cele mai ilustrative pentru acest tip de vreme):</div>`;
+                examples.forEach(ex => {
+                    const pct = ex.residual_pct;
+                    const c2 = (pct ?? 0) > 0 ? '#00ff88' : '#ff6b6b';
+                    const s = (pct ?? 0) >= 0 ? '+' : '';
+                    const act = ex.actual != null ? Math.round(ex.actual) : '–';
+                    const bas = ex.baseline != null ? Math.round(ex.baseline) : '–';
+                    const pctStr = pct != null ? `${s}${pct.toFixed(1)}%` : '';
+                    body += `<div style="padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.9em;">`;
+                    body += `<div><span style="color:#00d9ff;font-weight:500;">${ex.date}</span> <span style="color:#888;">${ex.dow}</span> — <span style="color:#bbb;">${ex.weather}</span></div>`;
+                    body += `<div style="color:#aaa;margin-left:14px;margin-top:2px;">au venit <strong style="color:#fff;">${act}</strong> ${metricUnit} <span style="color:#666;">(ne-asteptam la <strong>${bas}</strong>)</span> <strong style="color:${c2};margin-left:6px;">${pctStr}</strong></div>`;
+                    body += '</div>';
+                });
+                if (examples.length < 3) {
+                    body += `<div style="color:#ff9f40;font-size:0.82em;margin-top:8px;font-style:italic;">⚠ Doar ${examples.length} exemple disponibile — efectul poate fi intamplator, nu o tendinta sigura.</div>`;
+                }
+            }
+            body += `</div>`;
+            return `<details style="margin-bottom:12px;">${summary}${body}</details>`;
+        }
+
+        async function loadMeteoOverview(df, dt, metric) {
+            const teachHost = document.getElementById('meteoTeaching');
+            const badHost = document.getElementById('meteoBadWeather');
+            const goodHost = document.getElementById('meteoGoodWeather');
+            const neutralHost = document.getElementById('meteoNeutralWeather');
+            const host = document.getElementById('meteoInsights');
+            [teachHost, badHost, goodHost, neutralHost].forEach(h => { if (h) h.innerHTML = '<p style="color:#888">Se incarca...</p>'; });
+            host.innerHTML = '<p style="color:#888">Se incarca...</p>';
+            try {
+                const url = `/api/weather?type=overview&metric=${encodeURIComponent(metric)}&date_from=${df}&date_to=${dt}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                if (data.error) { host.innerHTML = `<p style="color:#ff6b6b">Eroare: ${data.error}</p>`; return; }
+                const metricUnit0 = {partners:'parteneri', transactions:'tranzactii', kg:'kg', ron:'RON'}[metric] || '';
+
+                const ranking = data.ranking || [];
+                // Teaching card (context banner + synthesis + gradients)
+                if (teachHost) {
+                    if (!ranking.length) {
+                        teachHost.innerHTML = '<p style="color:#888">Nu sunt suficiente date pentru sinteza.</p>';
+                    } else {
+                        const ctx = data.context;
+                        const ctxBanner = renderContextBanner(ctx, metricUnit0);
+                        teachHost.innerHTML = ctxBanner + renderTeachingCard(ranking);
+                    }
+                }
+                // "Bad" = avg clearly negative OR 3+ strongly-bad days (even if avg is small)
+                // "Good" = mirror of above
+                const isBad = r => r.effect_pct <= -2 || (r.n_strong_neg || 0) >= 3;
+                const isGood = r => r.effect_pct >= 2 || (r.n_strong_pos || 0) >= 3;
+                const bad = ranking.filter(r => isBad(r) && !isGood(r))
+                    .sort((a,b) => (a.effect_pct - b.effect_pct) || ((b.n_strong_neg||0) - (a.n_strong_neg||0)));
+                const good = ranking.filter(r => isGood(r) && !isBad(r))
+                    .sort((a,b) => (b.effect_pct - a.effect_pct) || ((b.n_strong_pos||0) - (a.n_strong_pos||0)));
+                const mixed = ranking.filter(r => isBad(r) && isGood(r));  // rare: strong on both sides
+                const neutral = ranking.filter(r => !isBad(r) && !isGood(r)).concat(mixed);
+
+                if (badHost) {
+                    if (!bad.length) {
+                        badHost.innerHTML = '<p style="color:#888">In aceasta perioada, nicio vreme nu a cauzat un efect negativ clar (≤−3%) cu date suficiente.</p>';
+                    } else {
+                        badHost.innerHTML = bad.map(r => renderWeatherCard(r, '#ff6b6b', metricUnit0)).join('');
+                    }
+                }
+                if (goodHost) {
+                    if (!good.length) {
+                        goodHost.innerHTML = '<p style="color:#888">In aceasta perioada, nicio vreme nu a aglomerat traficul cu ≥+3%.</p>';
+                    } else {
+                        goodHost.innerHTML = good.map(r => renderWeatherCard(r, '#00ff88', metricUnit0)).join('');
+                    }
+                }
+                if (neutralHost) {
+                    if (!neutral.length) {
+                        neutralHost.innerHTML = '<p style="color:#888">Toate categoriile au efecte clare.</p>';
+                    } else {
+                        neutralHost.innerHTML = neutral.map(r => renderWeatherCard(r, '#888', metricUnit0)).join('');
+                    }
+                }
+
+                const insights = data.insights || [];
+                if (!insights.length) {
+                    host.innerHTML = '<p style="color:#888">Niciun efect meteo semnificativ suplimentar detectat in perioada selectata.</p>';
+                    return;
+                }
+                const emojiFor = ins => {
+                    if (ins.kind === "bucket" && ins.variable === "rain_sum") return "🌧️";
+                    if (ins.kind === "bucket" && ins.variable === "snowfall_sum") return "❄️";
+                    if (ins.kind === "bucket" && (ins.variable || "").includes("temp")) return "🌡️";
+                    if (ins.kind === "bucket" && (ins.variable || "").includes("wind")) return "💨";
+                    if (ins.kind === "bucket" && ins.variable === "humidity_mean") return "💧";
+                    if (ins.kind === "bucket" && ins.variable === "cloudcover_mean") return "☁️";
+                    if (ins.kind === "threshold") return "📏";
+                    if (ins.kind === "lag") return "⏱️";
+                    if (ins.kind === "interaction") return "🧩";
+                    return "💡";
+                };
+                const valueFor = ins => ins.effect_pct ?? ins.above_effect ?? (ins.correlation_at_peak ? ins.correlation_at_peak * 100 : null) ?? ins.effect ?? 0;
+                const colorFor = ins => {
+                    const v = valueFor(ins);
+                    if (v > 2) return "#00ff88";
+                    if (v < -2) return "#ff6b6b";
+                    return "#aaa";
+                };
+                const kindLabel = {
+                    bucket: "Categorie de vreme",
+                    threshold: "Prag critic",
+                    lag: "Efect cu intarziere",
+                    interaction: "Combinatie"
+                };
+                const metricUnit = {partners:'parteneri', transactions:'tranzactii', kg:'kg', ron:'RON'}[metric] || '';
+                let html = '';
+                insights.forEach(ins => {
+                    const c = colorFor(ins);
+                    html += `<div style="margin-bottom:20px;padding:16px;background:rgba(0,217,255,0.04);border-left:3px solid ${c};border-radius:4px;">`;
+                    html += `<div style="font-size:0.78em;color:#888;margin-bottom:6px;">${emojiFor(ins)} <span style="letter-spacing:0.5px;text-transform:uppercase;">${kindLabel[ins.kind] || ins.kind}</span></div>`;
+                    html += `<div style="color:#eee;font-size:1em;line-height:1.55;margin-bottom:12px;font-weight:500;">${ins.text}</div>`;
+                    const examples = ins.examples || [];
+                    if (examples.length) {
+                        html += `<div style="font-size:0.82em;color:#888;margin-bottom:6px;">Zile concrete (top ${examples.length} din perioada selectata):</div>`;
+                        html += '<div style="background:rgba(0,0,0,0.2);padding:8px 12px;border-radius:4px;font-size:0.88em;">';
+                        examples.forEach(ex => {
+                            const pct = ex.residual_pct;
+                            const diffColor = (pct ?? 0) > 0 ? '#00ff88' : '#ff6b6b';
+                            const sign = (pct ?? 0) >= 0 ? '+' : '';
+                            const actual = ex.actual !== null && ex.actual !== undefined ? Math.round(ex.actual) : '–';
+                            const baseline = ex.baseline !== null && ex.baseline !== undefined ? Math.round(ex.baseline) : '–';
+                            const pctStr = pct !== null && pct !== undefined ? `${sign}${pct.toFixed(1)}%` : '';
+                            let lagPart = '';
+                            if (ex.lag_trigger) {
+                                const lt = ex.lag_trigger;
+                                const lagTxt = lt.lag > 0 ? `cu ${lt.lag}z inainte` : `cu ${Math.abs(lt.lag)}z dupa`;
+                                lagPart = `<div style="color:#888;font-size:0.9em;margin-left:14px;margin-top:3px;">↳ declansator ${lagTxt}: <span style="color:#aaa">${lt.date}</span> — ${lt.weather}</div>`;
+                            }
+                            html += `<div style="padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.06);">`;
+                            html += `<div><span style="color:#00d9ff;font-weight:500;">${ex.date}</span> <span style="color:#888;">${ex.dow}</span> — <span style="color:#bbb;">${ex.weather}</span></div>`;
+                            html += `<div style="color:#aaa;margin-left:14px;margin-top:3px;">au venit <strong style="color:#fff;">${actual}</strong> ${metricUnit} <span style="color:#666;">(asteptat: ${baseline})</span> <strong style="color:${diffColor};margin-left:6px;">${pctStr}</strong></div>`;
+                            html += lagPart;
+                            html += '</div>';
+                        });
+                        html += '</div>';
+                    }
+                    html += '</div>';
+                });
+                host.innerHTML = html;
+            } catch (e) {
+                host.innerHTML = `<p style="color:#ff6b6b">Eroare: ${e.message}</p>`;
+            }
+        }
+        async function loadMeteoExtreme(df, dt, metric) {
+            const host = document.getElementById('meteoExtreme');
+            host.innerHTML = '<p style="color:#888">Se incarca...</p>';
+            try {
+                const url = `/api/weather?type=extreme_days&metric=${encodeURIComponent(metric)}&date_from=${df}&date_to=${dt}&limit=20`;
+                const data = await (await fetch(url)).json();
+                const rows = data.extreme_days || [];
+                if (!rows.length) { host.innerHTML = '<p style="color:#555">Nu sunt date.</p>'; return; }
+                let html = '<table><thead><tr>';
+                html += '<th>Data</th>';
+                html += '<th class="text-right" title="Cati au venit efectiv in ziua asta">Au venit</th>';
+                html += '<th class="text-right" title="Medianul ultimelor 28 zile cu aceeasi zi a saptamanii">Asteptat</th>';
+                html += '<th class="text-right" title="Diferenta (au venit - asteptat)">Diferenta</th>';
+                html += '<th class="text-right" title="Procentual fata de asteptat">Δ%</th>';
+                html += '<th class="text-right">Temp max (°C)</th><th class="text-right">Temp min (°C)</th>';
+                html += '<th class="text-right">Ploaie (mm)</th><th class="text-right">Zapada (cm)</th>';
+                html += '<th class="text-right">Vant max (km/h)</th>';
+                html += '<th class="text-right" title="Cod WMO (0=senin, 61=ploaie, 71=zapada, etc.)">Vreme</th>';
+                html += '</tr></thead><tbody>';
+                rows.forEach(r => {
+                    const pct = r.residual_pct;
+                    const color = pct > 0 ? '#00ff88' : '#ff6b6b';
+                    const sign = pct >= 0 ? '+' : '';
+                    const v = parseFloat(r.value);
+                    const b = r.baseline !== null && r.baseline !== undefined ? parseFloat(r.baseline) : null;
+                    const res = r.residual !== null && r.residual !== undefined ? parseFloat(r.residual) : null;
+                    const pctStr = pct !== null && pct !== undefined ? sign + pct.toFixed(1) + '%' : '–';
+                    html += `<tr>
+                        <td>${r.date}</td>
+                        <td class="text-right">${v.toFixed(0)}</td>
+                        <td class="text-right" style="color:#888">${b !== null ? b.toFixed(1) : '–'}</td>
+                        <td class="text-right" style="color:${color}">${sign}${res !== null ? res.toFixed(1) : '–'}</td>
+                        <td class="text-right" style="color:${color};font-weight:600;">${pctStr}</td>
+                        <td class="text-right">${r.temp_max ?? '–'}</td>
+                        <td class="text-right">${r.temp_min ?? '–'}</td>
+                        <td class="text-right">${r.precipitation_sum ?? '–'}</td>
+                        <td class="text-right">${r.snowfall_sum ?? '–'}</td>
+                        <td class="text-right">${r.wind_speed_max ?? '–'}</td>
+                        <td class="text-right" style="color:#888">${r.weather_code ?? '–'}</td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                host.innerHTML = html;
+            } catch (e) {
+                host.innerHTML = `<p style="color:#ff6b6b">Eroare: ${e.message}</p>`;
             }
         }
     </script>

@@ -70,6 +70,17 @@ waste_types       - Hulladék típusok
 waste_categories  - Hulladék kategóriák
 ├── id (PK)
 └── name          - Kategória neve (Cupru, Aluminiu, Fier, stb.)
+
+weather_oradea    - Napi időjárás Nagyvárad (Open-Meteo backfill)
+├── date (PK)     - Dátum
+├── temp_max/min/mean - Hőmérséklet (°C)
+├── apparent_temp_* - Érzékelt hőm.
+├── precipitation_sum, rain_sum, snowfall_sum, snow_depth_max - Csapadék
+├── wind_speed_max, wind_gusts_max, wind_direction_dominant - Szél
+├── pressure_mean, humidity_mean, cloudcover_mean - Óránkénti átlagokból
+├── shortwave_radiation_sum, sunshine_duration, daylight_duration - Sugárzás
+├── et0_evapotranspiration - Evapotranspiráció
+└── weather_code - WMO kód
 ```
 
 ## API Endpoints
@@ -137,6 +148,18 @@ waste_categories  - Hulladék kategóriák
 | `type=illegal_workdays` | Audit: tranzactii pe zile oficial nelucratoare |
 | POST `?action=confirm_closure` body `{date_from,date_to,reason}` | Confirma interval ca inchidere |
 | POST `?action=ignore_closure` body `{date_from,date_to}` | Marcheaza ca non-inchidere |
+
+### `/api/weather`
+| Parameter | Description |
+|-----------|-------------|
+| `type=ping` | Health check |
+| `type=residuals&metric=X&date_from=Y&date_to=Z` | Per-zi: actual, baseline, residual + coloane meteo |
+| `type=buckets&variable=rain_sum&metric=partners` | Bucket-uri pt variabila vs residual |
+| `type=lag_curve&variable=rain_sum&metric=partners` | Corelatie la lag -2..+3 |
+| `type=extreme_days&metric=partners&limit=20` | Top-N zile cu ecart maxim fata de baseline |
+| `type=overview&metric=partners` | 4 familii de ipoteze agregate (narative) |
+
+Metric: `partners`, `transactions`, `kg`, `ron`. Variable (buckets): `rain_sum`, `snowfall_sum`, `temp_max`, `temp_min`, `wind_gusts_max`, `humidity_mean`, `cloudcover_mean`.
 
 ### `/api/monthly`
 | Parameter | Description |
@@ -271,23 +294,24 @@ Use `= %s` for exact match (CNP, sex)
 - `LEFT JOIN` when showing partners even without transactions
 - `JOIN` when filtering requires transaction data
 
-## Statistics (as of Feb 2026)
-- Total turnover: ~250.3M RON (2022-2026)
-- Transactions: 112,765+
-- Transaction items: 225,089+
-- Registered partners: 30,853+
+## Statistics (as of Apr 2026)
+- Transactions: 160,769+
+- Transaction items: ~323,000+
+- Registered partners: 31,220+
 - Waste categories: 16
 - Waste types: 47
-- Period: 2022.01 - 2026.02
+- Period: 2020.01 - 2026.04
 
 ### Yearly breakdown
-| Year | Transactions | Partners | Working days | Total RON |
-|------|-------------|----------|-------------|-----------|
-| 2022 | 28,389 | ~8,500 | 271 | ~60.9M |
-| 2023 | 28,355 | ~8,750 | 272 | ~61.0M |
-| 2024 | 28,029 | 8,790 | 280 | ~70.8M |
-| 2025 | 25,284 | ~8,800 | 272 | ~52.1M |
-| 2026 | 2,708 | ~2,500 | 30 | ~5.4M |
+| Year | Transactions | Working days | RON (thousand) | Notes |
+|------|-------------|-------------|----------------|-------|
+| 2020 | 16,102 | 243 | 15,886 | Jan-Nov (no Dec folder), Apr COVID lockdown (4 days only) |
+| 2021 | 26,692 | 278 | 48,910 | full year |
+| 2022 | 28,389 | 276 | 60,928 | full year |
+| 2023 | 28,355 | 275 | 61,039 | full year |
+| 2024 | 28,029 | 280 | 70,818 | full year |
+| 2025 | 25,284 | 278 | 52,063 | full year |
+| 2026 | 7,918 | 81 | 14,636 | Jan-Apr partial |
 
 ## Development
 
