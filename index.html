@@ -789,29 +789,6 @@
             </div>
 
             <div class="card">
-                <h2><span class="icon">📊</span> Grafice pe categorii de vreme</h2>
-                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
-                    Fiecare grafic imparte vremea in categorii (ex. "fara ploaie", "ploaie slaba", "medie", "puternica") si arata cat <strong style="color:#00ff88">mai multi (verde)</strong> sau <strong style="color:#ff6b6b">mai putini (rosu)</strong> oameni au venit in acea categorie, <strong style="color:#aaa">in procente</strong>, fata de o zi normala. Hover pe o bara = vezi efectul + <strong style="color:#aaa">cate zile</strong> au avut acea vreme (cu cat mai multe zile, cu atat mai de incredere e procentul).
-                </p>
-                <p style="color:#555;font-size:0.8em;margin-bottom:10px;font-style:italic;">
-                    Exemplu: daca bara "ploaie puternica" arata -7% cu 49 zile, inseamna ca in cele 49 de zile cu ploaie &gt;10mm au venit in medie cu 7% mai putini parteneri decat intr-o zi normala similara.
-                </p>
-                <div id="meteoBuckets"></div>
-            </div>
-
-            <div class="card">
-                <h2><span class="icon">⏱️</span> Efecte cu intarziere (lag)</h2>
-                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
-                    Vremea NU afecteaza mereu traficul in aceeasi zi. Exemplu: daca ploua azi, oamenii pot veni abia peste 1-2 zile (cand se opreste si au material acumulat). Graficele arata <strong style="color:#aaa">corelatia</strong> intre vreme si trafic la diferite decalaje: <strong>azi</strong>, <strong>+1 zi</strong>, <strong>+2 zile</strong>, etc.<br>
-                    → Valori aproape de <strong>0</strong> = fara efect<br>
-                    → <strong style="color:#00ff88">Pozitive</strong> = vremea X aduce mai multi oameni<br>
-                    → <strong style="color:#ff6b6b">Negative</strong> = aduce mai putini<br>
-                    → <span style="color:#ff9f40">Punct portocaliu</span> = lag-ul cu efectul cel mai mare
-                </p>
-                <div id="meteoLag"></div>
-            </div>
-
-            <div class="card">
                 <h2><span class="icon">🔥</span> Cele mai atipice 20 zile</h2>
                 <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
                     Zilele cu cel mai mare ecart fata de <strong style="color:#aaa">normalul asteptat</strong> (medianul ultimelor 28 zile lucratoare cu aceeasi zi a saptamanii). Uita-te la coloanele meteo pentru a vedea ce era in ziua respectiva si poate intelege de ce. <strong style="color:#00ff88">Verde</strong> = au venit mult mai multi decat normal. <strong style="color:#ff6b6b">Rosu</strong> = mult mai putini.
@@ -2684,8 +2661,6 @@
             const metric = document.getElementById('meteoMetric').value;
             await Promise.all([
                 loadMeteoOverview(df, dt, metric),
-                loadMeteoBuckets(df, dt, metric),
-                loadMeteoLag(df, dt, metric),
                 loadMeteoExtreme(df, dt, metric),
             ]);
         }
@@ -2728,136 +2703,44 @@
                     lag: "Efect cu intarziere",
                     interaction: "Combinatie"
                 };
-                let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:12px;">';
+                const metricUnit = {partners:'parteneri', transactions:'tranzactii', kg:'kg', ron:'RON'}[metric] || '';
+                let html = '';
                 insights.forEach(ins => {
                     const c = colorFor(ins);
-                    html += `<div style="padding:14px;background:rgba(0,217,255,0.04);border-left:3px solid ${c};border-radius:4px;">`;
-                    html += `<div style="font-size:0.75em;color:#888;margin-bottom:6px;">${emojiFor(ins)} <span style="letter-spacing:0.5px;text-transform:uppercase;">${kindLabel[ins.kind] || ins.kind}</span></div>`;
-                    html += `<div style="color:#ddd;font-size:0.95em;line-height:1.55;">${ins.text}</div>`;
+                    html += `<div style="margin-bottom:20px;padding:16px;background:rgba(0,217,255,0.04);border-left:3px solid ${c};border-radius:4px;">`;
+                    html += `<div style="font-size:0.78em;color:#888;margin-bottom:6px;">${emojiFor(ins)} <span style="letter-spacing:0.5px;text-transform:uppercase;">${kindLabel[ins.kind] || ins.kind}</span></div>`;
+                    html += `<div style="color:#eee;font-size:1em;line-height:1.55;margin-bottom:12px;font-weight:500;">${ins.text}</div>`;
+                    const examples = ins.examples || [];
+                    if (examples.length) {
+                        html += `<div style="font-size:0.82em;color:#888;margin-bottom:6px;">Zile concrete (top ${examples.length} din perioada selectata):</div>`;
+                        html += '<div style="background:rgba(0,0,0,0.2);padding:8px 12px;border-radius:4px;font-size:0.88em;">';
+                        examples.forEach(ex => {
+                            const pct = ex.residual_pct;
+                            const diffColor = (pct ?? 0) > 0 ? '#00ff88' : '#ff6b6b';
+                            const sign = (pct ?? 0) >= 0 ? '+' : '';
+                            const actual = ex.actual !== null && ex.actual !== undefined ? Math.round(ex.actual) : '–';
+                            const baseline = ex.baseline !== null && ex.baseline !== undefined ? Math.round(ex.baseline) : '–';
+                            const pctStr = pct !== null && pct !== undefined ? `${sign}${pct.toFixed(1)}%` : '';
+                            let lagPart = '';
+                            if (ex.lag_trigger) {
+                                const lt = ex.lag_trigger;
+                                const lagTxt = lt.lag > 0 ? `cu ${lt.lag}z inainte` : `cu ${Math.abs(lt.lag)}z dupa`;
+                                lagPart = `<div style="color:#888;font-size:0.9em;margin-left:14px;margin-top:3px;">↳ declansator ${lagTxt}: <span style="color:#aaa">${lt.date}</span> — ${lt.weather}</div>`;
+                            }
+                            html += `<div style="padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.06);">`;
+                            html += `<div><span style="color:#00d9ff;font-weight:500;">${ex.date}</span> <span style="color:#888;">${ex.dow}</span> — <span style="color:#bbb;">${ex.weather}</span></div>`;
+                            html += `<div style="color:#aaa;margin-left:14px;margin-top:3px;">au venit <strong style="color:#fff;">${actual}</strong> ${metricUnit} <span style="color:#666;">(asteptat: ${baseline})</span> <strong style="color:${diffColor};margin-left:6px;">${pctStr}</strong></div>`;
+                            html += lagPart;
+                            html += '</div>';
+                        });
+                        html += '</div>';
+                    }
                     html += '</div>';
                 });
-                html += '</div>';
                 host.innerHTML = html;
             } catch (e) {
                 host.innerHTML = `<p style="color:#ff6b6b">Eroare: ${e.message}</p>`;
             }
-        }
-        const METEO_BUCKET_VARS = [
-            { key: "rain_sum",        title: "🌧️ Ploaie (mm)" },
-            { key: "snowfall_sum",    title: "❄️ Zapada (cm)" },
-            { key: "temp_max",        title: "🌡️ Temp. maxima (°C)" },
-            { key: "wind_gusts_max",  title: "💨 Rafale vant (km/h)" },
-            { key: "humidity_mean",   title: "💧 Umiditate (%)" },
-            { key: "cloudcover_mean", title: "☁️ Nori (%)" },
-        ];
-        const _meteoBucketCharts = {};
-
-        async function loadMeteoBuckets(df, dt, metric) {
-            const host = document.getElementById('meteoBuckets');
-            host.innerHTML = '<div id="meteoBucketGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px;"></div>';
-            const grid = document.getElementById('meteoBucketGrid');
-            await Promise.all(METEO_BUCKET_VARS.map(async v => {
-                const wrap = document.createElement('div');
-                wrap.innerHTML = `<div style="color:#aaa;font-weight:600;margin-bottom:6px;">${v.title}</div>
-                    <div style="position:relative;height:220px;"><canvas></canvas></div>`;
-                grid.appendChild(wrap);
-                try {
-                    const url = `/api/weather?type=buckets&metric=${encodeURIComponent(metric)}&variable=${v.key}&date_from=${df}&date_to=${dt}`;
-                    const data = await (await fetch(url)).json();
-                    const buckets = (data.buckets || []).filter(b => b.mean_residual_pct !== null && b.n >= 5);
-                    if (!buckets.length) {
-                        wrap.querySelector('div[style*="height"]').innerHTML = '<p style="color:#555">Nu sunt date suficiente.</p>';
-                        return;
-                    }
-                    const labels = buckets.map(b => b.bucket);
-                    const values = buckets.map(b => parseFloat(b.mean_residual_pct));
-                    const bg = values.map(x => x > 0 ? 'rgba(0,255,136,0.4)' : 'rgba(255,107,107,0.4)');
-                    const border = values.map(x => x > 0 ? '#00ff88' : '#ff6b6b');
-                    const canvas = wrap.querySelector('canvas');
-                    if (_meteoBucketCharts[v.key]) _meteoBucketCharts[v.key].destroy();
-                    _meteoBucketCharts[v.key] = new Chart(canvas.getContext('2d'), {
-                        type: 'bar',
-                        data: { labels, datasets: [{ label: '% vs baseline', data: values, backgroundColor: bg, borderColor: border, borderWidth: 1 }] },
-                        options: {
-                            responsive: true, maintainAspectRatio: false,
-                            plugins: {
-                                legend: { display: false },
-                                tooltip: { callbacks: { label: ctx => {
-                                    const b = buckets[ctx.dataIndex];
-                                    const pct = ctx.parsed.y;
-                                    const sign = pct >= 0 ? '+' : '';
-                                    const dir = pct > 0 ? 'mai multi' : 'mai putini';
-                                    return [`${sign}${pct.toFixed(1)}% fata de normal`,
-                                            `(${Math.abs(pct).toFixed(1)}% ${dir})`,
-                                            `Bazat pe ${b.n} zile cu aceasta vreme`];
-                                } } }
-                            },
-                            scales: {
-                                y: { ticks: { color: '#aaa', callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-                                x: { ticks: { color: '#aaa', font: { size: 10 } }, grid: { display: false } }
-                            }
-                        }
-                    });
-                } catch (e) {
-                    wrap.innerHTML += `<p style="color:#ff6b6b">Eroare: ${e.message}</p>`;
-                }
-            }));
-        }
-        const METEO_LAG_VARS = [
-            { key: "rain_sum",       title: "🌧️ Ploaie" },
-            { key: "snowfall_sum",   title: "❄️ Zapada" },
-            { key: "temp_max",       title: "🌡️ Temp. maxima" },
-            { key: "wind_gusts_max", title: "💨 Rafale vant" },
-        ];
-        const _meteoLagCharts = {};
-
-        async function loadMeteoLag(df, dt, metric) {
-            const host = document.getElementById('meteoLag');
-            host.innerHTML = '<div id="meteoLagGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;"></div>';
-            const grid = document.getElementById('meteoLagGrid');
-            await Promise.all(METEO_LAG_VARS.map(async v => {
-                const wrap = document.createElement('div');
-                wrap.innerHTML = `<div style="color:#aaa;font-weight:600;margin-bottom:6px;">${v.title}</div>
-                    <div style="position:relative;height:180px;"><canvas></canvas></div>`;
-                grid.appendChild(wrap);
-                try {
-                    const url = `/api/weather?type=lag_curve&metric=${encodeURIComponent(metric)}&variable=${v.key}&date_from=${df}&date_to=${dt}`;
-                    const data = await (await fetch(url)).json();
-                    const lags = (data.lags || []).filter(l => l.correlation !== null);
-                    if (!lags.length) {
-                        wrap.querySelector('div[style*="height"]').innerHTML = '<p style="color:#555">Nu sunt date suficiente.</p>';
-                        return;
-                    }
-                    const labels = lags.map(l => l.lag === 0 ? 'azi' : (l.lag > 0 ? `+${l.lag}z` : `${l.lag}z`));
-                    const values = lags.map(l => parseFloat(l.correlation));
-                    // Find the peak lag (highest abs correlation) to highlight
-                    const peakIdx = values.reduce((bi, _, i) => Math.abs(values[i]) > Math.abs(values[bi]) ? i : bi, 0);
-                    const pointColors = values.map((_, i) => i === peakIdx ? '#ff9f40' : '#00d9ff');
-                    const pointRadii = values.map((_, i) => i === peakIdx ? 7 : 4);
-                    const canvas = wrap.querySelector('canvas');
-                    if (_meteoLagCharts[v.key]) _meteoLagCharts[v.key].destroy();
-                    _meteoLagCharts[v.key] = new Chart(canvas.getContext('2d'), {
-                        type: 'line',
-                        data: { labels, datasets: [{ label: 'corr', data: values, borderColor: '#00d9ff',
-                                 backgroundColor: 'rgba(0,217,255,0.15)', tension: 0.3, fill: true,
-                                 pointRadius: pointRadii, pointBackgroundColor: pointColors, pointBorderColor: pointColors }] },
-                        options: {
-                            responsive: true, maintainAspectRatio: false,
-                            plugins: {
-                                legend: { display: false },
-                                tooltip: { callbacks: { label: ctx => {
-                                    const l = lags[ctx.dataIndex];
-                                    return `r=${l.correlation.toFixed(3)} (n=${l.n})`;
-                                } } }
-                            },
-                            scales: { y: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-                                      x: { ticks: { color: '#aaa' }, grid: { display: false } } }
-                        }
-                    });
-                } catch (e) {
-                    wrap.innerHTML += `<p style="color:#ff6b6b">Eroare: ${e.message}</p>`;
-                }
-            }));
         }
         async function loadMeteoExtreme(df, dt, metric) {
             const host = document.getElementById('meteoExtreme');

@@ -62,6 +62,57 @@ BUCKET_SPECS = {
                           (70, None, "Inchis (>70%)")],
 }
 
+DOW_NAMES_RO = ["Luni", "Marti", "Miercuri", "Joi", "Vineri", "Sambata", "Duminica"]
+
+def _weather_desc(row):
+    bits = []
+    tmax = row.get("temp_max")
+    tmin = row.get("temp_min")
+    if tmax is not None:
+        if tmin is not None:
+            bits.append(f"{float(tmin):.0f}..{float(tmax):.0f}°C")
+        else:
+            bits.append(f"{float(tmax):.0f}°C")
+    ps = row.get("precipitation_sum")
+    if ps is not None and float(ps) >= 0.5:
+        bits.append(f"{float(ps):.1f}mm ploaie")
+    ss = row.get("snowfall_sum")
+    if ss is not None and float(ss) >= 0.5:
+        bits.append(f"{float(ss):.1f}cm zapada")
+    sd = row.get("snow_depth_max")
+    if sd is not None and float(sd) >= 0.02:
+        bits.append(f"strat {float(sd)*100:.0f}cm")
+    wsm = row.get("wind_speed_max")
+    if wsm is not None and float(wsm) >= 30:
+        bits.append(f"vant {float(wsm):.0f}km/h")
+    wgm = row.get("wind_gusts_max")
+    if wgm is not None and float(wgm) >= 50:
+        bits.append(f"rafale {float(wgm):.0f}km/h")
+    hum = row.get("humidity_mean")
+    if hum is not None and float(hum) >= 85:
+        bits.append(f"umed ({float(hum):.0f}%)")
+    cc = row.get("cloudcover_mean")
+    if cc is not None and float(cc) >= 80:
+        bits.append("nori inchisi")
+    elif cc is not None and float(cc) <= 25:
+        bits.append("senin")
+    return ", ".join(bits) if bits else "vreme calma"
+
+def _day_example(row):
+    d = row.get("date")
+    date_str = d.isoformat() if hasattr(d, "isoformat") else str(d)
+    dow_idx = row.get("dow")
+    dow = DOW_NAMES_RO[(int(dow_idx) - 1) % 7] if dow_idx else ""
+    return {
+        "date": date_str,
+        "dow": dow,
+        "actual": float(row["value"]) if row.get("value") is not None else None,
+        "baseline": float(row["baseline"]) if row.get("baseline") is not None else None,
+        "residual": float(row["residual"]) if row.get("residual") is not None else None,
+        "residual_pct": row.get("residual_pct"),
+        "weather": _weather_desc(row),
+    }
+
 def find_threshold(pairs, min_pts_per_side=15):
     """Given list of (x, residual) pairs, find the split point that maximizes
     |t-statistic| of residual means. Returns dict or None."""
@@ -243,7 +294,7 @@ class handler(BaseHTTPRequestHandler):
             "humidity_mean": "%", "cloudcover_mean": "%", "precipitation_sum": "mm",
         }
 
-        # Family A: bucket comparisons — narrative form
+        # Family A: bucket comparisons — narrative form with example days
         for var in ["rain_sum", "temp_max", "wind_gusts_max", "snowfall_sum",
                     "humidity_mean", "cloudcover_mean"]:
             bres = self.buckets(cur, metric_name, var, date_from, date_to)
@@ -259,7 +310,19 @@ class handler(BaseHTTPRequestHandler):
             vlbl = VAR_LABEL.get(var, var)
             text = (f"Cand {vlbl} e in categoria \"{top['bucket']}\", "
                     f"vin cu {abs(pct):.0f}% {direction} {mlabel} decat intr-o zi normala. "
-                    f"Observat pe {top['n']} zile.")
+                    f"Observat pe {top['n']} zile din perioada selectata.")
+            # Find top example days in this bucket
+            lo, hi = top["lo"], top["hi"]
+            bucket_rows = []
+            for r in rows:
+                if r.get(var) is None: continue
+                v = float(r[var])
+                if lo is not None and v < lo: continue
+                if hi is not None and v >= hi: continue
+                bucket_rows.append(r)
+            # Sort by residual in the direction of the effect
+            bucket_rows.sort(key=lambda r: r["residual"], reverse=(pct > 0))
+            examples = [_day_example(r) for r in bucket_rows[:8]]
             insights.append({
                 "kind": "bucket",
                 "variable": var,
@@ -267,9 +330,10 @@ class handler(BaseHTTPRequestHandler):
                 "effect_pct": pct,
                 "n": top["n"],
                 "text": text,
+                "examples": examples,
             })
 
-        # Family B: threshold detection — narrative form
+        # Family B: threshold detection — narrative + examples above the threshold
         for var in ["temp_max", "temp_min", "wind_speed_max", "wind_gusts_max",
                     "precipitation_sum", "humidity_mean"]:
             pairs = [(float(r[var]), r["residual"]) for r in rows if r.get(var) is not None]
@@ -284,6 +348,10 @@ class handler(BaseHTTPRequestHandler):
             text = (f"Am gasit un prag la {vlbl} = {t['threshold']:.1f}{unit}. "
                     f"Cand e peste acest prag, traficul {direction} cu ~{diff_abs:.0f} {mlabel}/zi "
                     f"fata de zilele sub prag. ({t['n_above']} zile peste, {t['n_below']} sub.)")
+            # Example days above the threshold, sorted by residual in effect direction
+            above_rows = [r for r in rows if r.get(var) is not None and float(r[var]) >= t["threshold"]]
+            above_rows.sort(key=lambda r: r["residual"], reverse=(above_minus_below > 0))
+            examples = [_day_example(r) for r in above_rows[:8]]
             insights.append({
                 "kind": "threshold",
                 "variable": var,
@@ -294,6 +362,7 @@ class handler(BaseHTTPRequestHandler):
                 "n_above": t["n_above"],
                 "n_below": t["n_below"],
                 "text": text,
+                "examples": examples,
             })
 
         # Family C: lag analysis — narrative form
@@ -315,6 +384,32 @@ class handler(BaseHTTPRequestHandler):
                     f"traficul {direction_desc} (corelatie {peak['correlation']:+.2f} la lag={peak['lag']} "
                     f"vs {zero['correlation']:+.2f} in aceeasi zi). "
                     f"Oamenii reactioneaza cu intarziere.")
+            # Lag examples: find days where extreme weather was followed (peak["lag"] later)
+            # by large residual in the expected direction
+            sorted_rows = sorted(rows, key=lambda r: str(r["date"]))
+            lag_val = peak["lag"]
+            sign = 1 if peak["correlation"] > 0 else -1
+            pair_scores = []
+            for idx, src in enumerate(sorted_rows):
+                if src.get(var) is None: continue
+                tgt_idx = idx + lag_val
+                if tgt_idx < 0 or tgt_idx >= len(sorted_rows): continue
+                tgt = sorted_rows[tgt_idx]
+                if tgt.get("residual") is None: continue
+                score = float(src[var]) * tgt["residual"] * sign
+                pair_scores.append((src, tgt, score))
+            pair_scores.sort(key=lambda p: p[2], reverse=True)
+            lag_examples = []
+            for src, tgt, _ in pair_scores[:8]:
+                ex = _day_example(tgt)
+                ex["lag_trigger"] = {
+                    "date": src["date"].isoformat() if hasattr(src["date"], "isoformat") else str(src["date"]),
+                    "variable": var,
+                    "value": float(src[var]) if src.get(var) is not None else None,
+                    "weather": _weather_desc(src),
+                    "lag": lag_val,
+                }
+                lag_examples.append(ex)
             insights.append({
                 "kind": "lag",
                 "variable": var,
@@ -322,6 +417,7 @@ class handler(BaseHTTPRequestHandler):
                 "correlation_at_peak": peak["correlation"],
                 "correlation_at_zero": zero["correlation"],
                 "text": text,
+                "examples": lag_examples,
             })
 
         # Family D: curated interaction patterns — narrative form
@@ -330,28 +426,34 @@ class handler(BaseHTTPRequestHandler):
             n = len(vals)
             return (sum(vals) / n if n else None), n
 
+        cold_wet_fn = lambda r: (r.get("temp_max") is not None and float(r["temp_max"]) < 5
+                                 and r.get("precipitation_sum") is not None and float(r["precipitation_sum"]) > 2)
+        hot_dry_fn = lambda r: (r.get("temp_max") is not None and float(r["temp_max"]) > 30
+                                and r.get("precipitation_sum") is not None and float(r["precipitation_sum"]) < 0.5)
         patterns = []
-        cold_wet = avg_res(lambda r: r.get("temp_max") is not None and float(r["temp_max"]) < 5
-                           and r.get("precipitation_sum") is not None and float(r["precipitation_sum"]) > 2)
-        hot_dry = avg_res(lambda r: r.get("temp_max") is not None and float(r["temp_max"]) > 30
-                          and r.get("precipitation_sum") is not None and float(r["precipitation_sum"]) < 0.5)
-        if cold_wet[1] >= 5:
-            patterns.append(("Frig + ploaie (sub 5°C si peste 2mm)", cold_wet[0], cold_wet[1]))
-        if hot_dry[1] >= 5:
-            patterns.append(("Canicula uscata (peste 30°C, fara ploaie)", hot_dry[0], hot_dry[1]))
+        cw = avg_res(cold_wet_fn)
+        hd = avg_res(hot_dry_fn)
+        if cw[1] >= 5:
+            patterns.append(("Frig + ploaie (sub 5°C si peste 2mm)", cw[0], cw[1], cold_wet_fn))
+        if hd[1] >= 5:
+            patterns.append(("Canicula uscata (peste 30°C, fara ploaie)", hd[0], hd[1], hot_dry_fn))
 
-        for name, val, n in patterns:
+        for name, val, n, fn in patterns:
             if val is None or abs(val) < 3:
                 continue
             direction = "mai multi" if val > 0 else "mai putini"
             text = (f"{name}: au venit in medie {abs(val):.0f} {mlabel} {direction} "
                     f"decat intr-o zi normala. Observat pe {n} zile.")
+            matching = [r for r in rows if fn(r)]
+            matching.sort(key=lambda r: r["residual"], reverse=(val > 0))
+            examples = [_day_example(r) for r in matching[:8]]
             insights.append({
                 "kind": "interaction",
                 "pattern": name,
                 "effect": round(val, 1),
                 "n": n,
                 "text": text,
+                "examples": examples,
             })
 
         def score(i):
