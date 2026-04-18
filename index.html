@@ -166,6 +166,7 @@
             <button class="nav-tab" onclick="showSection('predictions')">Predictii</button>
             <button class="nav-tab" onclick="showSection('stats')">Statisztika</button>
             <button class="nav-tab" onclick="showSection('sezonalitate')">Sezonalitate</button>
+            <button class="nav-tab" onclick="showSection('meteo')">Meteo</button>
         </div>
         <a href="firme.html" style="padding: 8px 16px; background: linear-gradient(135deg, #ff9f40, #ff6b6b); border: none; border-radius: 6px; color: #fff; font-size: 0.8em; cursor: pointer; font-weight: 600; text-decoration: none;">Firme (B2B)</a>
         <div class="last-update">Actualizat: <span id="lastUpdate">...</span></div>
@@ -756,6 +757,53 @@
             </div>
         </div>
 
+        <!-- METEO & TRAFIC -->
+        <div id="section-meteo" class="section">
+            <div class="card">
+                <h2><span class="icon">🌦️</span> Meteo & Trafic</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Compara traficul cu vremea reala la Oradea. Fiecare zi are un <strong style="color:#aaa">baseline</strong> = medianul ultimelor 28 zile lucratoare cu aceeasi zi a saptamanii. Vremea se masoara fata de acest baseline — asa excludem sezonul si ramane efectul meteo real.
+                </p>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin-bottom:4px;">
+                    <div><label style="color:#888;font-size:0.85em;display:block;">De la:</label>
+                        <input type="date" id="meteoDateFrom" style="background:#1a1a2e;color:#fff;border:1px solid #333;padding:6px;border-radius:4px;"></div>
+                    <div><label style="color:#888;font-size:0.85em;display:block;">Pana la:</label>
+                        <input type="date" id="meteoDateTo" style="background:#1a1a2e;color:#fff;border:1px solid #333;padding:6px;border-radius:4px;"></div>
+                    <div><label style="color:#888;font-size:0.85em;display:block;">Metrica:</label>
+                        <select id="meteoMetric" style="background:#1a1a2e;color:#fff;border:1px solid #333;padding:6px;border-radius:4px;">
+                            <option value="partners">Parteneri</option>
+                            <option value="transactions">Tranzactii</option>
+                            <option value="kg">Kg</option>
+                            <option value="ron">RON</option>
+                        </select></div>
+                    <button id="meteoApply" style="padding:8px 18px;background:#00d9ff;color:#000;border:none;border-radius:4px;cursor:pointer;font-weight:600;">Analizeaza</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">💡</span> Insights auto-detectate</h2>
+                <div id="meteoInsights"></div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">🌧️</span> Buckets: ploaie, zapada, temperatura, vant</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">Cum se comporta traficul pe diferite conditii. <strong style="color:#00ff88">Verde</strong> = mai mult decat baseline, <strong style="color:#ff6b6b">rosu</strong> = mai putin.</p>
+                <div id="meteoBuckets"></div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">⏱️</span> Analiza lag (efect la 0, 1, 2, 3 zile dupa)</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">Corelatie intre vreme si residual la diferite decalaje. Efect maxim nu e mereu in aceeasi zi.</p>
+                <div id="meteoLag"></div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">🔥</span> Zile extreme</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">Cele mai atipice zile: cel mai mare ecart fata de baseline.</p>
+                <div id="meteoExtreme" class="scroll-table"></div>
+            </div>
+        </div>
+
     </div>
 
     <div class="modal-overlay" id="partnerModal">
@@ -816,6 +864,10 @@
             if (id === 'sezonalitate' && !window._sezLoaded) {
                 window._sezLoaded = true;
                 loadSezonalitate();
+            }
+            if (id === 'meteo' && !window._meteoLoaded) {
+                window._meteoLoaded = true;
+                loadMeteo();
             }
         }
 
@@ -2598,6 +2650,41 @@
             } catch (e) {
                 console.error('loadSezAudit failed', e);
             }
+        }
+
+        // === Meteo & Trafic (Phase 2) ===
+        async function loadMeteo() {
+            const df = document.getElementById('meteoDateFrom');
+            const dt = document.getElementById('meteoDateTo');
+            if (!df.value) df.value = '2022-01-03';
+            if (!dt.value) dt.value = new Date().toISOString().substring(0,10);
+            document.getElementById('meteoApply').onclick = refreshMeteo;
+            refreshMeteo();
+        }
+
+        async function refreshMeteo() {
+            const df = document.getElementById('meteoDateFrom').value;
+            const dt = document.getElementById('meteoDateTo').value;
+            const metric = document.getElementById('meteoMetric').value;
+            await Promise.all([
+                loadMeteoOverview(df, dt, metric),
+                loadMeteoBuckets(df, dt, metric),
+                loadMeteoLag(df, dt, metric),
+                loadMeteoExtreme(df, dt, metric),
+            ]);
+        }
+
+        async function loadMeteoOverview(df, dt, metric) {
+            document.getElementById('meteoInsights').innerHTML = '<p style="color:#888">Se incarca...</p>';
+        }
+        async function loadMeteoBuckets(df, dt, metric) {
+            document.getElementById('meteoBuckets').innerHTML = '<p style="color:#888">Se incarca...</p>';
+        }
+        async function loadMeteoLag(df, dt, metric) {
+            document.getElementById('meteoLag').innerHTML = '<p style="color:#888">Se incarca...</p>';
+        }
+        async function loadMeteoExtreme(df, dt, metric) {
+            document.getElementById('meteoExtreme').innerHTML = '<p style="color:#888">Se incarca...</p>';
         }
     </script>
 </body>
