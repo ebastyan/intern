@@ -70,6 +70,17 @@ waste_types       - Hulladék típusok
 waste_categories  - Hulladék kategóriák
 ├── id (PK)
 └── name          - Kategória neve (Cupru, Aluminiu, Fier, stb.)
+
+weather_oradea    - Napi időjárás Nagyvárad (Open-Meteo backfill)
+├── date (PK)     - Dátum
+├── temp_max/min/mean - Hőmérséklet (°C)
+├── apparent_temp_* - Érzékelt hőm.
+├── precipitation_sum, rain_sum, snowfall_sum, snow_depth_max - Csapadék
+├── wind_speed_max, wind_gusts_max, wind_direction_dominant - Szél
+├── pressure_mean, humidity_mean, cloudcover_mean - Óránkénti átlagokból
+├── shortwave_radiation_sum, sunshine_duration, daylight_duration - Sugárzás
+├── et0_evapotranspiration - Evapotranspiráció
+└── weather_code - WMO kód
 ```
 
 ## API Endpoints
@@ -137,6 +148,18 @@ waste_categories  - Hulladék kategóriák
 | `type=illegal_workdays` | Audit: tranzactii pe zile oficial nelucratoare |
 | POST `?action=confirm_closure` body `{date_from,date_to,reason}` | Confirma interval ca inchidere |
 | POST `?action=ignore_closure` body `{date_from,date_to}` | Marcheaza ca non-inchidere |
+
+### `/api/weather`
+| Parameter | Description |
+|-----------|-------------|
+| `type=ping` | Health check |
+| `type=residuals&metric=X&date_from=Y&date_to=Z` | Per-zi: actual, baseline, residual + coloane meteo |
+| `type=buckets&variable=rain_sum&metric=partners` | Bucket-uri pt variabila vs residual |
+| `type=lag_curve&variable=rain_sum&metric=partners` | Corelatie la lag -2..+3 |
+| `type=extreme_days&metric=partners&limit=20` | Top-N zile cu ecart maxim fata de baseline |
+| `type=overview&metric=partners` | 4 familii de ipoteze agregate (narative) |
+
+Metric: `partners`, `transactions`, `kg`, `ron`. Variable (buckets): `rain_sum`, `snowfall_sum`, `temp_max`, `temp_min`, `wind_gusts_max`, `humidity_mean`, `cloudcover_mean`.
 
 ### `/api/monthly`
 | Parameter | Description |
