@@ -165,6 +165,7 @@
             <button class="nav-tab" onclick="showSection('geo')">Regiuni</button>
             <button class="nav-tab" onclick="showSection('predictions')">Predictii</button>
             <button class="nav-tab" onclick="showSection('stats')">Statisztika</button>
+            <button class="nav-tab" onclick="showSection('sezonalitate')">Sezonalitate</button>
         </div>
         <a href="firme.html" style="padding: 8px 16px; background: linear-gradient(135deg, #ff9f40, #ff6b6b); border: none; border-radius: 6px; color: #fff; font-size: 0.8em; cursor: pointer; font-weight: 600; text-decoration: none;">Firme (B2B)</a>
         <div class="last-update">Actualizat: <span id="lastUpdate">...</span></div>
@@ -671,6 +672,58 @@
                 <div class="scroll-table"><table><thead><tr><th>Sarbatoare</th><th>Perioada</th><th class="text-right">Tranzactii</th><th class="text-right">Valoare</th><th class="text-right">vs Inainte</th><th class="text-right">vs Dupa</th><th>Explicatie</th></tr></thead><tbody id="holidaysTable"></tbody></table></div>
             </div>
         </div>
+
+        <!-- SEZONALITATE -->
+        <div id="section-sezonalitate" class="section">
+            <div class="card">
+                <h2><span class="icon">📅</span> Sezonalitate & Sarbatori</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:0;">Tiparul calendaristic al traficului — baza fara influenta meteo.</p>
+            </div>
+
+            <div class="card" id="sez-weekly">
+                <h2><span class="icon">📊</span> Tipar saptamanal (Luni-Sambata)</h2>
+                <div class="metric-toggle" data-target="sez-weekly" style="margin-bottom:10px;">
+                    <button class="tab-btn active" data-metric="partners">Parteneri</button>
+                    <button class="tab-btn" data-metric="transactions">Tranzactii</button>
+                    <button class="tab-btn" data-metric="kg">Kg</button>
+                    <button class="tab-btn" data-metric="ron">RON</button>
+                </div>
+                <canvas id="sezWeeklyChart" height="120"></canvas>
+            </div>
+
+            <div class="card" id="sez-monthly">
+                <h2><span class="icon">📈</span> Tipar lunar</h2>
+                <div class="metric-toggle" data-target="sez-monthly" style="margin-bottom:10px;">
+                    <button class="tab-btn active" data-metric="avg_partners_per_day">Parteneri/zi</button>
+                    <button class="tab-btn" data-metric="avg_transactions_per_day">Tranzactii/zi</button>
+                    <button class="tab-btn" data-metric="avg_kg_per_day">Kg/zi</button>
+                    <button class="tab-btn" data-metric="avg_ron_per_day">RON/zi</button>
+                </div>
+                <canvas id="sezMonthlyChart" height="120"></canvas>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">🎉</span> Impactul sarbatorilor (±3 zile)</h2>
+                <div id="sezHolidayTable" class="scroll-table"></div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">🌉</span> Bridge days (zi lucratoare intre doua zile inchise)</h2>
+                <div id="sezBridgeTable" class="scroll-table"></div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">🗓️</span> Zile fara tranzactii (de validat)</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">Candidati pentru concedii companie — confirma sau ignora.</p>
+                <div id="sezClosureCandidates"></div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">⚠️</span> Audit: tranzactii pe zile oficial nelucratoare</h2>
+                <div id="sezAuditTable" class="scroll-table"></div>
+            </div>
+        </div>
+
     </div>
 
     <div class="modal-overlay" id="partnerModal">
@@ -728,6 +781,10 @@
             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
             document.getElementById('section-' + id).classList.add('active');
             event.target.classList.add('active');
+            if (id === 'sezonalitate' && !window._sezLoaded) {
+                window._sezLoaded = true;
+                loadSezonalitate();
+            }
         }
 
         function showPartnerTab(tab) {
@@ -2160,6 +2217,11 @@
                 console.error('City details error:', e);
                 content.innerHTML = '<p style="color:#ff6b6b;">Eroare la incarcarea datelor</p>';
             }
+        }
+
+        // === Sezonalitate tab (Phase 1) ===
+        async function loadSezonalitate() {
+            console.log('loadSezonalitate called - populated in subsequent tasks');
         }
     </script>
 </body>
