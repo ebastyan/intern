@@ -2777,8 +2777,61 @@
                 }
             }));
         }
+        const METEO_LAG_VARS = [
+            { key: "rain_sum",       title: "🌧️ Ploaie" },
+            { key: "snowfall_sum",   title: "❄️ Zapada" },
+            { key: "temp_max",       title: "🌡️ Temp. maxima" },
+            { key: "wind_gusts_max", title: "💨 Rafale vant" },
+        ];
+        const _meteoLagCharts = {};
+
         async function loadMeteoLag(df, dt, metric) {
-            document.getElementById('meteoLag').innerHTML = '<p style="color:#888">Se incarca...</p>';
+            const host = document.getElementById('meteoLag');
+            host.innerHTML = '<div id="meteoLagGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;"></div>';
+            const grid = document.getElementById('meteoLagGrid');
+            await Promise.all(METEO_LAG_VARS.map(async v => {
+                const wrap = document.createElement('div');
+                wrap.innerHTML = `<div style="color:#aaa;font-weight:600;margin-bottom:6px;">${v.title}</div>
+                    <div style="position:relative;height:180px;"><canvas></canvas></div>`;
+                grid.appendChild(wrap);
+                try {
+                    const url = `/api/weather?type=lag_curve&metric=${encodeURIComponent(metric)}&variable=${v.key}&date_from=${df}&date_to=${dt}`;
+                    const data = await (await fetch(url)).json();
+                    const lags = (data.lags || []).filter(l => l.correlation !== null);
+                    if (!lags.length) {
+                        wrap.querySelector('div[style*="height"]').innerHTML = '<p style="color:#555">Nu sunt date suficiente.</p>';
+                        return;
+                    }
+                    const labels = lags.map(l => l.lag === 0 ? 'azi' : (l.lag > 0 ? `+${l.lag}z` : `${l.lag}z`));
+                    const values = lags.map(l => parseFloat(l.correlation));
+                    // Find the peak lag (highest abs correlation) to highlight
+                    const peakIdx = values.reduce((bi, _, i) => Math.abs(values[i]) > Math.abs(values[bi]) ? i : bi, 0);
+                    const pointColors = values.map((_, i) => i === peakIdx ? '#ff9f40' : '#00d9ff');
+                    const pointRadii = values.map((_, i) => i === peakIdx ? 7 : 4);
+                    const canvas = wrap.querySelector('canvas');
+                    if (_meteoLagCharts[v.key]) _meteoLagCharts[v.key].destroy();
+                    _meteoLagCharts[v.key] = new Chart(canvas.getContext('2d'), {
+                        type: 'line',
+                        data: { labels, datasets: [{ label: 'corr', data: values, borderColor: '#00d9ff',
+                                 backgroundColor: 'rgba(0,217,255,0.15)', tension: 0.3, fill: true,
+                                 pointRadius: pointRadii, pointBackgroundColor: pointColors, pointBorderColor: pointColors }] },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: { callbacks: { label: ctx => {
+                                    const l = lags[ctx.dataIndex];
+                                    return `r=${l.correlation.toFixed(3)} (n=${l.n})`;
+                                } } }
+                            },
+                            scales: { y: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                                      x: { ticks: { color: '#aaa' }, grid: { display: false } } }
+                        }
+                    });
+                } catch (e) {
+                    wrap.innerHTML += `<p style="color:#ff6b6b">Eroare: ${e.message}</p>`;
+                }
+            }));
         }
         async function loadMeteoExtreme(df, dt, metric) {
             document.getElementById('meteoExtreme').innerHTML = '<p style="color:#888">Se incarca...</p>';
