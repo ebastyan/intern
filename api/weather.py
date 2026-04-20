@@ -260,6 +260,66 @@ def _forecast_desc(w):
     return ", ".join(bits) if bits else "vreme calma"
 
 
+_RANKING_CATEGORIES = [
+    # Precipitation (rain)
+    ("🌧️", "Ploaie torentiala", ">20mm",
+     lambda r: r.get("precipitation_sum") is not None and float(r["precipitation_sum"]) > 20),
+    ("🌧️", "Ploaie puternica", "10-20mm",
+     lambda r: r.get("precipitation_sum") is not None and 10 < float(r["precipitation_sum"]) <= 20),
+    ("🌧️", "Ploaie moderata", "5-10mm",
+     lambda r: r.get("precipitation_sum") is not None and 5 < float(r["precipitation_sum"]) <= 10),
+    ("🌧️", "Ploaie usoara", "2-5mm",
+     lambda r: r.get("precipitation_sum") is not None and 2 < float(r["precipitation_sum"]) <= 5),
+    ("🌧️", "Ploaie fina", "0.5-2mm",
+     lambda r: r.get("precipitation_sum") is not None and 0.5 < float(r["precipitation_sum"]) <= 2),
+    # Snow
+    ("❄️", "Zapada abundenta", ">10cm",
+     lambda r: r.get("snowfall_sum") is not None and float(r["snowfall_sum"]) > 10),
+    ("❄️", "Zapada medie", "3-10cm",
+     lambda r: r.get("snowfall_sum") is not None and 3 < float(r["snowfall_sum"]) <= 10),
+    ("❄️", "Ninsoare usoara", "1-3cm",
+     lambda r: r.get("snowfall_sum") is not None and 1 < float(r["snowfall_sum"]) <= 3),
+    # Cold
+    ("🥶", "Ger extrem", "<-10°C max",
+     lambda r: r.get("temp_max") is not None and float(r["temp_max"]) < -10),
+    ("🥶", "Ger", "-10..-5°C max",
+     lambda r: r.get("temp_max") is not None and -10 <= float(r["temp_max"]) < -5),
+    ("🥶", "Frig intens", "-5..0°C max",
+     lambda r: r.get("temp_max") is not None and -5 <= float(r["temp_max"]) < 0),
+    ("🥶", "Frig", "0..5°C max",
+     lambda r: r.get("temp_max") is not None and 0 <= float(r["temp_max"]) < 5),
+    ("🥶", "Rece", "5..10°C max",
+     lambda r: r.get("temp_max") is not None and 5 <= float(r["temp_max"]) < 10),
+    # Hot
+    ("🔥", "Canicula extrema", ">35°C max",
+     lambda r: r.get("temp_max") is not None and float(r["temp_max"]) > 35),
+    ("🔥", "Canicula", "32..35°C max",
+     lambda r: r.get("temp_max") is not None and 32 < float(r["temp_max"]) <= 35),
+    ("🔥", "Foarte cald", "30..32°C max",
+     lambda r: r.get("temp_max") is not None and 30 < float(r["temp_max"]) <= 32),
+    ("🔥", "Cald", "25..30°C max",
+     lambda r: r.get("temp_max") is not None and 25 < float(r["temp_max"]) <= 30),
+    # Wind
+    ("💨", "Furtuna", ">90km/h rafale",
+     lambda r: r.get("wind_gusts_max") is not None and float(r["wind_gusts_max"]) > 90),
+    ("💨", "Rafale mari", "70-90km/h",
+     lambda r: r.get("wind_gusts_max") is not None and 70 < float(r["wind_gusts_max"]) <= 90),
+    ("💨", "Rafale medii", "50-70km/h",
+     lambda r: r.get("wind_gusts_max") is not None and 50 < float(r["wind_gusts_max"]) <= 70),
+    # Humidity / sky
+    ("💧", "Umiditate extrema", ">92%",
+     lambda r: r.get("humidity_mean") is not None and float(r["humidity_mean"]) > 92),
+    ("💧", "Umiditate ridicata", "85-92%",
+     lambda r: r.get("humidity_mean") is not None and 85 < float(r["humidity_mean"]) <= 92),
+    ("💧", "Umiditate scazuta", "<45%",
+     lambda r: r.get("humidity_mean") is not None and float(r["humidity_mean"]) < 45),
+    ("☀️", "Senin", "nori <20%",
+     lambda r: r.get("cloudcover_mean") is not None and float(r["cloudcover_mean"]) < 20),
+    ("☁️", "Mohorat", "nori >90%",
+     lambda r: r.get("cloudcover_mean") is not None and float(r["cloudcover_mean"]) > 90),
+]
+
+
 class handler(BaseHTTPRequestHandler):
     def _send(self, status, payload):
         self.send_response(status)
@@ -386,6 +446,28 @@ class handler(BaseHTTPRequestHandler):
         rows = [r for r in data["residuals"] if r["residual"] is not None]
         rows.sort(key=lambda r: abs(r["residual"]), reverse=True)
         return {"metric": data["metric"], "extreme_days": rows[:limit]}
+
+    def _all_time_category_effects(self, cur, metric_name):
+        """Return {category_name: {emoji, name, range, effect_pct, n, fn}}
+        computed across the entire dataset. Used by forecast() to look up
+        per-dimension effects without re-querying per future day."""
+        data = self.residuals(cur, metric_name, None, None)
+        rows = [r for r in data["residuals"] if r["residual"] is not None]
+        out = {}
+        for emoji, name, range_str, fn in _RANKING_CATEGORIES:
+            matching = [r for r in rows if fn(r) and r.get("residual_pct") is not None]
+            if len(matching) < 5:
+                continue
+            avg_pct = sum(float(r["residual_pct"]) for r in matching) / len(matching)
+            out[name] = {
+                "emoji": emoji,
+                "name": name,
+                "range": range_str,
+                "effect_pct": round(avg_pct, 2),
+                "n": len(matching),
+                "fn": fn,
+            }
+        return out
 
     def overview(self, cur, metric_name, date_from, date_to):
         data = self.residuals(cur, metric_name, date_from, date_to)
@@ -584,64 +666,7 @@ class handler(BaseHTTPRequestHandler):
         insights.sort(key=lambda i: -score(i))
 
         # Ranking: head-to-head of weather categories (narrower for resolution)
-        CATEGORIES = [
-            # Precipitation (rain)
-            ("🌧️", "Ploaie torentiala", ">20mm",
-             lambda r: r.get("precipitation_sum") is not None and float(r["precipitation_sum"]) > 20),
-            ("🌧️", "Ploaie puternica", "10-20mm",
-             lambda r: r.get("precipitation_sum") is not None and 10 < float(r["precipitation_sum"]) <= 20),
-            ("🌧️", "Ploaie moderata", "5-10mm",
-             lambda r: r.get("precipitation_sum") is not None and 5 < float(r["precipitation_sum"]) <= 10),
-            ("🌧️", "Ploaie usoara", "2-5mm",
-             lambda r: r.get("precipitation_sum") is not None and 2 < float(r["precipitation_sum"]) <= 5),
-            ("🌧️", "Ploaie fina", "0.5-2mm",
-             lambda r: r.get("precipitation_sum") is not None and 0.5 < float(r["precipitation_sum"]) <= 2),
-            # Snow
-            ("❄️", "Zapada abundenta", ">10cm",
-             lambda r: r.get("snowfall_sum") is not None and float(r["snowfall_sum"]) > 10),
-            ("❄️", "Zapada medie", "3-10cm",
-             lambda r: r.get("snowfall_sum") is not None and 3 < float(r["snowfall_sum"]) <= 10),
-            ("❄️", "Ninsoare usoara", "1-3cm",
-             lambda r: r.get("snowfall_sum") is not None and 1 < float(r["snowfall_sum"]) <= 3),
-            # Cold
-            ("🥶", "Ger extrem", "<-10°C max",
-             lambda r: r.get("temp_max") is not None and float(r["temp_max"]) < -10),
-            ("🥶", "Ger", "-10..-5°C max",
-             lambda r: r.get("temp_max") is not None and -10 <= float(r["temp_max"]) < -5),
-            ("🥶", "Frig intens", "-5..0°C max",
-             lambda r: r.get("temp_max") is not None and -5 <= float(r["temp_max"]) < 0),
-            ("🥶", "Frig", "0..5°C max",
-             lambda r: r.get("temp_max") is not None and 0 <= float(r["temp_max"]) < 5),
-            ("🥶", "Rece", "5..10°C max",
-             lambda r: r.get("temp_max") is not None and 5 <= float(r["temp_max"]) < 10),
-            # Hot
-            ("🔥", "Canicula extrema", ">35°C max",
-             lambda r: r.get("temp_max") is not None and float(r["temp_max"]) > 35),
-            ("🔥", "Canicula", "32..35°C max",
-             lambda r: r.get("temp_max") is not None and 32 < float(r["temp_max"]) <= 35),
-            ("🔥", "Foarte cald", "30..32°C max",
-             lambda r: r.get("temp_max") is not None and 30 < float(r["temp_max"]) <= 32),
-            ("🔥", "Cald", "25..30°C max",
-             lambda r: r.get("temp_max") is not None and 25 < float(r["temp_max"]) <= 30),
-            # Wind
-            ("💨", "Furtuna", ">90km/h rafale",
-             lambda r: r.get("wind_gusts_max") is not None and float(r["wind_gusts_max"]) > 90),
-            ("💨", "Rafale mari", "70-90km/h",
-             lambda r: r.get("wind_gusts_max") is not None and 70 < float(r["wind_gusts_max"]) <= 90),
-            ("💨", "Rafale medii", "50-70km/h",
-             lambda r: r.get("wind_gusts_max") is not None and 50 < float(r["wind_gusts_max"]) <= 70),
-            # Humidity / sky
-            ("💧", "Umiditate extrema", ">92%",
-             lambda r: r.get("humidity_mean") is not None and float(r["humidity_mean"]) > 92),
-            ("💧", "Umiditate ridicata", "85-92%",
-             lambda r: r.get("humidity_mean") is not None and 85 < float(r["humidity_mean"]) <= 92),
-            ("💧", "Umiditate scazuta", "<45%",
-             lambda r: r.get("humidity_mean") is not None and float(r["humidity_mean"]) < 45),
-            ("☀️", "Senin", "nori <20%",
-             lambda r: r.get("cloudcover_mean") is not None and float(r["cloudcover_mean"]) < 20),
-            ("☁️", "Mohorat", "nori >90%",
-             lambda r: r.get("cloudcover_mean") is not None and float(r["cloudcover_mean"]) > 90),
-        ]
+        CATEGORIES = _RANKING_CATEGORIES
 
         STRONG = 15.0  # |residual_pct| >= 15% = strong individual-day effect
         ranking = []
