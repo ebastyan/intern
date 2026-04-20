@@ -187,6 +187,21 @@
                 <div class="card"><h2><span class="icon">📊</span> Comparatie Anuala</h2><div class="chart-container"><canvas id="yearCompareChart"></canvas></div></div>
                 <div class="card"><h2><span class="icon">📈</span> Tendinte Lunare</h2><div class="chart-container"><canvas id="monthlyTrendChart"></canvas></div></div>
             </div>
+
+            <div class="card" id="sumarForecastCard">
+                <h2><span class="icon">🔮</span> Prognoza urmatoarele 7 zile</h2>
+                <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;">
+                    <label style="color:#888;font-size:0.85em;">Metrica:</label>
+                    <select id="sumarForecastMetric" style="background:#1a1a2e;color:#fff;border:1px solid #333;padding:5px 8px;border-radius:4px;">
+                        <option value="partners">Parteneri</option>
+                        <option value="transactions">Tranzactii</option>
+                        <option value="kg">Kg</option>
+                        <option value="ron">RON</option>
+                    </select>
+                    <span style="color:#555;font-size:0.82em;margin-left:8px;">Bazat pe Open-Meteo + tiparele detectate</span>
+                </div>
+                <div id="sumarForecast"></div>
+            </div>
             <div class="grid grid-2">
                 <div class="card"><h2><span class="icon">🏆</span> Top 10 Parteneri</h2><div class="scroll-table"><table><thead><tr><th>#</th><th>Nume</th><th>Oras</th><th class="text-right">Valoare</th><th class="text-right">Vizite</th><th class="text-right">Ultima Vizita</th></tr></thead><tbody id="topPartnersTable"></tbody></table></div></div>
                 <div class="card"><h2><span class="icon">📦</span> Categorii Deseuri</h2><div id="categoryBars"></div></div>
@@ -932,6 +947,9 @@
                 initPredictions(data, yearly);
                 initPartners(topPartners);
                 initStats();
+                loadSumarForecast();
+                const m = document.getElementById('sumarForecastMetric');
+                if (m && !m.dataset.bound) { m.dataset.bound = '1'; m.onchange = () => loadSumarForecast(); }
             } catch (e) {
                 console.error('Error:', e);
                 document.getElementById('totalValue').textContent = 'Eroare!';
@@ -3028,6 +3046,71 @@
                     </tr>`;
                 });
                 html += '</tbody></table>';
+                host.innerHTML = html;
+            } catch (e) {
+                host.innerHTML = `<p style="color:#ff6b6b">Eroare: ${e.message}</p>`;
+            }
+        }
+
+        // === Prognoza 7-zile — Sumar widget ===
+        const METEO_EMOJI = {
+            clear: "☀️", partly: "🌤️", cloudy: "☁️", rain: "🌧️",
+            snow: "❄️", storm: "⛈️", fog: "🌫️", closed: "🔒",
+        };
+        function forecastEmoji(w) {
+            if (w == null) return "❓";
+            if (w.snowfall_sum != null && Number(w.snowfall_sum) >= 0.5) return METEO_EMOJI.snow;
+            if (w.precipitation_sum != null && Number(w.precipitation_sum) >= 2) return METEO_EMOJI.rain;
+            if (w.precipitation_sum != null && Number(w.precipitation_sum) >= 0.5) return "🌦️";
+            if (w.cloudcover_mean != null && Number(w.cloudcover_mean) >= 80) return METEO_EMOJI.cloudy;
+            if (w.cloudcover_mean != null && Number(w.cloudcover_mean) <= 25) return METEO_EMOJI.clear;
+            return METEO_EMOJI.partly;
+        }
+
+        async function loadSumarForecast() {
+            const host = document.getElementById('sumarForecast');
+            if (!host) return;
+            const metric = document.getElementById('sumarForecastMetric').value;
+            host.innerHTML = '<p style="color:#888">Se incarca...</p>';
+            try {
+                const res = await fetch(`/api/weather?type=forecast&metric=${encodeURIComponent(metric)}`);
+                const data = await res.json();
+                if (data.error) {
+                    host.innerHTML = `<p style="color:#ff9f40">Prognoza temporar nedisponibila. Reincarca pagina in cateva minute.</p>`;
+                    return;
+                }
+                const unit = data.metric_unit || '';
+                let html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;">';
+                data.days.forEach(d => {
+                    const dayNum = d.date.slice(8,10);
+                    if (d.is_closed) {
+                        html += `<div style="padding:10px 6px;text-align:center;background:rgba(255,255,255,0.02);border-radius:6px;border:1px solid rgba(255,255,255,0.06);">
+                            <div style="color:#aaa;font-size:0.8em;">${d.dow.slice(0,2)}</div>
+                            <div style="color:#ccc;font-weight:600;">${dayNum}</div>
+                            <div style="font-size:1.5em;margin:4px 0;">🔒</div>
+                            <div style="color:#666;font-size:0.75em;">INCHIS</div>
+                        </div>`;
+                        return;
+                    }
+                    const pct = d.pct_vs_baseline ?? 0;
+                    const color = pct > 5 ? '#00ff88' : (pct < -5 ? '#ff6b6b' : '#aaa');
+                    const sign = pct >= 0 ? '+' : '';
+                    const predicted = d.predicted != null ? Math.round(d.predicted) : '—';
+                    const tmax = d.weather?.temp_max != null ? Math.round(d.weather.temp_max) : '';
+                    const emoji = forecastEmoji(d.weather || {});
+                    const tooltipLines = d.breakdown.slice(0,2).map(b => `${b.emoji} ${b.category}: ${b.effect_pct>=0?'+':''}${b.effect_pct}%`);
+                    const tooltip = tooltipLines.length ? tooltipLines.join(' · ') : 'fara ajustare meteo';
+                    html += `<div title="${tooltip}" style="padding:10px 6px;text-align:center;background:rgba(0,217,255,0.04);border-radius:6px;border:1px solid rgba(0,217,255,0.1);cursor:pointer;" onclick="showSection('meteo')">
+                        <div style="color:#aaa;font-size:0.8em;">${d.dow.slice(0,2)}</div>
+                        <div style="color:#ccc;font-weight:600;">${dayNum}</div>
+                        <div style="font-size:1.5em;margin:4px 0;">${emoji}</div>
+                        <div style="color:#888;font-size:0.75em;">${tmax}${tmax !== '' ? '°' : ''}</div>
+                        <div style="color:#fff;font-weight:600;font-size:1em;margin-top:4px;">${predicted}</div>
+                        <div style="color:${color};font-size:0.82em;font-weight:600;">${sign}${pct.toFixed(0)}%</div>
+                    </div>`;
+                });
+                html += '</div>';
+                html += `<div style="color:#555;font-size:0.75em;margin-top:8px;">Generat: ${new Date(data.generated_at).toLocaleString('ro-RO')}</div>`;
                 host.innerHTML = html;
             } catch (e) {
                 host.innerHTML = `<p style="color:#ff6b6b">Eroare: ${e.message}</p>`;
