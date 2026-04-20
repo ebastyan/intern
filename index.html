@@ -778,6 +778,23 @@
 
         <!-- METEO & TRAFIC -->
         <div id="section-meteo" class="section">
+
+            <div class="card" id="meteoForecastCard">
+                <h2><span class="icon">🔮</span> Prognoza 7 zile — trafic estimat</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Bazat pe forecast meteo Open-Meteo + tiparele detectate in datele tale istorice. Fiecare efect se aduna independent. Duminica = inchis (fara program).
+                </p>
+                <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;">
+                    <label style="color:#888;font-size:0.85em;">Metrica:</label>
+                    <select id="meteoForecastMetric" style="background:#1a1a2e;color:#fff;border:1px solid #333;padding:5px 8px;border-radius:4px;">
+                        <option value="partners">Parteneri</option>
+                        <option value="transactions">Tranzactii</option>
+                        <option value="kg">Kg</option>
+                        <option value="ron">RON</option>
+                    </select>
+                </div>
+                <div id="meteoForecast"></div>
+            </div>
             <div class="card">
                 <h2><span class="icon">🌦️</span> Meteo & Trafic</h2>
                 <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
@@ -2707,6 +2724,9 @@
             if (!dt.value) dt.value = new Date().toISOString().substring(0,10);
             document.getElementById('meteoApply').onclick = refreshMeteo;
             refreshMeteo();
+            loadMeteoForecast();
+            const mfm = document.getElementById('meteoForecastMetric');
+            if (mfm && !mfm.dataset.bound) { mfm.dataset.bound = '1'; mfm.onchange = () => loadMeteoForecast(); }
         }
 
         async function refreshMeteo() {
@@ -3065,6 +3085,67 @@
             if (w.cloudcover_mean != null && Number(w.cloudcover_mean) >= 80) return METEO_EMOJI.cloudy;
             if (w.cloudcover_mean != null && Number(w.cloudcover_mean) <= 25) return METEO_EMOJI.clear;
             return METEO_EMOJI.partly;
+        }
+
+        // === Prognoza 7-zile — Meteo tab detailed card ===
+        async function loadMeteoForecast() {
+            const host = document.getElementById('meteoForecast');
+            if (!host) return;
+            const metric = document.getElementById('meteoForecastMetric').value;
+            host.innerHTML = '<p style="color:#888">Se incarca...</p>';
+            try {
+                const res = await fetch(`/api/weather?type=forecast&metric=${encodeURIComponent(metric)}`);
+                const data = await res.json();
+                if (data.error) {
+                    host.innerHTML = '<p style="color:#ff9f40">Prognoza temporar nedisponibila. Reincarca in cateva minute.</p>';
+                    return;
+                }
+                const unit = data.metric_unit || '';
+                let html = '';
+                data.days.forEach(d => {
+                    if (d.is_closed) {
+                        html += `<div style="padding:12px 16px;margin-bottom:10px;background:rgba(255,255,255,0.03);border-left:3px solid #555;border-radius:4px;">
+                            <div style="color:#aaa;font-size:0.95em;">📅 <strong>${d.dow} ${d.date}</strong> · 🔒 INCHIS (fara program Duminica)</div>
+                        </div>`;
+                        return;
+                    }
+                    const pct = d.pct_vs_baseline ?? 0;
+                    const color = pct > 2 ? '#00ff88' : (pct < -2 ? '#ff6b6b' : '#aaa');
+                    const sign = pct >= 0 ? '+' : '';
+                    const predicted = d.predicted != null ? Math.round(d.predicted) : '—';
+                    const baseline = d.baseline != null ? Math.round(d.baseline) : '—';
+                    const emoji = forecastEmoji(d.weather || {});
+                    const confColor = d.confidence === 'high' ? '#00ff88' : (d.confidence === 'low' ? '#ff9f40' : '#888');
+                    const confLabel = d.confidence === 'high' ? 'mare' : (d.confidence === 'low' ? 'scazuta' : 'ok');
+                    let brHtml = '';
+                    if (d.breakdown.length) {
+                        d.breakdown.forEach(b => {
+                            const bc = b.effect_pct > 2 ? '#00ff88' : (b.effect_pct < -2 ? '#ff6b6b' : '#888');
+                            const bs = b.effect_pct >= 0 ? '+' : '';
+                            brHtml += `<div style="display:grid;grid-template-columns:1fr 80px 70px;gap:8px;color:#bbb;padding:2px 0;">
+                                <span>${b.emoji} ${b.category} <span style="color:#666;font-size:0.85em;">(${b.range})</span></span>
+                                <span style="color:${bc};text-align:right;font-weight:600;">${bs}${b.effect_pct.toFixed(1)}%</span>
+                                <span style="color:#555;text-align:right;font-size:0.85em;">${b.n} zile</span>
+                            </div>`;
+                        });
+                        brHtml += `<div style="display:grid;grid-template-columns:1fr 80px 70px;gap:8px;padding-top:6px;margin-top:6px;border-top:1px solid rgba(255,255,255,0.06);color:#eee;font-weight:600;">
+                            <span>Total ajustare</span>
+                            <span style="color:${color};text-align:right;">${sign}${pct.toFixed(1)}%</span><span></span>
+                        </div>`;
+                    } else {
+                        brHtml = '<div style="color:#666;font-style:italic;">Nicio categorie meteo semnificativa — vreme "normala".</div>';
+                    }
+                    html += `<div style="padding:14px 16px;margin-bottom:12px;background:rgba(0,217,255,0.03);border-left:3px solid ${color};border-radius:4px;">
+                        <div style="font-size:1.05em;color:#fff;font-weight:600;margin-bottom:3px;">📅 ${d.dow} ${d.date} · ${emoji} ${d.weather_desc}</div>
+                        <div style="color:#ddd;margin-bottom:8px;">Estimat: <strong style="color:#fff;">~${predicted}</strong> ${unit} · <strong style="color:${color};">${sign}${pct.toFixed(1)}%</strong> vs ${d.dow} normal (baseline ${baseline}) · <span style="color:${confColor};">confidence ${confLabel}</span> <span style="color:#555;font-size:0.85em;">(min ${d.min_n} zile similare)</span></div>
+                        <div style="font-size:0.9em;">Cauze:</div>
+                        ${brHtml}
+                    </div>`;
+                });
+                host.innerHTML = html;
+            } catch (e) {
+                host.innerHTML = `<p style="color:#ff6b6b">Eroare: ${e.message}</p>`;
+            }
         }
 
         async function loadSumarForecast() {
