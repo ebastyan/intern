@@ -2022,7 +2022,7 @@
 
                     const itemsStr = filteredItems.map(i => `<span style="display:inline-block;background:rgba(0,217,255,0.1);padding:2px 6px;border-radius:4px;margin:2px;font-size:0.8em;">${i.waste_type}: ${fmt(i.weight_kg)}kg @ ${fmtDec(i.price_per_kg)} = ${fmt(i.value)} RON</span>`).join('') || '';
                     const tax = items.transaction ? (items.transaction.env_tax||0) + (items.transaction.income_tax||0) : 0;
-                    transHtml += `<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:12px;margin-bottom:10px;"><div style="display:flex;justify-content:space-between;"><div><strong style="color:#00d9ff;">${t.date}</strong> <span style="color:#666;font-size:0.8em;">${t.document_id}</span></div><div style="text-align:right;"><div style="color:#00ff88;font-weight:600;">${fmt(t.gross_value)} RON brut</div>${tax > 0 ? `<div style="font-size:0.75em;color:#ff6b6b;">Taxe: ${fmt(tax)} RON</div>` : ''}<div style="font-size:0.8em;color:#feca57;">Net: ${fmt(t.net_paid)} RON (${t.payment_type})</div></div></div><div style="margin-top:6px;">${itemsStr || '<span style="color:#666;font-size:0.8em;">Fara detalii</span>'}</div></div>`;
+                    transHtml += `<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:12px;margin-bottom:10px;"><div style="display:flex;justify-content:space-between;"><div><strong style="color:#00d9ff;">${t.date}</strong> <span style="color:#666;font-size:0.8em;">${t.document_id}</span>${renderWeatherPill(t.weather)}</div><div style="text-align:right;"><div style="color:#00ff88;font-weight:600;">${fmt(t.gross_value)} RON brut</div>${tax > 0 ? `<div style="font-size:0.75em;color:#ff6b6b;">Taxe: ${fmt(tax)} RON</div>` : ''}<div style="font-size:0.8em;color:#feca57;">Net: ${fmt(t.net_paid)} RON (${t.payment_type})</div></div></div><div style="margin-top:6px;">${itemsStr || '<span style="color:#666;font-size:0.8em;">Fara detalii</span>'}</div></div>`;
                 } catch(e) { transHtml += `<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:12px;margin-bottom:10px;"><strong>${t.date}</strong> - ${fmt(t.gross_value)} RON</div>`; }
             }
 
@@ -3085,6 +3085,28 @@
             if (w.cloudcover_mean != null && Number(w.cloudcover_mean) >= 80) return METEO_EMOJI.cloudy;
             if (w.cloudcover_mean != null && Number(w.cloudcover_mean) <= 25) return METEO_EMOJI.clear;
             return METEO_EMOJI.partly;
+        }
+
+        function renderWeatherPill(w) {
+            if (!w || w.temp_max == null) return '';
+            const emoji = forecastEmoji(w);
+            const bits = [];
+            if (w.temp_min != null && w.temp_max != null) {
+                bits.push(`${Math.round(w.temp_min)}..${Math.round(w.temp_max)}°C`);
+            } else if (w.temp_max != null) {
+                bits.push(`${Math.round(w.temp_max)}°C`);
+            }
+            if (w.precipitation_sum != null && Number(w.precipitation_sum) >= 0.5) {
+                bits.push(`${Number(w.precipitation_sum).toFixed(1)}mm`);
+            }
+            if (w.snowfall_sum != null && Number(w.snowfall_sum) >= 0.5) {
+                bits.push(`${Number(w.snowfall_sum).toFixed(1)}cm ho`);
+            }
+            if (w.wind_gusts_max != null && Number(w.wind_gusts_max) >= 50) {
+                bits.push(`vant ${Math.round(w.wind_gusts_max)}km/h`);
+            }
+            const label = bits.join(' · ');
+            return `<span style="display:inline-block;margin-left:8px;padding:1px 7px;background:rgba(0,217,255,0.08);border:1px solid rgba(0,217,255,0.2);border-radius:10px;font-size:0.72em;color:#aaa;vertical-align:middle;">${emoji} ${label}</span>`;
         }
 
         // === Prognoza 7-zile — Meteo tab detailed card ===

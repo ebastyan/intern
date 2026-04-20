@@ -195,12 +195,16 @@ class handler(BaseHTTPRequestHandler):
         """, (cnp,))
         summary = cur.fetchone()
 
-        # Recent transactions
+        # Recent transactions (with weather for that day)
         cur.execute("""
-            SELECT document_id, date, gross_value, net_paid, payment_type
-            FROM transactions
-            WHERE cnp = %s
-            ORDER BY date DESC
+            SELECT t.document_id, t.date, t.gross_value, t.net_paid, t.payment_type,
+                   w.temp_max, w.temp_min, w.precipitation_sum, w.snowfall_sum,
+                   w.wind_speed_max, w.wind_gusts_max, w.weather_code,
+                   w.humidity_mean, w.cloudcover_mean
+            FROM transactions t
+            LEFT JOIN weather_oradea w ON w.date = t.date
+            WHERE t.cnp = %s
+            ORDER BY t.date DESC
             LIMIT 20
         """, (cnp,))
         transactions = cur.fetchall()
@@ -259,7 +263,18 @@ class handler(BaseHTTPRequestHandler):
                 'date': str(t['date']),
                 'gross_value': float(t['gross_value']),
                 'net_paid': float(t['net_paid']) if t['net_paid'] else 0,
-                'payment_type': t['payment_type']
+                'payment_type': t['payment_type'],
+                'weather': {
+                    'temp_max': float(t['temp_max']) if t.get('temp_max') is not None else None,
+                    'temp_min': float(t['temp_min']) if t.get('temp_min') is not None else None,
+                    'precipitation_sum': float(t['precipitation_sum']) if t.get('precipitation_sum') is not None else None,
+                    'snowfall_sum': float(t['snowfall_sum']) if t.get('snowfall_sum') is not None else None,
+                    'wind_speed_max': float(t['wind_speed_max']) if t.get('wind_speed_max') is not None else None,
+                    'wind_gusts_max': float(t['wind_gusts_max']) if t.get('wind_gusts_max') is not None else None,
+                    'weather_code': t.get('weather_code'),
+                    'humidity_mean': float(t['humidity_mean']) if t.get('humidity_mean') is not None else None,
+                    'cloudcover_mean': float(t['cloudcover_mean']) if t.get('cloudcover_mean') is not None else None,
+                } if t.get('temp_max') is not None else None
             } for t in transactions],
             'waste_breakdown': [{
                 'category': w['category'],
