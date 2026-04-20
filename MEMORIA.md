@@ -475,6 +475,67 @@ POSTGRES_URL = postgresql://neondb_owner:npg_L2AyrcXul8km@ep-ancient-firefly-a47
 
 ## 13. FEJLESZTESI NAPLO (Legutobbi)
 
+### 2026-04-20 - Phase 3: Prognoza 7-zile (elore tekinto forecast)
+
+#### Cel
+Eddig a dashboard tisztan visszafele nezett (mi tortent). Phase 3 elore tekint: a kovetkezo 7 nap idojaras-elorejelzese + becslet a varhato forgalomra a Phase 2-es hindcast motor felhasznalasaval.
+
+#### Design (spec: `docs/superpowers/specs/2026-04-20-prognoza-7-zile-design.md`)
+- **Ket felulet, egy backend endpoint**
+  - Sumar tab widget: 7-oszlopos strip egy pillantasra (emoji + temp + estimat + %-delta)
+  - Meteo tab card (legfelul): 7 blokk reszletezett breakdown-nal + confidence tier
+- **Metrika**: mind a 4 (partners / transactions / kg / ron) mindket feluleten, dropdown-nal valthato
+- **Formula (additiv)**: `predicted = baseline × (1 + Σ category_effect_pct)`
+  - baseline = 28-napos heti-nap matched median (ugyanaz mint residuals)
+  - category_effects = az adott nap meteojahoz illo osszes kategoria hatasa az OSSZES historikus adatbol (nem szelektalt periodus)
+- **Confidence tier**: `min_n` a matchelt kategoriakbol — `high` ≥100, `ok` 30-99, `low` <30 (narancssarga badge)
+- **Vasarnap**: `🔒 INCHIS` (fara program)
+
+#### Backend (`api/weather.py`)
+- **Module-level refactor**: `CATEGORIES` listat kiemeltem `overview()`-bol modul-szintre `_RANKING_CATEGORIES` neven → forecast is ugyanazt hasznalja
+- **Uj helper-ek**:
+  - `_open_meteo_forecast(forecast_days=7)` — Open-Meteo `/v1/forecast` endpoint (daily + hourly aggregalt), urllib stdlib, 10s timeout, None-t ad vissza halozati hibanal
+  - `_forecast_desc(w)` — kompakt emberi leiras: "5..13°C, 2.2mm ploaie, vant 41km/h"
+  - `_fetch_json(url, timeout)` — JSON GET helper
+- **Uj methodusok a `handler` class-ben**:
+  - `_all_time_category_effects(cur, metric)` — minden kategoriara kiszamolja az effect_pct-t az osszes historikus adatbol (min 5 minta), visszaad `{name → {emoji, range, effect_pct, n, fn}}`
+  - `_forecast_baselines(cur, metric, dates)` — egy SQL round-trip: `unnest(dates::date[])` + korrelalt subquery `PERCENTILE_CONT(0.5) WHERE dow_match AND date BETWEEN d-28 AND d-1`, visszaad `{date_str → float|None}`
+  - `forecast(cur, metric)` — a fo method: fetch forecast → per-day baseline + category matching → predicted + confidence tier → response JSON
+- **Uj route**: `elif qtype == "forecast": result = self.forecast(cur, metric)`
+
+#### Frontend (`index.html`)
+- **Sumar widget** (`sumarForecastCard`): grid 7-oszlop, emoji mapper (`forecastEmoji`) eso/ho/felho alapjan, hover tooltip a breakdown-nal, kattintas → `showSection('meteo')`
+- **Meteo tab card** (`meteoForecastCard`, legfelul a section-meteo-ban): 7 blokk, minden blokk tartalmaz:
+  - Fejlec: date + dow + emoji + weather_desc
+  - "Estimat: ~X parteneri · ±X% vs Dow normal (baseline Y) · confidence ok/high/low (min N zile similare)"
+  - Cauze breakdown tabla (kategoria · effect_pct · n zile) + "Total ajustare"
+- **Mindket widget wired a toltesi logikaba**: `loadAllData()` -ben `loadSumarForecast()` hivas + dropdown onchange binding; `loadMeteo()` -ben `loadMeteoForecast()` hivas + dropdown onchange binding
+- **Error handling**: ha a backend `{error: "forecast_unavailable"}`-ot ad, narancssarga "Prognoza temporar nedisponibila" uzenet
+
+#### Eles teszt (2026-04-20 11:57)
+- `/api/weather?type=forecast&metric=partners` live on internpaju.vercel.app
+- 7 nap vissza, math egyezik: Luni baseline 110 × 1.031 = 113.4 ✓
+- Vasarnap (2026-04-26) correctly `is_closed: true`
+- Sumar widget megjelenik, Meteo card is elerheto
+
+#### Tasks: 8 task, 6 commit, ~45 perc (subagent-driven development)
+- T1: `defe16e` — Open-Meteo forecast fetcher + `_forecast_desc`
+- T2: `1fce52a` — `_RANKING_CATEGORIES` module-level + `_all_time_category_effects`
+- T3: `58aa5a8` — `forecast()` method + `_forecast_baselines` + routing
+- T4: (data) — live smoke test backend
+- T5: `dc2c419` — Sumar widget (7-oszlop)
+- T6: `65200b8` — Meteo tab detailed card
+- T7: `6117d90` — CLAUDE.md doc update
+- T8: (verify) — live verify mindket feluleten
+
+#### Jovoben (nem ebben a plan-ben)
+- DB cache a forecast-nak (weather_forecast tabla, naponta frissit) ha Open-Meteo rate-limit jon
+- Predikcios pontossag nyomkovetese (48 ora utan osszehasonlitani valossagal)
+- Scenario szimulator ("mi van ha 20mm holnap esne?")
+- Reggeli email osszefoglalo ugyanezzel az endpoint-tal
+
+---
+
 ### 2026-04-18 - Phase 1 (Sezonalitate) + Phase 2 (Meteo & Trafic) + 2020/2021/2026 Adat Import
 
 #### Phase 1: Sezonalitate tab (Kalendar & Szezonalitas alap)

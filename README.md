@@ -94,6 +94,7 @@ Doua module principale:
 - **Audit** — tranzactii inregistrate in zile oficial nelucratoare
 
 ### 🌦️ Meteo & Trafic *(Phase 2)*
+- **Prognoza 7 zile** — carduri detaliate cu estimat vs baseline, breakdown pe categorii, confidence tier *(Phase 3)*
 - **Context banner** — perioda selectata vs aceleasi zile in alti ani (PESTE/SUB normal)
 - **Sinteza + praguri vizuale** — top 4 conditii care stirnesc traficul, top 4 care ajuta
 - **Gradient de prag pe variabila**: temperatura, ploaie, zapada, vant, umiditate, cer
@@ -103,6 +104,12 @@ Doua module principale:
 - **Efect cu intarziere (lag)** — ploaia are efect la +2 zile, etc.
 - **Cele mai atipice 20 zile** — tabel cu meteo + actual vs asteptat
 - **Baseline** = mediana ultimelor 28 zile lucratoare cu aceeasi zi a saptamanii (exclude sezon)
+
+### 🔮 Prognoza 7 zile *(Phase 3)*
+- **Widget in Sumar** — 7-coloane vizuale (Lu-Du), emoji meteo + temp + estimat + %-delta. Click → trece in Meteo tab.
+- **Card in Meteo** — 7 blocuri cu breakdown complet: categoriile meteo care se aplica si cat contribuie fiecare (aditiv), confidence tier, duminica marcata INCHIS.
+- **Formula**: `predicted = baseline × (1 + Σ category_effects)` pentru fiecare zi cu weather matching.
+- **Source**: Open-Meteo forecast API (gratuit), refresh la fiecare incarcare.
 
 ### 🔮 Predictii
 - Grafic predictie multi-ani bazat pe tendinte (2020+)
@@ -176,12 +183,13 @@ Categories, types, prices, monthly, top per category, analysis (daily/monthly/ye
 - `bridge_days` — zile "punte" intre doua zile inchise
 - `illegal_workdays` — audit tranzactii pe piros
 
-### `/api/weather` *(Phase 2)*
+### `/api/weather` *(Phase 2 + 3)*
 - `residuals` — actual vs baseline vs residual per zi
 - `buckets` — pragurile meteo pe variabila
 - `lag_curve` — corelatie la lag -2..+3
 - `extreme_days` — top N zile atipice
 - `overview` — 4 familii de ipoteze + ranking + period context
+- `forecast` — prognoza 7 zile (Open-Meteo + pattern matching) *(Phase 3)*
 
 ---
 
