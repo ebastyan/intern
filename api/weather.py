@@ -139,6 +139,127 @@ def find_threshold(pairs, min_pts_per_side=15):
     return best
 
 
+# ============================================================================
+# Open-Meteo forecast (Phase 3 — Prognoza 7-zile)
+# ============================================================================
+import json as _json
+from urllib.parse import urlencode as _urlencode
+from urllib.request import urlopen as _urlopen, Request as _Request
+
+FORECAST_LAT = 47.0722
+FORECAST_LON = 21.9217
+FORECAST_TZ = "Europe/Bucharest"
+FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
+
+FORECAST_DAILY_FIELDS = [
+    "temperature_2m_max", "temperature_2m_min", "temperature_2m_mean",
+    "apparent_temperature_max", "apparent_temperature_min",
+    "precipitation_sum", "rain_sum", "snowfall_sum", "snow_depth_max",
+    "precipitation_hours", "windspeed_10m_max", "windgusts_10m_max",
+    "winddirection_10m_dominant", "weather_code",
+]
+FORECAST_HOURLY_FIELDS = ["pressure_msl", "relativehumidity_2m", "cloudcover"]
+
+FORECAST_DAILY_MAP = {
+    "temperature_2m_max": "temp_max",
+    "temperature_2m_min": "temp_min",
+    "temperature_2m_mean": "temp_mean",
+    "apparent_temperature_max": "apparent_temp_max",
+    "apparent_temperature_min": "apparent_temp_min",
+    "precipitation_sum": "precipitation_sum",
+    "rain_sum": "rain_sum",
+    "snowfall_sum": "snowfall_sum",
+    "snow_depth_max": "snow_depth_max",
+    "precipitation_hours": "precipitation_hours",
+    "windspeed_10m_max": "wind_speed_max",
+    "windgusts_10m_max": "wind_gusts_max",
+    "winddirection_10m_dominant": "wind_direction_dominant",
+    "weather_code": "weather_code",
+}
+FORECAST_HOURLY_MAP = {
+    "pressure_msl": "pressure_mean",
+    "relativehumidity_2m": "humidity_mean",
+    "cloudcover": "cloudcover_mean",
+}
+
+
+def _open_meteo_forecast(forecast_days=7, timeout=10):
+    """Fetch forecast from Open-Meteo, return dict: {date -> {col: value}}.
+    Returns None on network/API failure."""
+    daily_q = {
+        "latitude": FORECAST_LAT, "longitude": FORECAST_LON,
+        "timezone": FORECAST_TZ, "forecast_days": forecast_days,
+        "daily": ",".join(FORECAST_DAILY_FIELDS),
+    }
+    hourly_q = {
+        "latitude": FORECAST_LAT, "longitude": FORECAST_LON,
+        "timezone": FORECAST_TZ, "forecast_days": forecast_days,
+        "hourly": ",".join(FORECAST_HOURLY_FIELDS),
+    }
+    try:
+        daily = _fetch_json(FORECAST_URL + "?" + _urlencode(daily_q), timeout)
+        hourly = _fetch_json(FORECAST_URL + "?" + _urlencode(hourly_q), timeout)
+    except Exception:
+        return None
+
+    per_day = {}
+    d_times = daily.get("daily", {}).get("time", [])
+    for api_field, col in FORECAST_DAILY_MAP.items():
+        arr = daily["daily"].get(api_field, [None] * len(d_times))
+        for i, dstr in enumerate(d_times):
+            per_day.setdefault(dstr, {})[col] = arr[i] if i < len(arr) else None
+
+    h_times = hourly.get("hourly", {}).get("time", [])
+    h_by_day = {}
+    for api_field in FORECAST_HOURLY_FIELDS:
+        arr = hourly["hourly"].get(api_field, [None] * len(h_times))
+        for i, tstr in enumerate(h_times):
+            day = tstr[:10]
+            if arr[i] is None:
+                continue
+            h_by_day.setdefault(day, {}).setdefault(api_field, []).append(arr[i])
+    for dstr, fields in h_by_day.items():
+        target = per_day.setdefault(dstr, {})
+        for api_field, col in FORECAST_HOURLY_MAP.items():
+            vals = fields.get(api_field, [])
+            if vals:
+                target[col] = round(sum(vals) / len(vals), 2)
+
+    return per_day
+
+
+def _fetch_json(url, timeout):
+    req = _Request(url, headers={"User-Agent": "paju-dashboard/1.0"})
+    with _urlopen(req, timeout=timeout) as r:
+        return _json.loads(r.read().decode("utf-8"))
+
+
+def _forecast_desc(w):
+    """Compact human-readable summary of a forecast day's weather."""
+    bits = []
+    tmax = w.get("temp_max"); tmin = w.get("temp_min")
+    if tmax is not None and tmin is not None:
+        bits.append(f"{float(tmin):.0f}..{float(tmax):.0f}°C")
+    elif tmax is not None:
+        bits.append(f"{float(tmax):.0f}°C")
+    ps = w.get("precipitation_sum")
+    if ps is not None and float(ps) >= 0.5:
+        bits.append(f"{float(ps):.1f}mm ploaie")
+    ss = w.get("snowfall_sum")
+    if ss is not None and float(ss) >= 0.5:
+        bits.append(f"{float(ss):.1f}cm zapada")
+    wg = w.get("wind_gusts_max")
+    if wg is not None and float(wg) >= 40:
+        bits.append(f"vant {float(wg):.0f}km/h")
+    cc = w.get("cloudcover_mean")
+    if cc is not None:
+        if float(cc) >= 85:
+            bits.append("nori inchisi")
+        elif float(cc) <= 20:
+            bits.append("senin")
+    return ", ".join(bits) if bits else "vreme calma"
+
+
 class handler(BaseHTTPRequestHandler):
     def _send(self, status, payload):
         self.send_response(status)
