@@ -469,6 +469,121 @@ class handler(BaseHTTPRequestHandler):
             }
         return out
 
+    def forecast(self, cur, metric_name):
+        """Return a 7-day traffic prognoza for Oradea. See
+        docs/superpowers/specs/2026-04-20-prognoza-7-zile-design.md."""
+        from datetime import datetime
+        forecast_data = _open_meteo_forecast(forecast_days=7)
+        if forecast_data is None:
+            return {"error": "forecast_unavailable", "retry_after_seconds": 300}
+
+        effects = self._all_time_category_effects(cur, metric_name)
+        _, metric_label = resolve_metric(metric_name)
+
+        DOW_NAMES = ["Luni", "Marti", "Miercuri", "Joi", "Vineri", "Sambata", "Duminica"]
+        METRIC_UNIT = {"partners": "parteneri", "transactions": "tranzactii",
+                       "kg": "kg", "ron": "RON"}
+
+        forecast_dates = sorted(forecast_data.keys())
+        baselines = self._forecast_baselines(cur, metric_name, forecast_dates)
+
+        days_out = []
+        for dstr in forecast_dates:
+            weather = forecast_data.get(dstr, {})
+            d_obj = datetime.strptime(dstr, "%Y-%m-%d").date()
+            dow_idx = d_obj.weekday()
+            dow = DOW_NAMES[dow_idx]
+            is_closed = dow == "Duminica"
+            if is_closed:
+                days_out.append({
+                    "date": dstr, "dow": dow, "is_closed": True,
+                    "weather": weather, "weather_desc": "inchis",
+                    "baseline": None, "predicted": None,
+                    "pct_vs_baseline": None, "confidence": None,
+                    "min_n": None, "breakdown": [],
+                })
+                continue
+
+            baseline = baselines.get(dstr)
+            matched = []
+            for name, e in effects.items():
+                try:
+                    if e["fn"](weather):
+                        matched.append({
+                            "category": name,
+                            "emoji": e["emoji"],
+                            "range": e["range"],
+                            "effect_pct": e["effect_pct"],
+                            "n": e["n"],
+                        })
+                except Exception:
+                    continue
+
+            total_pct = sum(m["effect_pct"] for m in matched) if matched else 0.0
+            predicted = (baseline * (1 + total_pct / 100)) if baseline is not None else None
+            min_n = min((m["n"] for m in matched), default=0)
+
+            if min_n >= 100:
+                confidence = "high"
+            elif min_n >= 30 or not matched:
+                confidence = "ok"
+            else:
+                confidence = "low"
+
+            days_out.append({
+                "date": dstr, "dow": dow, "is_closed": False,
+                "weather": weather,
+                "weather_desc": _forecast_desc(weather),
+                "baseline": round(baseline, 1) if baseline is not None else None,
+                "predicted": round(predicted, 1) if predicted is not None else None,
+                "pct_vs_baseline": round(total_pct, 1),
+                "confidence": confidence,
+                "min_n": min_n,
+                "breakdown": matched,
+            })
+
+        return {
+            "metric": metric_label,
+            "metric_unit": METRIC_UNIT.get(metric_name, ""),
+            "generated_at": datetime.now().isoformat(timespec="seconds"),
+            "days": days_out,
+        }
+
+    def _forecast_baselines(self, cur, metric_name, dates):
+        """For each date in `dates`, compute the weekday-matched baseline
+        (median of same-weekday values in the 28 calendar days immediately
+        before that date). Returns {date_str: float|None}."""
+        if not dates:
+            return {}
+        agg_sql, _ = resolve_metric(metric_name)
+        cur.execute(f"""
+            WITH daily AS (
+              SELECT t.date,
+                     EXTRACT(ISODOW FROM t.date)::int AS dow,
+                     {agg_sql} AS value
+              FROM transactions t
+              LEFT JOIN transaction_items i ON i.document_id = t.document_id
+              WHERE EXTRACT(ISODOW FROM t.date) <> 7
+              GROUP BY t.date
+            ),
+            targets AS (
+              SELECT unnest(%s::date[]) AS d
+            )
+            SELECT targets.d,
+                   (SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY d2.value)
+                    FROM daily d2
+                    WHERE d2.dow = EXTRACT(ISODOW FROM targets.d)::int
+                      AND d2.date BETWEEN targets.d - INTERVAL '28 days' AND targets.d - INTERVAL '1 day'
+                   ) AS baseline
+            FROM targets
+        """, (dates,))
+        out = {}
+        for row in cur.fetchall():
+            d = row["d"]
+            b = row["baseline"]
+            out[d.isoformat() if hasattr(d, "isoformat") else str(d)] = float(b) if b is not None else None
+        return out
+
     def overview(self, cur, metric_name, date_from, date_to):
         data = self.residuals(cur, metric_name, date_from, date_to)
         rows = [r for r in data["residuals"] if r["residual"] is not None]
@@ -804,6 +919,9 @@ class handler(BaseHTTPRequestHandler):
                 df = params.get("date_from", [None])[0]
                 dt = params.get("date_to", [None])[0]
                 result = self.overview(cur, metric, df, dt)
+            elif qtype == "forecast":
+                metric = params.get("metric", ["partners"])[0]
+                result = self.forecast(cur, metric)
             else:
                 result = {"error": "Unknown query type", "got": qtype}
 
