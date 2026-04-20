@@ -111,6 +111,16 @@ Doua module principale:
 - **Formula**: `predicted = baseline × (1 + Σ category_effects)` pentru fiecare zi cu weather matching.
 - **Source**: Open-Meteo forecast API (gratuit), refresh la fiecare incarcare.
 
+### 📈 Timeline trafic + vreme *(Phase 3.5)*
+- Linia traficului zilnic (actual) peste baseline punctata in perioada selectata
+- Puncte colorate pe zilele cu vreme notabila (🌧️ >10mm · ❄️ >2cm · 🥶 <-5°C · 🔥 >32°C · 💨 >70km/h)
+- Tooltip pe hover arata meteo complet pentru ziua respectiva
+- Chip-uri sub grafic listeaza toate zilele notabile
+
+### 🎨 Weather pill in profilul partenerului *(Phase 3.5)*
+- Fiecare tranzactie din istoric arata o mica pastila cu emoji + temp + precipitatii/vant daca erau notabile
+- LEFT JOIN pe weather_oradea dupa data tranzactiei — functioneaza retroactiv pentru orice zi din perioada 2020-2026
+
 ### 🔮 Predictii
 - Grafic predictie multi-ani bazat pe tendinte (2020+)
 - Metodologie dinamica cu media YoY

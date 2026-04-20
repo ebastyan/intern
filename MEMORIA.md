@@ -475,6 +475,37 @@ POSTGRES_URL = postgresql://neondb_owner:npg_L2AyrcXul8km@ep-ancient-firefly-a47
 
 ## 13. FEJLESZTESI NAPLO (Legutobbi)
 
+### 2026-04-20 - Phase 3.5: Weather pill + Timeline chart
+
+Ket kisebb polish feature a Phase 3 utan, felhasznaloi keresre.
+
+#### Weather pill a partner modalban
+- **Backend**: `api/partners.py` `get_partner_details` — a `recent_transactions` SELECT-et LEFT JOIN weather_oradea-val bovitettem (temp_max/min, precipitation_sum, snowfall_sum, wind_speed_max, wind_gusts_max, weather_code, humidity_mean, cloudcover_mean). Minden tranzakcio objektum kap egy `weather` mezot (vagy null ha nincs weather adat arra a napra).
+- **Frontend**: `renderWeatherPill(w)` helper function (reuse a Phase 3-as `forecastEmoji`-t). Inline pastila jelenik meg a tranzakcio data+doc_id mellett: emoji + temp range + ploaie/ho/szel (ha >= kuszobok).
+- **Peldak**:
+  - `☀️ 8..12°C` — tiszta napos
+  - `🌧️ 15°C · 15mm` — esos
+  - `❄️ -2..1°C · 4cm ho` — havas
+  - `💨 18°C · vant 72km/h` — szeles
+- **Visszamenoleges mukodes**: Minden tranzakcio a 2020-2026 periodusbol get weather data (weather_oradea table 2,299 napja fedi le).
+
+#### Timeline trafic + vreme chart
+- **Hely**: Meteo tab, "Insights" es "Cele mai atipice" koze szurt be (`#meteoTimelineChart` + `#meteoTimelineNotable`).
+- **Tartalom**:
+  - Chart.js line chart: napi actual trafic (solid cyan) + baseline (pontozott feher)
+  - Kifestett pontok a "notable" napokon: eso >=10mm, ho >=2cm, ger <=-5°C, kanikula >=32°C, szel >=70km/h
+  - Tooltip hover: teljes meteo kontextus adott napra
+  - Alatta chip-strip: minden notable nap felsorolva emoji + data + leiras
+- **Data source**: reuse `/api/weather?type=residuals` (mar van value + baseline + weather per day). Nincs uj endpoint.
+- **Date range**: reuse a Meteo tab meglevo DateFrom/DateTo filter — `refreshMeteo()` hozzácsatolt `loadMeteoTimeline()`.
+- **Chart implementacio**: Chart.js `pointRadius` + `pointBackgroundColor` per-index arrays-szel (csak notable napok radius=5, tobbi 0). `notableWeatherEmoji(r)` helper visszaad `{emoji, label, color}` vagy null-t.
+
+#### Commits
+- `e4b234d` — Add weather pill to each transaction row in partner profile modal
+- `d8ae253` — Add Timeline trafic + vreme chart to Meteo tab
+
+---
+
 ### 2026-04-20 - Phase 3: Prognoza 7-zile (elore tekinto forecast)
 
 #### Cel
