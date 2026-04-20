@@ -158,6 +158,7 @@ weather_oradea    - Napi időjárás Nagyvárad (Open-Meteo backfill)
 | `type=lag_curve&variable=rain_sum&metric=partners` | Corelatie la lag -2..+3 |
 | `type=extreme_days&metric=partners&limit=20` | Top-N zile cu ecart maxim fata de baseline |
 | `type=overview&metric=partners` | 4 familii de ipoteze agregate (narative) |
+| `type=forecast&metric=partners` | Prognoza 7 zile (Open-Meteo + pattern lookup, Phase 3) |
 
 Metric: `partners`, `transactions`, `kg`, `ron`. Variable (buckets): `rain_sum`, `snowfall_sum`, `temp_max`, `temp_min`, `wind_gusts_max`, `humidity_mean`, `cloudcover_mean`.
 
