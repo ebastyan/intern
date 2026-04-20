@@ -857,6 +857,16 @@
             </div>
 
             <div class="card">
+                <h2><span class="icon">📈</span> Timeline trafic + vreme</h2>
+                <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
+                    Traficul zilnic (linie plina) + baseline (punctata) in perioada selectata sus, cu <strong style="color:#aaa">puncte colorate</strong> pe zilele cu vreme notabila. Hover pentru detalii.
+                    <br>🌧️ ploaie mare · ❄️ zapada · 🥶 ger · 🔥 canicula · 💨 vant puternic
+                </p>
+                <div class="chart-container tall"><canvas id="meteoTimelineChart"></canvas></div>
+                <div id="meteoTimelineNotable" style="margin-top:10px;font-size:0.85em;"></div>
+            </div>
+
+            <div class="card">
                 <h2><span class="icon">🔥</span> Cele mai atipice 20 zile</h2>
                 <p style="color:#888;font-size:0.85em;margin-bottom:10px;">
                     Zilele cu cel mai mare ecart fata de <strong style="color:#aaa">normalul asteptat</strong> (medianul ultimelor 28 zile lucratoare cu aceeasi zi a saptamanii). Uita-te la coloanele meteo pentru a vedea ce era in ziua respectiva si poate intelege de ce. <strong style="color:#00ff88">Verde</strong> = au venit mult mai multi decat normal. <strong style="color:#ff6b6b">Rosu</strong> = mult mai putini.
@@ -2736,6 +2746,7 @@
             await Promise.all([
                 loadMeteoOverview(df, dt, metric),
                 loadMeteoExtreme(df, dt, metric),
+                loadMeteoTimeline(df, dt, metric),
             ]);
         }
 
@@ -3069,6 +3080,135 @@
                 host.innerHTML = html;
             } catch (e) {
                 host.innerHTML = `<p style="color:#ff6b6b">Eroare: ${e.message}</p>`;
+            }
+        }
+
+        // === Timeline trafic + vreme ===
+        let _meteoTimelineChart = null;
+
+        function notableWeatherEmoji(r) {
+            // Returns emoji + label if this day had notable weather, else null
+            const rain = r.precipitation_sum != null ? Number(r.precipitation_sum) : 0;
+            const snow = r.snowfall_sum != null ? Number(r.snowfall_sum) : 0;
+            const tmax = r.temp_max != null ? Number(r.temp_max) : null;
+            const wgust = r.wind_gusts_max != null ? Number(r.wind_gusts_max) : 0;
+            if (snow >= 2) return { emoji: '❄️', label: `${snow.toFixed(1)}cm zapada`, color: '#9fcfff' };
+            if (rain >= 10) return { emoji: '🌧️', label: `${rain.toFixed(1)}mm ploaie`, color: '#6ec6ff' };
+            if (tmax != null && tmax <= -5) return { emoji: '🥶', label: `${Math.round(tmax)}°C ger`, color: '#7fbfff' };
+            if (tmax != null && tmax >= 32) return { emoji: '🔥', label: `${Math.round(tmax)}°C canicula`, color: '#ff9f40' };
+            if (wgust >= 70) return { emoji: '💨', label: `${Math.round(wgust)}km/h vant`, color: '#c1a4ff' };
+            return null;
+        }
+
+        async function loadMeteoTimeline(df, dt, metric) {
+            const host = document.getElementById('meteoTimelineNotable');
+            if (!host) return;
+            host.innerHTML = '';
+            try {
+                const res = await fetch(`/api/weather?type=residuals&metric=${encodeURIComponent(metric)}&date_from=${df}&date_to=${dt}`);
+                const data = await res.json();
+                const rows = (data.residuals || []).filter(r => r.value != null);
+                if (!rows.length) {
+                    host.innerHTML = '<p style="color:#555">Nu sunt date pentru perioada selectata.</p>';
+                    return;
+                }
+                const labels = rows.map(r => r.date);
+                const values = rows.map(r => parseFloat(r.value));
+                const baselines = rows.map(r => r.baseline != null ? parseFloat(r.baseline) : null);
+                const notable = rows.map(r => notableWeatherEmoji(r));
+                const pointRadii = notable.map(n => n ? 5 : 0);
+                const pointBg = notable.map(n => n ? n.color : 'transparent');
+                const pointBorder = notable.map(n => n ? '#fff' : 'transparent');
+
+                const canvas = document.getElementById('meteoTimelineChart');
+                if (_meteoTimelineChart) _meteoTimelineChart.destroy();
+                _meteoTimelineChart = new Chart(canvas.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                label: 'Actual',
+                                data: values,
+                                borderColor: '#00d9ff',
+                                backgroundColor: 'rgba(0,217,255,0.08)',
+                                tension: 0.2,
+                                pointRadius: pointRadii,
+                                pointBackgroundColor: pointBg,
+                                pointBorderColor: pointBorder,
+                                pointBorderWidth: 1,
+                                pointHoverRadius: 6,
+                                fill: false,
+                                order: 1,
+                            },
+                            {
+                                label: 'Baseline',
+                                data: baselines,
+                                borderColor: 'rgba(255,255,255,0.3)',
+                                borderDash: [4, 4],
+                                pointRadius: 0,
+                                tension: 0.2,
+                                fill: false,
+                                order: 2,
+                            },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'nearest', axis: 'x', intersect: false },
+                        plugins: {
+                            legend: { labels: { color: '#aaa' } },
+                            tooltip: {
+                                callbacks: {
+                                    afterBody: (items) => {
+                                        const idx = items[0].dataIndex;
+                                        const r = rows[idx];
+                                        const bits = [];
+                                        if (r.temp_max != null) bits.push(`${Math.round(r.temp_min ?? r.temp_max)}..${Math.round(r.temp_max)}°C`);
+                                        if (r.precipitation_sum != null && Number(r.precipitation_sum) >= 0.1) bits.push(`${Number(r.precipitation_sum).toFixed(1)}mm ploaie`);
+                                        if (r.snowfall_sum != null && Number(r.snowfall_sum) >= 0.5) bits.push(`${Number(r.snowfall_sum).toFixed(1)}cm ho`);
+                                        if (r.wind_gusts_max != null && Number(r.wind_gusts_max) >= 40) bits.push(`vant ${Math.round(r.wind_gusts_max)}km/h`);
+                                        const nm = notable[idx];
+                                        const prefix = nm ? `${nm.emoji} ${nm.label}\n` : '';
+                                        return prefix + (bits.join(' · ') || 'vreme calma');
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                            x: {
+                                ticks: {
+                                    color: '#aaa',
+                                    maxTicksLimit: 12,
+                                    callback: function(_, i) {
+                                        const d = labels[i];
+                                        return d ? d.slice(5) : '';
+                                    }
+                                },
+                                grid: { display: false }
+                            },
+                        }
+                    },
+                });
+
+                // "Zile notabile" strip below chart
+                const notableDays = rows.map((r, i) => ({ r, i, n: notable[i] })).filter(x => x.n);
+                if (notableDays.length) {
+                    let html = `<div style="color:#888;margin-bottom:6px;"><strong style="color:#aaa;">${notableDays.length} zile notabile</strong> in perioada:</div>`;
+                    html += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+                    notableDays.slice(0, 40).forEach(x => {
+                        html += `<span style="padding:3px 9px;background:rgba(0,217,255,0.05);border:1px solid ${x.n.color}44;border-radius:12px;color:#ccc;font-size:0.82em;">${x.n.emoji} ${x.r.date} — ${x.n.label}</span>`;
+                    });
+                    if (notableDays.length > 40) html += `<span style="color:#666;padding:3px 9px;">+${notableDays.length - 40} mai multe</span>`;
+                    html += '</div>';
+                    host.innerHTML = html;
+                } else {
+                    host.innerHTML = '<div style="color:#555;font-style:italic;">Nicio zi cu vreme notabila in perioada.</div>';
+                }
+            } catch (e) {
+                host.innerHTML = `<p style="color:#ff6b6b">Eroare timeline: ${e.message}</p>`;
             }
         }
 
